@@ -150,6 +150,11 @@ export default function UVEditLayer({ aspect }: { aspect: number }) {
     objGeo.setAttribute('color', attr(objList.length * 8))
     const fillGeo = new THREE.BufferGeometry()
     fillGeo.setAttribute('position', attr(6))
+    // selected-face highlight (face mode): one fan-triangulated fill for the
+    // selected polygons
+    const faceTris = polys.reduce((a, p) => a + Math.max(0, p.loop.length - 2), 0)
+    const faceFillGeo = new THREE.BufferGeometry()
+    faceFillGeo.setAttribute('position', attr(Math.max(1, faceTris) * 3))
 
     return {
       verts,
@@ -166,6 +171,7 @@ export default function UVEditLayer({ aspect }: { aspect: number }) {
       crease,
       objGeo,
       fillGeo,
+      faceFillGeo,
     }
   }, [mapShells])
 
@@ -179,6 +185,7 @@ export default function UVEditLayer({ aspect }: { aspect: number }) {
       topo.crease.mat.dispose()
       topo.objGeo.dispose()
       topo.fillGeo.dispose()
+      topo.faceFillGeo.dispose()
     },
     [topo],
   )
@@ -582,6 +589,35 @@ export default function UVEditLayer({ aspect }: { aspect: number }) {
       drawEdges(topo.creaseEdges, topo.crease, cEdge)
     }
 
+    // selected-face fills (face mode) — a polygon is selected when all its
+    // corners are in the selection (pickFace selects exactly a face's corners)
+    if (editMode === 'face') {
+      const fa = topo.faceFillGeo.getAttribute('position').array as Float32Array
+      let n = 0
+      for (const p of topo.polys) {
+        if (!p.loop.every((v) => sel.has(key(p.shellId, v)))) continue
+        const w0 = worldOf(p.shellId, p.loop[0])
+        if (!w0) continue
+        for (let i = 1; i + 1 < p.loop.length; i++) {
+          const wa = worldOf(p.shellId, p.loop[i]),
+            wb = worldOf(p.shellId, p.loop[i + 1])
+          if (!wa || !wb) continue
+          fa[n * 3] = w0[0]
+          fa[n * 3 + 1] = w0[1]
+          fa[n * 3 + 2] = 0.15
+          fa[n * 3 + 3] = wa[0]
+          fa[n * 3 + 4] = wa[1]
+          fa[n * 3 + 5] = 0.15
+          fa[n * 3 + 6] = wb[0]
+          fa[n * 3 + 7] = wb[1]
+          fa[n * 3 + 8] = 0.15
+          n += 3
+        }
+      }
+      topo.faceFillGeo.setDrawRange(0, n)
+      topo.faceFillGeo.getAttribute('position').needsUpdate = true
+    }
+
     // object outlines + active fill — atlas mode only. In screen-mapping
     // (layered) mode the MapView2D slice marker is the single source of truth;
     // this layer draws at RAW uv coords which sit full-screen / off-canvas for
@@ -659,7 +695,9 @@ export default function UVEditLayer({ aspect }: { aspect: number }) {
 
   // 'transform' is owned by the FreeTransform gizmo — stay out of its way.
   if (editMode === 'none' || editMode === 'transform') return null
-  const showSelDots = editMode === 'vertex' || editMode === 'edge' || editMode === 'face'
+  // vertex dots belong to vertex mode only — edge mode shows edges, face mode
+  // shows face fills (C4D-style: each mode isolates its component)
+  const showSelDots = editMode === 'vertex'
 
   return (
     <group>
@@ -673,6 +711,11 @@ export default function UVEditLayer({ aspect }: { aspect: number }) {
           {topo.creaseEdges.length > 0 && <primitive object={topo.crease.lines} />}
           {topo.seamEdges.length > 0 && <primitive object={topo.seam.lines} />}
         </>
+      )}
+      {editMode === 'face' && (
+        <mesh geometry={topo.faceFillGeo} renderOrder={4}>
+          <meshBasicMaterial color="#ffe14d" transparent opacity={0.32} depthTest={false} side={THREE.DoubleSide} />
+        </mesh>
       )}
       {editMode === 'object' && !layeredMode && (
         <>
