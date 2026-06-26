@@ -131,9 +131,11 @@ function Scene({
   // Drawing this static box avoids relying on raw UVs, which can sit far outside
   // [0,1] (tiled) and otherwise render the marker miles from the image.
   const markerRect = useMemo<SrcRect | null>(() => {
-    if (!layeredMode || !selectedObject || !srcRect) return null
+    if (!layeredMode || !selectedObject) return null
     const eps = 0.02
-    if (srcRect.x1 - srcRect.x0 < 1 - eps || srcRect.y1 - srcRect.y0 < 1 - eps) return srcRect
+    // 1. PSD carries a real per-screen slice → use it directly
+    if (srcRect && (srcRect.x1 - srcRect.x0 < 1 - eps || srcRect.y1 - srcRect.y0 < 1 - eps)) return srcRect
+    // 2. otherwise derive the covered region from the screen's own UVs
     let u0 = Infinity,
       u1 = -Infinity,
       v0 = Infinity,
@@ -150,7 +152,7 @@ function Scene({
         if (v > v1) v1 = v
       }
     }
-    if (!isFinite(u0)) return srcRect
+    if (!isFinite(u0)) return null
     const wrap = (lo: number, hi: number): [number, number] => {
       const span = hi - lo
       if (span >= 0.999) return [0, 1] // covers the whole axis
@@ -160,6 +162,9 @@ function Scene({
     }
     const [x0, x1] = wrap(u0, u1)
     const [y0, y1] = wrap(v0, v1)
+    // 3. covers ~the whole image (own-texture / panorama-filling UVs) → nothing
+    //    to highlight; never draw a full-image box.
+    if (x1 - x0 > 1 - eps && y1 - y0 > 1 - eps) return null
     return { x0, y0, x1, y1 }
   }, [layeredMode, selectedObject, srcRect, geos, uvVersion])
 
@@ -203,49 +208,52 @@ function Scene({
           />
         </lineSegments>
       ))}
-      {/* one clean yellow box marking the part of the PSD this screen covers */}
-      {markerRect ? (
-        <>
-          <mesh
-            position={[
-              ((markerRect.x0 + markerRect.x1) / 2) * aspect,
-              1 - (markerRect.y0 + markerRect.y1) / 2,
-              -0.005,
-            ]}
-            renderOrder={5}
-          >
-            <planeGeometry args={[(markerRect.x1 - markerRect.x0) * aspect, markerRect.y1 - markerRect.y0]} />
-            <meshBasicMaterial color="#ffd23f" transparent opacity={0.2} depthTest={false} toneMapped={false} />
-          </mesh>
-          {markerBox && (
-            <lineSegments geometry={markerBox} renderOrder={6}>
-              <lineBasicMaterial color="#ffd23f" depthTest={false} />
-            </lineSegments>
-          )}
-        </>
-      ) : (
-        // own-texture screens (no PSD slice): show the actual UV footprint
-        geos.map((g) => {
-          const sel = selectedObject === g.objName
-          const col = objColor(g.objName)
-          return (
-            <group key={g.id}>
-              <mesh geometry={g.fill} renderOrder={3}>
-                <meshBasicMaterial
-                  color={sel ? '#ffd23f' : col}
-                  transparent
-                  opacity={sel ? 0.25 : 0.16}
-                  side={THREE.DoubleSide}
-                  depthTest={false}
+      {/* Layered mode: ONE clean yellow box on the covered sub-region — and
+          nothing at all when the screen fills the whole image (no full-image
+          box). Atlas mode keeps the per-object footprints. */}
+      {!layeredMode
+        ? geos.map((g) => {
+            const sel = selectedObject === g.objName
+            const col = objColor(g.objName)
+            return (
+              <group key={g.id}>
+                <mesh geometry={g.fill} renderOrder={3}>
+                  <meshBasicMaterial
+                    color={sel ? '#ffd23f' : col}
+                    transparent
+                    opacity={sel ? 0.25 : 0.16}
+                    side={THREE.DoubleSide}
+                    depthTest={false}
+                  />
+                </mesh>
+                <lineSegments geometry={g.bnd} renderOrder={4}>
+                  <lineBasicMaterial color={sel ? '#ffd23f' : col} transparent opacity={1} depthTest={false} />
+                </lineSegments>
+              </group>
+            )
+          })
+        : markerRect && (
+            <>
+              <mesh
+                position={[
+                  ((markerRect.x0 + markerRect.x1) / 2) * aspect,
+                  1 - (markerRect.y0 + markerRect.y1) / 2,
+                  -0.005,
+                ]}
+                renderOrder={5}
+              >
+                <planeGeometry
+                  args={[(markerRect.x1 - markerRect.x0) * aspect, markerRect.y1 - markerRect.y0]}
                 />
+                <meshBasicMaterial color="#ffd23f" transparent opacity={0.2} depthTest={false} toneMapped={false} />
               </mesh>
-              <lineSegments geometry={g.bnd} renderOrder={4}>
-                <lineBasicMaterial color={sel ? '#ffd23f' : col} transparent opacity={1} depthTest={false} />
-              </lineSegments>
-            </group>
-          )
-        })
-      )}
+              {markerBox && (
+                <lineSegments geometry={markerBox} renderOrder={6}>
+                  <lineBasicMaterial color="#ffd23f" depthTest={false} />
+                </lineSegments>
+              )}
+            </>
+          )}
       <group visible={false} userData={{ uvVersion }} />
     </group>
   )
