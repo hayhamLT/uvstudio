@@ -163,7 +163,22 @@ function Scene({
           />
         </lineSegments>
       ))}
-      {/* yellow box marking the part of the PSD the selected screen covers */}
+      {/* yellow square marking the part of the PSD the selected screen covers:
+          a translucent fill (clearly visible even when the slice hugs an edge)
+          plus a bright border */}
+      {srcRect && (
+        <mesh
+          position={[
+            ((srcRect.x0 + srcRect.x1) / 2) * aspect,
+            1 - (srcRect.y0 + srcRect.y1) / 2,
+            -0.005,
+          ]}
+          renderOrder={5}
+        >
+          <planeGeometry args={[(srcRect.x1 - srcRect.x0) * aspect, srcRect.y1 - srcRect.y0]} />
+          <meshBasicMaterial color="#ffd23f" transparent opacity={0.22} depthTest={false} toneMapped={false} />
+        </mesh>
+      )}
       {chunkGeom && (
         <lineSegments geometry={chunkGeom} renderOrder={6}>
           <lineBasicMaterial color="#ffd23f" depthTest={false} />
