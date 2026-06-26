@@ -106,20 +106,6 @@ function Scene({
     })
   })
 
-  // outline of the chunk this screen uses, drawn over the full PSD
-  const chunkGeom = useMemo(() => {
-    if (!srcRect) return null
-    const x0 = srcRect.x0 * aspect,
-      x1 = srcRect.x1 * aspect
-    const yb = 1 - srcRect.y1,
-      yt = 1 - srcRect.y0
-    const pts = [x0, yb, 0, x1, yb, 0, x1, yt, 0, x0, yt, 0, x0, yb, 0]
-    const g = new THREE.BufferGeometry()
-    g.setAttribute('position', new THREE.BufferAttribute(Float32Array.from(pts), 3))
-    return g
-  }, [srcRect, aspect])
-  useEffect(() => () => chunkGeom?.dispose(), [chunkGeom])
-
   // region outline rectangles (image y-down -> y-up display)
   const regionLines = useMemo(() => {
     const assignedIds = new Set(Object.values(assignment))
@@ -163,28 +149,8 @@ function Scene({
           />
         </lineSegments>
       ))}
-      {/* yellow square marking the part of the PSD the selected screen covers:
-          a translucent fill (clearly visible even when the slice hugs an edge)
-          plus a bright border */}
-      {srcRect && (
-        <mesh
-          position={[
-            ((srcRect.x0 + srcRect.x1) / 2) * aspect,
-            1 - (srcRect.y0 + srcRect.y1) / 2,
-            -0.005,
-          ]}
-          renderOrder={5}
-        >
-          <planeGeometry args={[(srcRect.x1 - srcRect.x0) * aspect, srcRect.y1 - srcRect.y0]} />
-          <meshBasicMaterial color="#ffd23f" transparent opacity={0.22} depthTest={false} toneMapped={false} />
-        </mesh>
-      )}
-      {chunkGeom && (
-        <lineSegments geometry={chunkGeom} renderOrder={6}>
-          <lineBasicMaterial color="#ffd23f" depthTest={false} />
-        </lineSegments>
-      )}
-      {/* mapped screen footprints */}
+      {/* the selected screen's footprint IS the part of the PSD it covers — a
+          yellow tint + bright yellow border marks exactly that region */}
       {geos.map((g) => {
         const sel = selectedObject === g.objName
         const col = objColor(g.objName)
@@ -192,15 +158,15 @@ function Scene({
           <group key={g.id}>
             <mesh geometry={g.fill} renderOrder={3}>
               <meshBasicMaterial
-                color={col}
+                color={sel ? '#ffd23f' : col}
                 transparent
-                opacity={sel ? 0.4 : 0.16}
+                opacity={sel ? 0.25 : 0.16}
                 side={THREE.DoubleSide}
                 depthTest={false}
               />
             </mesh>
             <lineSegments geometry={g.bnd} renderOrder={4}>
-              <lineBasicMaterial color={sel ? '#ffffff' : col} transparent opacity={0.95} depthTest={false} />
+              <lineBasicMaterial color={sel ? '#ffd23f' : col} transparent opacity={1} depthTest={false} />
             </lineSegments>
           </group>
         )
