@@ -319,7 +319,7 @@ function EditToolbar() {
           </svg>
         </button>
       ))}
-      {selCount > 0 && (
+      {selCount > 0 && editMode !== 'object' && (
         <>
           <div className="mx-0.5 h-5 w-px bg-line" />
           <span className="px-1 text-[11px] tabular-nums text-fog-400">{selCount} sel</span>
