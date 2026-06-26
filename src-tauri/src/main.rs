@@ -207,19 +207,15 @@ fn main() {
         .setup(|app| {
             // reload a previously-chosen link folder so it's "set once, ever"
             let handle = app.handle().clone();
-            if let Some(cf) = config_file(&handle) {
-                if let Ok(saved) = fs::read_to_string(&cf) {
-                    let p = saved.trim();
-                    if !p.is_empty() {
-                        let dir = PathBuf::from(p);
-                        if dir.is_dir() {
-                            let st = app.state::<Mutex<Bridge>>();
-                            if let Ok(mut b) = st.lock() {
-                                b.last_ts = read_ts(&dir.join(TO_APP));
-                                b.dir = Some(dir);
-                            }
-                        }
-                    }
+            let saved = config_file(&handle)
+                .and_then(|cf| fs::read_to_string(cf).ok())
+                .map(|s| PathBuf::from(s.trim()))
+                .filter(|d| d.is_dir());
+            if let Some(dir) = saved {
+                let state = handle.state::<Mutex<Bridge>>();
+                if let Ok(mut b) = state.lock() {
+                    b.last_ts = read_ts(&dir.join(TO_APP));
+                    b.dir = Some(dir);
                 }
             }
             Ok(())
