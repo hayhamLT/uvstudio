@@ -264,11 +264,9 @@ export default function UVEditLayer({ aspect }: { aspect: number }) {
         next = allSelected ? new Set(cur) : new Set(hit)
       }
       useStore.getState().setMapSelection(next)
-      // In screen-mapping (layered) object mode the island lives at raw uv
-      // coords that don't line up with the displayed PSD, so dragging it is
-      // confusing (the "I moved it aside" footgun). Use Free-transform (T) to
-      // move a screen instead; here we only select.
-      drag.current = editMode === 'object' && layeredMode ? null : 'move'
+      // Chunk screens now sit ON their slice in UV space, so dragging the object
+      // slides the slice across the PSD (re-target) — a genuine UV edit.
+      drag.current = 'move'
       moved.current = false
       last.current = [wx, wy]
     } else {

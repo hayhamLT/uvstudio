@@ -140,15 +140,36 @@ function ScreenRow({ name }: { name: string }) {
   const runMapping = useStore((s) => s.runMapping)
   const resOverride = useStore((s) => s.screenRes[name])
   const setScreenRes = useStore((s) => s.setScreenRes)
+  const shellIds = useStore((s) => s.mapObjects.find((o) => o.name === name)?.shellIds)
 
   const hasContent = live.objTextures.has(name)
   const hue = hash(name)
-  // resolution the app found = the applied media's pixel size; user can override
+  // resolution the app found = the pixel size of the texture REGION this screen's
+  // UVs cover (a chunk screen samples a slice of a bigger PSD), so it tracks any
+  // re-target; the user can override it.
   const mediaImg = live.objTextures.get(name)?.image as
     | (CanvasImageSource & { width?: number; naturalWidth?: number; height?: number; naturalHeight?: number })
     | undefined
-  const autoW = (mediaImg as { naturalWidth?: number })?.naturalWidth || (mediaImg as { width?: number })?.width || 0
-  const autoH = (mediaImg as { naturalHeight?: number })?.naturalHeight || (mediaImg as { height?: number })?.height || 0
+  const fullW = (mediaImg as { naturalWidth?: number })?.naturalWidth || (mediaImg as { width?: number })?.width || 0
+  const fullH = (mediaImg as { naturalHeight?: number })?.naturalHeight || (mediaImg as { height?: number })?.height || 0
+  let u0 = Infinity,
+    u1 = -Infinity,
+    v0 = Infinity,
+    v1 = -Infinity
+  for (const id of shellIds ?? []) {
+    const uv = live.uv.get(id)
+    if (!uv) continue
+    for (let i = 0; i < uv.length; i += 2) {
+      if (uv[i] < u0) u0 = uv[i]
+      if (uv[i] > u1) u1 = uv[i]
+      if (uv[i + 1] < v0) v0 = uv[i + 1]
+      if (uv[i + 1] > v1) v1 = uv[i + 1]
+    }
+  }
+  const cl = (n: number) => Math.min(1, Math.max(0, n))
+  const sub = u1 > u0 && v1 > v0 && (u1 - u0 < 0.999 || v1 - v0 < 0.999)
+  const autoW = sub ? Math.round((cl(u1) - cl(u0)) * fullW) : fullW
+  const autoH = sub ? Math.round((cl(v1) - cl(v0)) * fullH) : fullH
   const resW = resOverride?.w ?? autoW
   const resH = resOverride?.h ?? autoH
   const resMismatch = !!resOverride && autoW > 0 && (resOverride.w !== autoW || resOverride.h !== autoH)

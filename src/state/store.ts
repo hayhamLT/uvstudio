@@ -330,20 +330,22 @@ function screenSpecs(g: AppState): ScreenSpec[] {
     let w = 0
     let h = 0
     const ov = g.screenRes[name]
-    const src = live.objSource.get(name)
     if (ov?.w && ov?.h) {
       // explicit RES override — always wins
       w = ov.w
       h = ov.h
-    } else if (src) {
-      // this screen is a chunk of a bigger PSD → its slice's pixel size
-      const f = dims(src.tex.image as { width?: number; height?: number })
-      w = Math.round((src.rect.x1 - src.rect.x0) * f.w)
-      h = Math.round((src.rect.y1 - src.rect.y0) * f.h)
     } else {
       const f = dims(live.objTextures.get(name)?.image as { width?: number; height?: number })
-      w = f.w
-      h = f.h
+      const cr = live.objContentRect.get(name)
+      if (cr && (cr.u1 - cr.u0 < 0.999 || cr.v1 - cr.v0 < 0.999)) {
+        // chunk screen: samples a sub-region of a bigger image via UVs → the
+        // slice's pixel size is that fraction of the full image
+        w = Math.round((cr.u1 - cr.u0) * f.w)
+        h = Math.round((cr.v1 - cr.v0) * f.h)
+      } else {
+        w = f.w
+        h = f.h
+      }
     }
     return { name, w, h, aspect: h ? w / h : live.objAspect.get(name) ?? 1 }
   })
@@ -406,8 +408,10 @@ const screenOverrides = new Map<
   {
     image: CanvasImageSource
     aspect: number
-    // full-PSD context (when the screen's content is a chunk of a bigger PSD)
-    source?: { full: CanvasImageSource; aspect: number; rect: { x0: number; y0: number; x1: number; y1: number } }
+    // a chunk screen samples the WHOLE image and sits in its slice via UVs; this
+    // is that slice in the texture's UV space (y-up), re-applied on Refresh so the
+    // fit lands in the right place
+    contentRect?: RectUV
   }
 >()
 
@@ -923,16 +927,10 @@ export const useStore = create<AppState>((set, get) => ({
         tex.needsUpdate = true
         live.objTextures.set(obj.name, tex)
         live.objAspect.set(obj.name, ov.aspect)
-        live.objContentRect.set(obj.name, contentRectFromImage(ov.image))
+        live.objContentRect.set(obj.name, ov.contentRect ?? contentRectFromImage(ov.image))
+        // pure-UV model: chunk screens have no separate cropped source texture
         live.objSource.get(obj.name)?.tex.dispose()
-        if (ov.source) {
-          const stex = new THREE.Texture(ov.source.full)
-          stex.colorSpace = THREE.SRGBColorSpace
-          stex.needsUpdate = true
-          live.objSource.set(obj.name, { tex: stex, aspect: ov.source.aspect, rect: ov.source.rect })
-        } else {
-          live.objSource.delete(obj.name)
-        }
+        live.objSource.delete(obj.name)
         if (!importedObjects.includes(obj.name)) importedObjects.push(obj.name)
       }
     }
@@ -1301,7 +1299,7 @@ export const useStore = create<AppState>((set, get) => ({
     // Detect PSD by content (magic bytes "8BPS"), not extension — source files
     // are often exported without a .psd suffix.
     let source: CanvasImageSource
-    let sourceCtx: { full: CanvasImageSource; W: number; H: number; layer: { left: number; top: number; width: number; height: number } } | null = null
+    let chunkRect: RectUV | null = null
     try {
       if (await isPsd(file)) {
         const psd = await loadPsdFile(file)
@@ -1323,14 +1321,22 @@ export const useStore = create<AppState>((set, get) => ({
           })
           if (bestSim >= 0.82) layer = psd.layers[best]
         }
-        source = layer?.canvas ?? psd.composite ?? flattenPsdLayers(psd)
-        // If the chosen layer is only a CHUNK of a bigger PSD, keep the full
-        // composite + the layer's bounds so the 2D viewer can show the whole PSD
-        // and highlight just this screen's slice.
         const W = psd.width || 1
         const H = psd.height || 1
         if (layer && (layer.width < W || layer.height < H)) {
-          sourceCtx = { full: psd.composite ?? flattenPsdLayers(psd), W, H, layer }
+          // CHUNK of a bigger PSD: sample the WHOLE composite and place this
+          // screen in its slice via UVs — a pure-UV mapping (nothing is cropped),
+          // so the slice can be moved/scaled by editing UVs. The slice is the
+          // layer's bounds in the texture's UV space (image y-down → v-up).
+          source = psd.composite ?? flattenPsdLayers(psd)
+          chunkRect = {
+            u0: layer.left / W,
+            v0: 1 - (layer.top + layer.height) / H,
+            u1: (layer.left + layer.width) / W,
+            v1: 1 - layer.top / H,
+          }
+        } else {
+          source = layer?.canvas ?? psd.composite ?? flattenPsdLayers(psd)
         }
       } else {
         source = await loadImage(URL.createObjectURL(file))
@@ -1346,26 +1352,13 @@ export const useStore = create<AppState>((set, get) => ({
     tex.needsUpdate = true
     live.objTextures.set(objName, tex)
     live.objAspect.set(objName, aspect)
-    live.objContentRect.set(objName, contentRectFromImage(source))
-    // full-PSD context for the 2D viewer (or clear it for whole-image content)
+    live.objContentRect.set(objName, chunkRect ?? contentRectFromImage(source))
+    // pure-UV model: a chunk screen carries its slice in its UVs (fit to the
+    // content rect above), not a separate cropped source — so no objSource.
     live.objSource.get(objName)?.tex.dispose()
-    let sourceEntry: { full: CanvasImageSource; aspect: number; rect: { x0: number; y0: number; x1: number; y1: number } } | undefined
-    if (sourceCtx) {
-      const { W, H, layer } = sourceCtx
-      sourceEntry = {
-        full: sourceCtx.full,
-        aspect: W / H,
-        rect: { x0: layer.left / W, y0: layer.top / H, x1: (layer.left + layer.width) / W, y1: (layer.top + layer.height) / H },
-      }
-      const stex = new THREE.Texture(sourceEntry.full)
-      stex.colorSpace = THREE.SRGBColorSpace
-      stex.needsUpdate = true
-      live.objSource.set(objName, { tex: stex, aspect: sourceEntry.aspect, rect: sourceEntry.rect })
-    } else {
-      live.objSource.delete(objName)
-    }
-    // remember as an override (incl. full-PSD context) so it survives a Refresh
-    screenOverrides.set(objName, { image: source, aspect, source: sourceEntry })
+    live.objSource.delete(objName)
+    // remember as an override so it survives a model Refresh
+    screenOverrides.set(objName, { image: source, aspect, contentRect: chunkRect ?? undefined })
     live.layeredMode = true
     live.dirty = true
     set({
