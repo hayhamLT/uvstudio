@@ -122,6 +122,60 @@ function Scene({
   }, [regions, assignment, aspect])
   useEffect(() => () => regionLines.forEach((r) => r.g.dispose()), [regionLines])
 
+  // The rectangle of the displayed PSD the selected screen actually covers.
+  // Only meaningful for a screen mapped to a chunk of a larger PSD (objSource).
+  // Two reliable sources, depending on how the file was authored:
+  //  • objSource is a real sub-slice (PSD has a per-screen layer)  → use it
+  //  • objSource is the WHOLE PSD (UVs sample the panorama directly) → use the
+  //    screen's own UV bounding box, wrapped into [0,1] for tiled/offset UVs.
+  // Drawing this static box avoids relying on raw UVs, which can sit far outside
+  // [0,1] (tiled) and otherwise render the marker miles from the image.
+  const markerRect = useMemo<SrcRect | null>(() => {
+    if (!layeredMode || !selectedObject || !srcRect) return null
+    const eps = 0.02
+    if (srcRect.x1 - srcRect.x0 < 1 - eps || srcRect.y1 - srcRect.y0 < 1 - eps) return srcRect
+    let u0 = Infinity,
+      u1 = -Infinity,
+      v0 = Infinity,
+      v1 = -Infinity
+    for (const g of geos) {
+      const uv = live.uv.get(g.id)
+      if (!uv) continue
+      for (let i = 0; i < uv.length; i += 2) {
+        const u = uv[i],
+          v = uv[i + 1]
+        if (u < u0) u0 = u
+        if (u > u1) u1 = u
+        if (v < v0) v0 = v
+        if (v > v1) v1 = v
+      }
+    }
+    if (!isFinite(u0)) return srcRect
+    const wrap = (lo: number, hi: number): [number, number] => {
+      const span = hi - lo
+      if (span >= 0.999) return [0, 1] // covers the whole axis
+      const l = lo - Math.floor(lo)
+      const h = l + span
+      return h > 1 ? [0, 1] : [l, h] // wraps around the seam → treat as whole
+    }
+    const [x0, x1] = wrap(u0, u1)
+    const [y0, y1] = wrap(v0, v1)
+    return { x0, y0, x1, y1 }
+  }, [layeredMode, selectedObject, srcRect, geos, uvVersion])
+
+  const markerBox = useMemo(() => {
+    if (!markerRect) return null
+    const x0 = markerRect.x0 * aspect,
+      x1 = markerRect.x1 * aspect
+    const yb = 1 - markerRect.y1,
+      yt = 1 - markerRect.y0
+    const pts = [x0, yb, 0, x1, yb, 0, x1, yt, 0, x0, yt, 0, x0, yb, 0]
+    const g = new THREE.BufferGeometry()
+    g.setAttribute('position', new THREE.BufferAttribute(Float32Array.from(pts), 3))
+    return g
+  }, [markerRect, aspect])
+  useEffect(() => () => markerBox?.dispose(), [markerBox])
+
   return (
     <group>
       {/* transparency checkerboard behind the layer/atlas (shows through alpha) */}
@@ -149,28 +203,49 @@ function Scene({
           />
         </lineSegments>
       ))}
-      {/* the selected screen's footprint IS the part of the PSD it covers — a
-          yellow tint + bright yellow border marks exactly that region */}
-      {geos.map((g) => {
-        const sel = selectedObject === g.objName
-        const col = objColor(g.objName)
-        return (
-          <group key={g.id}>
-            <mesh geometry={g.fill} renderOrder={3}>
-              <meshBasicMaterial
-                color={sel ? '#ffd23f' : col}
-                transparent
-                opacity={sel ? 0.25 : 0.16}
-                side={THREE.DoubleSide}
-                depthTest={false}
-              />
-            </mesh>
-            <lineSegments geometry={g.bnd} renderOrder={4}>
-              <lineBasicMaterial color={sel ? '#ffd23f' : col} transparent opacity={1} depthTest={false} />
+      {/* one clean yellow box marking the part of the PSD this screen covers */}
+      {markerRect ? (
+        <>
+          <mesh
+            position={[
+              ((markerRect.x0 + markerRect.x1) / 2) * aspect,
+              1 - (markerRect.y0 + markerRect.y1) / 2,
+              -0.005,
+            ]}
+            renderOrder={5}
+          >
+            <planeGeometry args={[(markerRect.x1 - markerRect.x0) * aspect, markerRect.y1 - markerRect.y0]} />
+            <meshBasicMaterial color="#ffd23f" transparent opacity={0.2} depthTest={false} toneMapped={false} />
+          </mesh>
+          {markerBox && (
+            <lineSegments geometry={markerBox} renderOrder={6}>
+              <lineBasicMaterial color="#ffd23f" depthTest={false} />
             </lineSegments>
-          </group>
-        )
-      })}
+          )}
+        </>
+      ) : (
+        // own-texture screens (no PSD slice): show the actual UV footprint
+        geos.map((g) => {
+          const sel = selectedObject === g.objName
+          const col = objColor(g.objName)
+          return (
+            <group key={g.id}>
+              <mesh geometry={g.fill} renderOrder={3}>
+                <meshBasicMaterial
+                  color={sel ? '#ffd23f' : col}
+                  transparent
+                  opacity={sel ? 0.25 : 0.16}
+                  side={THREE.DoubleSide}
+                  depthTest={false}
+                />
+              </mesh>
+              <lineSegments geometry={g.bnd} renderOrder={4}>
+                <lineBasicMaterial color={sel ? '#ffd23f' : col} transparent opacity={1} depthTest={false} />
+              </lineSegments>
+            </group>
+          )
+        })
+      )}
       <group visible={false} userData={{ uvVersion }} />
     </group>
   )
