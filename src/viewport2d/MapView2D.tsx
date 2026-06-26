@@ -54,6 +54,7 @@ function Scene({
   const assignment = useStore((s) => s.assignment)
   const selectedObject = useStore((s) => s.selectedObject)
   const layeredMode = useStore((s) => s.layeredMode)
+  const editMode = useStore((s) => s.editMode)
   const uvVersion = useStore((s) => s.uvVersion)
   // when the selected screen is one chunk of a larger PSD, show the WHOLE PSD
   const bgTex = srcTex ?? (layeredMode ? live.objTextures.get(selectedObject ?? '') ?? null : live.atlasTexture)
@@ -158,7 +159,8 @@ function Scene({
       x1 = markerRect.x1 * aspect
     const yb = 1 - markerRect.y1,
       yt = 1 - markerRect.y0
-    const pts = [x0, yb, 0, x1, yb, 0, x1, yt, 0, x0, yt, 0, x0, yb, 0]
+    // 4 corners — drawn as a lineLoop, which closes the rectangle for us
+    const pts = [x0, yb, 0, x1, yb, 0, x1, yt, 0, x0, yt, 0]
     const g = new THREE.BufferGeometry()
     g.setAttribute('position', new THREE.BufferAttribute(Float32Array.from(pts), 3))
     return g
@@ -218,23 +220,27 @@ function Scene({
           })
         : markerRect && (
             <>
-              <mesh
-                position={[
-                  ((markerRect.x0 + markerRect.x1) / 2) * aspect,
-                  1 - (markerRect.y0 + markerRect.y1) / 2,
-                  -0.005,
-                ]}
-                renderOrder={5}
-              >
-                <planeGeometry
-                  args={[(markerRect.x1 - markerRect.x0) * aspect, markerRect.y1 - markerRect.y0]}
-                />
-                <meshBasicMaterial color="#ffd23f" transparent opacity={0.2} depthTest={false} toneMapped={false} />
-              </mesh>
+              {/* the fill is a coverage highlight; hide it while editing
+                  vertices/edges/faces so it never sits over the mesh */}
+              {(editMode === 'object' || editMode === 'transform') && (
+                <mesh
+                  position={[
+                    ((markerRect.x0 + markerRect.x1) / 2) * aspect,
+                    1 - (markerRect.y0 + markerRect.y1) / 2,
+                    -0.005,
+                  ]}
+                  renderOrder={5}
+                >
+                  <planeGeometry
+                    args={[(markerRect.x1 - markerRect.x0) * aspect, markerRect.y1 - markerRect.y0]}
+                  />
+                  <meshBasicMaterial color="#ffd23f" transparent opacity={0.2} depthTest={false} toneMapped={false} />
+                </mesh>
+              )}
               {markerBox && (
-                <lineSegments geometry={markerBox} renderOrder={6}>
+                <lineLoop geometry={markerBox} renderOrder={6}>
                   <lineBasicMaterial color="#ffd23f" depthTest={false} />
-                </lineSegments>
+                </lineLoop>
               )}
             </>
           )}
