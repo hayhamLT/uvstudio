@@ -126,11 +126,10 @@ function Scene({
   // The rectangle of the displayed image the selected screen covers = the bbox of
   // its UVs, taken RAW (no wrap/clamp) so the box can be dragged anywhere — even
   // out past the edges, just like a free object. Stored PSD-norm (image y-down);
-  // the box renderer applies the 1-y flip. A screen that fills the whole image
-  // has no sub-region worth marking, so it draws nothing.
+  // the box renderer applies the 1-y flip. Screens that use their WHOLE texture
+  // (FLOOR, PILLAR…) still get a box around the full image so you can see the UVs.
   const markerRect = useMemo<SrcRect | null>(() => {
     if (!layeredMode || !selectedObject) return null
-    const eps = 0.02
     let u0 = Infinity,
       u1 = -Infinity,
       v0 = Infinity,
@@ -148,8 +147,6 @@ function Scene({
       }
     }
     if (!isFinite(u0)) return null
-    // fills the whole image → nothing to highlight
-    if (u0 <= eps && v0 <= eps && u1 >= 1 - eps && v1 >= 1 - eps) return null
     return { x0: u0, y0: 1 - v1, x1: u1, y1: 1 - v0 }
   }, [layeredMode, selectedObject, geos, uvVersion])
 
