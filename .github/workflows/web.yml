@@ -1,9 +1,12 @@
 # Build the static web bundle and (a) upload it as an artifact for embedding in
 # preshow.link, (b) deploy a live demo to GitHub Pages.
 #
-# Pages setup (one-time): repo Settings → Pages → Source: "GitHub Actions".
-# (Private repos need a paid GitHub plan for Pages; the artifact in the `build`
-# job works regardless and is what you'd pull into preshow.link.)
+# The `build` job always produces the embeddable `dist/` artifact (what you pull
+# into preshow.link). The `deploy` job publishes a live demo to GitHub Pages and
+# is OPT-IN — it only runs when the repo variable DEPLOY_PAGES == 'true'.
+# To enable it: make the repo public OR use a plan with private Pages, then
+#   repo Settings → Pages → Source: "GitHub Actions"
+#   gh variable set DEPLOY_PAGES --body true
 name: Web build
 
 on:
@@ -36,14 +39,17 @@ jobs:
         with:
           name: uvstudio-web
           path: dist
-      # standalone demo for GitHub Pages (served under /uvstudio/)
-      - run: npx vite build --base=/uvstudio/ --outDir dist-pages
-      - uses: actions/upload-pages-artifact@v3
+      # standalone demo for GitHub Pages (served under /uvstudio/) — opt-in
+      - if: ${{ vars.DEPLOY_PAGES == 'true' }}
+        run: npx vite build --base=/uvstudio/ --outDir dist-pages
+      - if: ${{ vars.DEPLOY_PAGES == 'true' }}
+        uses: actions/upload-pages-artifact@v3
         with:
           path: dist-pages
 
   deploy:
     needs: build
+    if: ${{ vars.DEPLOY_PAGES == 'true' }}
     runs-on: ubuntu-latest
     environment:
       name: github-pages
