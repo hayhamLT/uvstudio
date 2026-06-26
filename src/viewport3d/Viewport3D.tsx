@@ -4,6 +4,7 @@ import { OrbitControls } from '@react-three/drei'
 import * as THREE from 'three'
 import { useStore } from '../state/store'
 import { live } from '../state/live'
+import ActiveFrameloop from '../three/ActiveFrameloop'
 import { useFileDrop } from '../ui/useFileDrop'
 import { handleViewportDrop } from '../ui/importMap'
 import MapSurfaces from './MapSurfaces'
@@ -165,10 +166,12 @@ export default function Viewport3D() {
       }}
     >
       <Canvas
-        dpr={[1, 2]}
+        frameloop="demand"
+        dpr={[1, 1.5]}
         camera={{ position: [2.4, 1.8, 2.8], fov: 42, near: 0.01, far: 100 }}
-        gl={{ antialias: true }}
+        gl={{ antialias: true, powerPreference: 'high-performance' }}
       >
+        <ActiveFrameloop />
         <color attach="background" args={['#0b0e14']} />
         <ambientLight intensity={0.85} />
         <directionalLight position={[4, 6, 3]} intensity={0.8} />

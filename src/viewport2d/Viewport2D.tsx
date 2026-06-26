@@ -7,6 +7,7 @@ import { live } from '../state/live'
 import MapView2D from './MapView2D'
 import { makeCheckerTexture } from '../three/checker'
 import { distortionColor, THEME } from '../three/colors'
+import ActiveFrameloop from '../three/ActiveFrameloop'
 
 interface ShellGeo {
   id: number
@@ -274,10 +275,12 @@ export default function Viewport2D() {
     <div className="relative h-full w-full">
       <Canvas
         orthographic
-        dpr={[1, 2]}
+        frameloop="demand"
+        dpr={[1, 1.5]}
         camera={{ position: [0.5, 0.5, 10], near: 0.001, far: 100, zoom: 500 }}
-        gl={{ antialias: true }}
+        gl={{ antialias: true, powerPreference: 'high-performance' }}
       >
+        <ActiveFrameloop />
         <color attach="background" args={['#090c11']} />
         <FitCamera />
         <OrbitControls

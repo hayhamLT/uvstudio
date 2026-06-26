@@ -1,5 +1,6 @@
 import { useEffect, useMemo, type ReactNode } from 'react'
 import { Canvas, useFrame, useThree } from '@react-three/fiber'
+import ActiveFrameloop from '../three/ActiveFrameloop'
 import { OrbitControls } from '@react-three/drei'
 import * as THREE from 'three'
 import { useStore } from '../state/store'
@@ -440,10 +441,12 @@ export default function MapView2D() {
     >
       <Canvas
         orthographic
-        dpr={[1, 2]}
+        frameloop="demand"
+        dpr={[1, 1.5]}
         camera={{ position: [aspect / 2, 0.5, 10], near: 0.001, far: 100, zoom: 400 }}
-        gl={{ antialias: true }}
+        gl={{ antialias: true, powerPreference: 'high-performance' }}
       >
+        <ActiveFrameloop />
         <color attach="background" args={['#090c11']} />
         <FitCamera aspect={aspect} />
         <OrbitControls

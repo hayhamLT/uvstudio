@@ -94,6 +94,8 @@ interface AppState {
    *  app uses the applied media's pixel dimensions */
   screenRes: Record<string, { w: number; h: number }>
   mapFill: boolean
+  /** preference: auto-map screens right after import (persisted) */
+  autoMapOnImport: boolean
   /** per-object fit override; falls back to the global mapFill */
   mapObjFit: Record<string, 'fill' | 'aspect'>
   /** per-object stretch when filling: % the region differs from the screen aspect */
@@ -189,6 +191,7 @@ interface AppState {
   /** override a screen's render resolution (real LED pixels); 0×0 clears it */
   setScreenRes: (objName: string, w: number, h: number) => void
   setMapFill: (fill: boolean) => void
+  setAutoMapOnImport: (v: boolean) => void
   setObjectFit: (objName: string, fit: 'fill' | 'aspect' | 'default') => void
   runMapping: () => void
   runMappingFor: (objName: string, opts?: { noUndo?: boolean }) => void
@@ -296,6 +299,16 @@ const UNDO_LIMIT = 60
 
 // default reference-geometry brightness (a dim grey that reads without distracting)
 const DEFAULT_CONTEXT_SHADE = 0.3
+
+// persisted boolean preferences (localStorage, namespaced)
+const prefBool = (k: string, d: boolean) => {
+  try {
+    const v = localStorage.getItem('uvstudio.' + k)
+    return v === null ? d : v === '1'
+  } catch {
+    return d
+  }
+}
 
 /** Per-screen render spec carried in the GLB (node extras) + sidecar manifest. */
 export interface ScreenSpec {
@@ -769,6 +782,7 @@ export const useStore = create<AppState>((set, get) => ({
   // Media made for the screen fills it exactly; a mismatch fills + stretches
   // rather than cropping or letterboxing (the whole image always shows).
   mapFill: true,
+  autoMapOnImport: prefBool('autoMapOnImport', true),
   mapObjFit: {},
   mapFitInfo: {},
   mappedObjects: [],
@@ -966,7 +980,7 @@ export const useStore = create<AppState>((set, get) => ({
     // Always auto-map freshly imported screens — imported UVs may be off, or just
     // need a cosmetic clean-up, so re-project them to clean geometry-based UVs
     // fitted to each screen's own content. (Refresh keeps the user's work.)
-    if (anyImported && !opts?.keepOverrides) get().runMapping()
+    if (anyImported && !opts?.keepOverrides && get().autoMapOnImport) get().runMapping()
   },
 
   beginImport: (objects, fileName, media) => {
@@ -1685,6 +1699,15 @@ export const useStore = create<AppState>((set, get) => ({
   setMapFill: (fill) => {
     set({ mapFill: fill })
     get().runMapping()
+  },
+
+  setAutoMapOnImport: (v) => {
+    try {
+      localStorage.setItem('uvstudio.autoMapOnImport', v ? '1' : '0')
+    } catch {
+      /* ignore */
+    }
+    set({ autoMapOnImport: v })
   },
 
   setObjectFit: (objName, fit) => {

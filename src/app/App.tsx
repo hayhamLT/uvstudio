@@ -11,11 +11,13 @@ import FloatingWindow from '../ui/FloatingWindow'
 import ImportDialog from '../ui/ImportDialog'
 import LinkWizard from '../ui/LinkWizard'
 import Landing from '../ui/Landing'
-import { watchIncoming } from '../bridge/link'
+import Preferences from '../ui/Preferences'
+import { watchIncoming, restore as restoreLink } from '../bridge/link'
 import { loadSceneFile } from '../mesh/loadFile'
 
 export default function App() {
   const [help, setHelp] = useState(false)
+  const [prefs, setPrefs] = useState(false)
   const [primary, setPrimary] = useState<'2d' | '3d'>(() => {
     try {
       return (localStorage.getItem('uvstudio.primary') as '2d' | '3d') || '2d'
@@ -65,6 +67,11 @@ export default function App() {
       clearTimeout(t1)
       clearTimeout(t2)
     }
+  }, [])
+
+  // desktop: re-attach the link folder chosen on a previous launch (set once)
+  useEffect(() => {
+    void restoreLink()
   }, [])
 
   // C4D → app: when the link folder is connected, auto-load any model the C4D
@@ -148,7 +155,7 @@ export default function App() {
 
   return (
     <div className="flex h-full flex-col bg-ink-950 text-fog-200">
-      <TopBar onHelp={() => setHelp(true)} />
+      <TopBar onHelp={() => setHelp(true)} onPrefs={() => setPrefs(true)} />
       <div className="flex min-h-0 flex-1">
         {!hasModel ? (
           <Landing />
@@ -192,6 +199,7 @@ export default function App() {
       </div>
       <StatusBar />
       {help && <HelpOverlay onClose={() => setHelp(false)} />}
+      <Preferences open={prefs} onClose={() => setPrefs(false)} />
       <ImportDialog />
       <LinkWizard />
     </div>

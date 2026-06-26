@@ -69,6 +69,13 @@ fn read_ts(folder: &PathBuf) -> Option<i64> {
     v.get("ts")?.as_i64()
 }
 
+/// Where we remember the chosen link folder (so it's picked once, ever).
+fn config_file(app: &tauri::AppHandle) -> Option<PathBuf> {
+    let dir = app.path().app_config_dir().ok()?;
+    let _ = fs::create_dir_all(&dir);
+    Some(dir.join("link_folder.txt"))
+}
+
 /// Pick the shared link folder (async → dialog won't freeze the UI).
 #[tauri::command]
 async fn bridge_connect(app: tauri::AppHandle, state: State<'_, Mutex<Bridge>>) -> Result<Option<String>, String> {
@@ -76,11 +83,21 @@ async fn bridge_connect(app: tauri::AppHandle, state: State<'_, Mutex<Bridge>>) 
         Some(p) => p,
         None => return Ok(None),
     };
+    let label = dir.to_string_lossy().to_string();
+    if let Some(cf) = config_file(&app) {
+        let _ = fs::write(cf, label.as_bytes()); // remember for next launch
+    }
     let mut b = state.lock().map_err(|e| e.to_string())?;
     b.last_ts = read_ts(&dir.join(TO_APP)); // seed so we don't re-import a stale model
-    let label = dir.to_string_lossy().to_string();
     b.dir = Some(dir);
     Ok(Some(label))
+}
+
+/// Return the remembered link folder (loaded at startup), if any.
+#[tauri::command]
+fn bridge_restore(state: State<Mutex<Bridge>>) -> Option<String> {
+    let b = state.lock().ok()?;
+    b.dir.as_ref().map(|p| p.to_string_lossy().to_string())
 }
 
 #[tauri::command]
@@ -187,8 +204,28 @@ fn main() {
     tauri::Builder::default()
         .plugin(tauri_plugin_dialog::init())
         .manage(Mutex::new(Bridge::default()))
+        .setup(|app| {
+            // reload a previously-chosen link folder so it's "set once, ever"
+            if let Some(cf) = config_file(&app.handle()) {
+                if let Ok(saved) = fs::read_to_string(&cf) {
+                    let p = saved.trim();
+                    if !p.is_empty() {
+                        let dir = PathBuf::from(p);
+                        if dir.is_dir() {
+                            let st = app.state::<Mutex<Bridge>>();
+                            if let Ok(mut b) = st.lock() {
+                                b.last_ts = read_ts(&dir.join(TO_APP));
+                                b.dir = Some(dir);
+                            }
+                        }
+                    }
+                }
+            }
+            Ok(())
+        })
         .invoke_handler(tauri::generate_handler![
             bridge_connect,
+            bridge_restore,
             bridge_send,
             bridge_poll,
             export_glb,

@@ -137,6 +137,26 @@ export function linkFolderLabel(): string {
   return folderLabel
 }
 
+/**
+ * Re-attach to a previously-chosen link folder without prompting. Desktop only:
+ * Tauri remembers the path across launches (set once, ever). Returns true if a
+ * folder was restored. (Web can't silently restore a directory handle yet.)
+ */
+export async function restore(): Promise<boolean> {
+  if (!isDesktop()) return false
+  try {
+    const path = (await tauri()!.core.invoke('bridge_restore')) as string | null
+    if (path) {
+      folderLabel = path.split(/[/\\]/).pop() || path
+      connected = true
+      return true
+    }
+  } catch {
+    /* ignore */
+  }
+  return false
+}
+
 /** Prompt for / open the shared link folder. Returns true on success. */
 export async function connect(): Promise<boolean> {
   try {

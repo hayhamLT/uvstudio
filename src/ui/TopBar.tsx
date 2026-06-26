@@ -2,7 +2,6 @@ import { useEffect, useRef, useState, type ChangeEvent, type ReactNode } from 'r
 import { useStore } from '../state/store'
 import { importModelFile, isModelFile, openModelPicker, refreshModel } from './importMap'
 import { IconUpload, IconExport, IconHelp } from './icons'
-import * as link from '../bridge/link'
 
 function Menu({ label, icon, children }: { label: string; icon: ReactNode; children: (close: () => void) => ReactNode }) {
   const [open, setOpen] = useState(false)
@@ -53,7 +52,7 @@ function MenuItem({ onClick, disabled, children }: { onClick: () => void; disabl
   )
 }
 
-export default function TopBar({ onHelp }: { onHelp: () => void }) {
+export default function TopBar({ onHelp, onPrefs }: { onHelp: () => void; onPrefs: () => void }) {
   const exportGltf = useStore((s) => s.exportGltf)
   const sendToC4D = useStore((s) => s.sendToC4D)
   const lastImportName = useStore((s) => s.lastImportName)
@@ -64,7 +63,6 @@ export default function TopBar({ onHelp }: { onHelp: () => void }) {
   const redoCount = useStore((s) => s.redoCount)
 
   const modelRef = useRef<HTMLInputElement>(null)
-  const [linked, setLinked] = useState(link.isConnected())
 
   const onModel = async (e: ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(e.target.files ?? [])
@@ -109,48 +107,6 @@ export default function TopBar({ onHelp }: { onHelp: () => void }) {
         )}
       </Menu>
 
-      {link.linkSupported() && (
-        <button
-          onClick={async () => {
-            if (await link.connect()) setLinked(true)
-          }}
-          title={
-            linked
-              ? `Linked to “${link.linkFolderLabel()}” — C4D round-trip active`
-              : 'Connect the shared Cinema 4D link folder (send / receive objects)'
-          }
-          className={
-            'flex items-center gap-1.5 rounded-md px-2 py-1.5 text-sm ring-focus ' +
-            (linked ? 'text-brand-300 hover:bg-ink-700/70' : 'text-fog-200 hover:bg-ink-700/70')
-          }
-        >
-          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-            <path d="M10 13a5 5 0 0 0 7 0l3-3a5 5 0 0 0-7-7l-1 1" />
-            <path d="M14 11a5 5 0 0 0-7 0l-3 3a5 5 0 0 0 7 7l1-1" />
-          </svg>
-          {linked ? 'Linked' : 'Link C4D'}
-        </button>
-      )}
-
-      {link.isDesktop() && (
-        <button
-          onClick={async () => {
-            const setStatus = useStore.getState().setStatus
-            setStatus('Choose your Cinema 4D “plugins” folder…')
-            const where = await link.installC4DPlugin()
-            setStatus(where ? `Installed C4D plugin → ${where} (restart C4D)` : 'Plugin install cancelled')
-          }}
-          title="Copy the UV Studio Bridge plugin into Cinema 4D's plugins folder"
-          className="flex items-center gap-1.5 rounded-md px-2 py-1.5 text-sm text-fog-200 hover:bg-ink-700/70 ring-focus"
-        >
-          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-            <path d="M12 3v12M8 11l4 4 4-4" />
-            <path d="M4 17v2a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-2" />
-          </svg>
-          Install plugin
-        </button>
-      )}
-
       <button
         onClick={() => refreshModel(modelRef.current)}
         disabled={!lastImportName}
@@ -189,6 +145,17 @@ export default function TopBar({ onHelp }: { onHelp: () => void }) {
       </button>
 
       <div className="flex-1" />
+
+      <button
+        onClick={onPrefs}
+        className="flex h-8 w-8 items-center justify-center rounded-md text-fog-300 hover:bg-ink-700/70 hover:text-fog-100 ring-focus"
+        title="Preferences — Cinema 4D setup & defaults"
+      >
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round">
+          <circle cx="12" cy="12" r="3" />
+          <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1Z" />
+        </svg>
+      </button>
 
       <button
         onClick={onHelp}
