@@ -290,12 +290,31 @@ function splitSeam(shell: Shell, uv: Float32Array): { shell: Shell; uv: Float32A
     }
   }
   if (vc === shell.vertCount) return { shell, uv }
+  // Rebuild polygon loops from the (remapped) fan triangles so shell.polygons
+  // stays consistent with the split topology — the per-corner UV export reads
+  // these loops, so a stale loop would send pre-split (wrong) UVs at the seam.
+  // Triangles are fan-ordered per face: poly [l0..l(D-1)] -> tris [l0,l1,l2],
+  // [l0,l2,l3]... so loop = tri0[0],tri0[1],tri0[2], then each next tri's 3rd.
+  const newPolys: number[][] = []
+  let ti = 0
+  for (const oldLoop of shell.polygons) {
+    const nt = oldLoop.length - 2 // fan triangles for this face
+    if (nt < 1) {
+      newPolys.push(oldLoop.slice())
+      continue
+    }
+    const loop = [newTris[ti * 3], newTris[ti * 3 + 1], newTris[ti * 3 + 2]]
+    for (let j = 1; j < nt; j++) loop.push(newTris[(ti + j) * 3 + 2])
+    newPolys.push(loop)
+    ti += nt
+  }
   return {
     shell: {
       ...shell,
       positions: Float32Array.from(pos),
       toOrigVertex: Int32Array.from(orig),
       triangles: newTris,
+      polygons: newPolys,
       vertCount: vc,
     },
     uv: Float32Array.from(nuv),
