@@ -18,6 +18,7 @@ import { ocrRegionLabels, matchByLabels, similarity, normalize, matchNamesToLabe
 import { demoArena, makeDemoAtlas, demoRegions } from '../map/demo'
 import { loadPsdFile, flattenPsdLayers } from '../mesh/loadPsd'
 import * as linkBridge from '../bridge/link'
+import { buildReturnPayload, type ReturnObjectInput } from '../bridge/roundtrip'
 
 export type AppMode = 'unwrap' | 'map'
 
@@ -26,6 +27,9 @@ export interface MapObject {
   mesh: PolyMesh
   he: HEMesh
   shellIds: number[]
+  /** when bridge-sourced: stable DCC object id; mesh faces are 1:1 with DCC
+   *  polygons, so UVs can be written back losslessly per polygon-corner */
+  c4dGuid?: string
 }
 export interface MapShell {
   id: number
@@ -881,7 +885,7 @@ export const useStore = create<AppState>((set, get) => ({
           authoredUV.set(id, uv.slice()) // remember the import UV so M can restore it
         }
       })
-      mapObjects.push({ name: o.name, mesh: o.mesh, he, shellIds })
+      mapObjects.push({ name: o.name, mesh: o.mesh, he, shellIds, c4dGuid: o.c4dGuid })
       if (hasImported) {
         const tex = new THREE.CanvasTexture(o.textureImage as HTMLCanvasElement)
         tex.colorSpace = THREE.SRGBColorSpace
@@ -1890,11 +1894,25 @@ export const useStore = create<AppState>((set, get) => ({
   sendToC4D: async () => {
     const g = get()
     const specs = screenSpecs(g)
-    const buf = await buildMappedGlb(g.mapShells, g.layeredMode, new Map(specs.map((s) => [s.name, s])))
-    if (!buf) {
-      set({ status: 'Nothing to send — map first' })
-      return
+    // Bridge-sourced objects (with a c4dGuid) get the LOSSLESS path: send only
+    // per-polygon-corner UVs, applied onto C4D's existing objects. Manual-import
+    // objects (no guid, no provenance) fall back to a mapped GLB.
+    const shellsByObj = new Map<string, Shell[]>()
+    for (const ms of g.mapShells) {
+      const arr = shellsByObj.get(ms.objName) ?? []
+      arr.push(ms.shell)
+      shellsByObj.set(ms.objName, arr)
     }
+    const uvInputs: ReturnObjectInput[] = g.mapObjects
+      .filter((o) => o.c4dGuid)
+      .map((o) => ({
+        name: o.name,
+        guid: o.c4dGuid!,
+        polyCount: o.mesh.faces.length,
+        shells: shellsByObj.get(o.name) ?? [],
+        uv: (shellId: number) => live.uv.get(shellId),
+      }))
+
     if (!linkBridge.linkSupported()) {
       set({ status: 'Folder bridge needs the desktop app or a Chromium browser' })
       return
@@ -1908,8 +1926,20 @@ export const useStore = create<AppState>((set, get) => ({
     }
     set({ status: 'Sending to Cinema 4D…' })
     try {
-      await linkBridge.sendGlb(buf, specs)
-      set({ status: `Sent ${specs.length} screens to Cinema 4D (link folder)` })
+      if (uvInputs.length) {
+        const payload = buildReturnPayload(uvInputs, Date.now())
+        payload.screens = specs
+        await linkBridge.sendUVs(payload)
+        set({ status: `Sent UVs for ${uvInputs.length} object${uvInputs.length === 1 ? '' : 's'} to Cinema 4D` })
+      } else {
+        const buf = await buildMappedGlb(g.mapShells, g.layeredMode, new Map(specs.map((s) => [s.name, s])))
+        if (!buf) {
+          set({ status: 'Nothing to send — map first' })
+          return
+        }
+        await linkBridge.sendGlb(buf, specs)
+        set({ status: `Sent ${specs.length} screens to Cinema 4D (link folder)` })
+      }
     } catch {
       set({ status: 'Send failed — check the link folder' })
     }

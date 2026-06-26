@@ -122,6 +122,22 @@ async fn bridge_send(state: State<'_, Mutex<Bridge>>, bytes: Vec<u8>, screens: V
     Ok(())
 }
 
+/// LOSSLESS return: write a UV-only JSON payload to to_c4d/scene.json (atomic via
+/// temp + rename). No geometry — the plugin applies these UVs onto C4D's objects.
+#[tauri::command]
+async fn bridge_send_uvs(state: State<'_, Mutex<Bridge>>, json: String) -> Result<(), String> {
+    let dir = {
+        let b = state.lock().map_err(|e| e.to_string())?;
+        b.dir.clone().ok_or("no link folder")?
+    };
+    let out = dir.join(TO_C4D);
+    fs::create_dir_all(&out).map_err(|e| e.to_string())?;
+    let tmp = out.join("scene.json.tmp");
+    fs::write(&tmp, json.as_bytes()).map_err(|e| e.to_string())?;
+    fs::rename(&tmp, out.join(MANIFEST)).map_err(|e| e.to_string())?;
+    Ok(())
+}
+
 /// Poll to_app/ for a model sent from C4D (sync: frequent + cheap, no dialog).
 #[tauri::command]
 fn bridge_poll(state: State<Mutex<Bridge>>) -> Option<Vec<u8>> {
@@ -223,6 +239,7 @@ fn main() {
             bridge_connect,
             bridge_restore,
             bridge_send,
+            bridge_send_uvs,
             bridge_poll,
             export_glb,
             import_glb,

@@ -19,6 +19,8 @@
  * The same React app drives both — nothing here is bundled unless used.
  */
 
+import type { ReturnPayload } from './roundtrip'
+
 const TO_APP = 'to_app'
 const TO_C4D = 'to_c4d'
 const GLB = 'scene.glb'
@@ -269,6 +271,25 @@ export async function installC4DPlugin(): Promise<string | null> {
 export async function sendGlb(buf: ArrayBuffer, screens: LinkScreen[]): Promise<void> {
   if (isDesktop()) await deskWrite(buf, screens)
   else await webWrite(buf, screens)
+}
+
+/**
+ * LOSSLESS return: write a UV-only payload (per-polygon-corner UVs) to
+ * to_c4d/scene.json. No geometry — the plugin applies these onto C4D's existing
+ * objects' UVW tags. scene.json is the manifest + the payload in one.
+ */
+export async function sendUVs(payload: ReturnPayload): Promise<void> {
+  const json = JSON.stringify(payload)
+  if (isDesktop()) {
+    await tauri()!.core.invoke('bridge_send_uvs', { json })
+    return
+  }
+  if (!webRoot) throw new Error('no link folder')
+  const out = await webRoot.getDirectoryHandle(TO_C4D, { create: true })
+  const mh = await out.getFileHandle(MANIFEST, { create: true })
+  const w = await mh.createWritable()
+  await w.write(json)
+  await w.close()
 }
 
 /**

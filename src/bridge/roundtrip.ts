@@ -60,6 +60,8 @@ export interface ReturnPayload {
   ts: number
   kind: 'uv-return'
   objects: ReturnObject[]
+  /** per-screen LED render specs, carried alongside for reference (optional) */
+  screens?: { name: string; w: number; h: number; aspect: number }[]
 }
 
 /** Inputs to build one object's return UVs from its mapped shells. */
