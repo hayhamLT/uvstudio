@@ -1,12 +1,24 @@
-# Build the static web bundle (dist/) for embedding in preshow.link.
-# Uploads it as an artifact; wire the final `deploy` step to your host
-# (Vercel / Netlify / S3 / preshow.link's own pipeline).
+# Build the static web bundle and (a) upload it as an artifact for embedding in
+# preshow.link, (b) deploy a live demo to GitHub Pages.
+#
+# Pages setup (one-time): repo Settings → Pages → Source: "GitHub Actions".
+# (Private repos need a paid GitHub plan for Pages; the artifact in the `build`
+# job works regardless and is what you'd pull into preshow.link.)
 name: Web build
 
 on:
   push:
     branches: [main]
   workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: true
 
 jobs:
   build:
@@ -18,8 +30,24 @@ jobs:
           node-version: 20
           cache: npm
       - run: npm ci
+      # embeddable bundle (base "/" — drop into preshow.link as-is)
       - run: npm run build
       - uses: actions/upload-artifact@v4
         with:
           name: uvstudio-web
           path: dist
+      # standalone demo for GitHub Pages (served under /uvstudio/)
+      - run: npx vite build --base=/uvstudio/ --outDir dist-pages
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: dist-pages
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deploy.outputs.page_url }}
+    steps:
+      - id: deploy
+        uses: actions/deploy-pages@v4
