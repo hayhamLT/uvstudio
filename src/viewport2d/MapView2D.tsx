@@ -122,20 +122,14 @@ function Scene({
   }, [regions, assignment, aspect])
   useEffect(() => () => regionLines.forEach((r) => r.g.dispose()), [regionLines])
 
-  // The rectangle of the displayed PSD the selected screen actually covers.
-  // Only meaningful for a screen mapped to a chunk of a larger PSD (objSource).
-  // Two reliable sources, depending on how the file was authored:
-  //  • objSource is a real sub-slice (PSD has a per-screen layer)  → use it
-  //  • objSource is the WHOLE PSD (UVs sample the panorama directly) → use the
-  //    screen's own UV bounding box, wrapped into [0,1] for tiled/offset UVs.
-  // Drawing this static box avoids relying on raw UVs, which can sit far outside
-  // [0,1] (tiled) and otherwise render the marker miles from the image.
+  // The rectangle of the displayed image the selected screen covers = the bbox of
+  // its UVs, taken RAW (no wrap/clamp) so the box can be dragged anywhere — even
+  // out past the edges, just like a free object. Stored PSD-norm (image y-down);
+  // the box renderer applies the 1-y flip. A screen that fills the whole image
+  // has no sub-region worth marking, so it draws nothing.
   const markerRect = useMemo<SrcRect | null>(() => {
     if (!layeredMode || !selectedObject) return null
     const eps = 0.02
-    // 1. PSD carries a real per-screen slice → use it directly
-    if (srcRect && (srcRect.x1 - srcRect.x0 < 1 - eps || srcRect.y1 - srcRect.y0 < 1 - eps)) return srcRect
-    // 2. otherwise derive the covered region from the screen's own UVs
     let u0 = Infinity,
       u1 = -Infinity,
       v0 = Infinity,
@@ -153,20 +147,10 @@ function Scene({
       }
     }
     if (!isFinite(u0)) return null
-    const wrap = (lo: number, hi: number): [number, number] => {
-      const span = hi - lo
-      if (span >= 0.999) return [0, 1] // covers the whole axis
-      const l = lo - Math.floor(lo)
-      const h = l + span
-      return h > 1 ? [0, 1] : [l, h] // wraps around the seam → treat as whole
-    }
-    const [x0, x1] = wrap(u0, u1)
-    const [y0, y1] = wrap(v0, v1)
-    // 3. covers ~the whole image (own-texture / panorama-filling UVs) → nothing
-    //    to highlight; never draw a full-image box.
-    if (x1 - x0 > 1 - eps && y1 - y0 > 1 - eps) return null
-    return { x0, y0, x1, y1 }
-  }, [layeredMode, selectedObject, srcRect, geos, uvVersion])
+    // fills the whole image → nothing to highlight
+    if (u0 <= eps && v0 <= eps && u1 >= 1 - eps && v1 >= 1 - eps) return null
+    return { x0: u0, y0: 1 - v1, x1: u1, y1: 1 - v0 }
+  }, [layeredMode, selectedObject, geos, uvVersion])
 
   const markerBox = useMemo(() => {
     if (!markerRect) return null
