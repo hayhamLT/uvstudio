@@ -264,7 +264,11 @@ export default function UVEditLayer({ aspect }: { aspect: number }) {
         next = allSelected ? new Set(cur) : new Set(hit)
       }
       useStore.getState().setMapSelection(next)
-      drag.current = 'move'
+      // In screen-mapping (layered) object mode the island lives at raw uv
+      // coords that don't line up with the displayed PSD, so dragging it is
+      // confusing (the "I moved it aside" footgun). Use Free-transform (T) to
+      // move a screen instead; here we only select.
+      drag.current = editMode === 'object' && layeredMode ? null : 'move'
       moved.current = false
       last.current = [wx, wy]
     } else {
@@ -528,8 +532,11 @@ export default function UVEditLayer({ aspect }: { aspect: number }) {
       topo.edgeLineMat.resolution.set(size.width, size.height)
     }
 
-    // object outlines + active fill
-    if (editMode === 'object') {
+    // object outlines + active fill — atlas mode only. In screen-mapping
+    // (layered) mode the MapView2D slice marker is the single source of truth;
+    // this layer draws at RAW uv coords which sit full-screen / off-canvas for
+    // tiled or panorama-filling UVs, so we skip it entirely.
+    if (editMode === 'object' && !layeredMode) {
       const pa = topo.objGeo.getAttribute('position').array as Float32Array
       const ca = topo.objGeo.getAttribute('color').array as Float32Array
       const fa = topo.fillGeo.getAttribute('position').array as Float32Array
@@ -614,7 +621,7 @@ export default function UVEditLayer({ aspect }: { aspect: number }) {
       {(editMode === 'edge' || editMode === 'face') && topo.edges.length > 0 && (
         <primitive object={topo.edgeLines} />
       )}
-      {editMode === 'object' && (
+      {editMode === 'object' && !layeredMode && (
         <>
           <mesh geometry={topo.fillGeo} renderOrder={4}>
             <meshBasicMaterial color="#ffe14d" transparent opacity={0.18} depthTest={false} side={THREE.DoubleSide} />
