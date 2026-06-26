@@ -205,6 +205,11 @@ export default function UVEditLayer({ aspect }: { aspect: number }) {
     }
     const seam = mkLines(seamEdges.length, 2.8)
     const crease = mkLines(creaseEdges.length, 1.2)
+    // selected edges — thick white overlay so a selection clearly stands out
+    const selEdge = mkLines(Math.max(1, seamEdges.length + creaseEdges.length), 3.8)
+    // hover highlight — the single element under the cursor (gold), so it's
+    // obvious things are editable
+    const hoverEdge = mkLines(1, 3.4)
 
     const objGeo = new THREE.BufferGeometry()
     objGeo.setAttribute('position', attr(objList.length * 8))
@@ -215,6 +220,11 @@ export default function UVEditLayer({ aspect }: { aspect: number }) {
     const faceTris = faces.reduce((a, f) => a + f.tris.length, 0)
     const faceFillGeo = new THREE.BufferGeometry()
     faceFillGeo.setAttribute('position', attr(Math.max(1, faceTris) * 3))
+    const maxFaceTris = faces.reduce((m, f) => Math.max(m, f.tris.length), 1)
+    const hoverDot = new THREE.BufferGeometry()
+    hoverDot.setAttribute('position', attr(1))
+    const hoverFaceGeo = new THREE.BufferGeometry()
+    hoverFaceGeo.setAttribute('position', attr(maxFaceTris * 3))
 
     return {
       verts,
@@ -229,9 +239,13 @@ export default function UVEditLayer({ aspect }: { aspect: number }) {
       selGeo,
       seam,
       crease,
+      selEdge,
+      hoverEdge,
       objGeo,
       fillGeo,
       faceFillGeo,
+      hoverDot,
+      hoverFaceGeo,
     }
   }, [mapShells])
 
@@ -243,9 +257,15 @@ export default function UVEditLayer({ aspect }: { aspect: number }) {
       topo.seam.mat.dispose()
       topo.crease.geo.dispose()
       topo.crease.mat.dispose()
+      topo.selEdge.geo.dispose()
+      topo.selEdge.mat.dispose()
+      topo.hoverEdge.geo.dispose()
+      topo.hoverEdge.mat.dispose()
       topo.objGeo.dispose()
       topo.fillGeo.dispose()
       topo.faceFillGeo.dispose()
+      topo.hoverDot.dispose()
+      topo.hoverFaceGeo.dispose()
     },
     [topo],
   )
@@ -262,6 +282,12 @@ export default function UVEditLayer({ aspect }: { aspect: number }) {
   const last = useRef<[number, number]>([0, 0])
   const start = useRef<[number, number]>([0, 0])
   const [marquee, setMarquee] = useState<null | [number, number, number, number]>(null)
+  // the element under the cursor (for hover highlight)
+  type Hover =
+    | { kind: 'vert'; shellId: number; v: number }
+    | { kind: 'edge'; shellId: number; a: number; b: number }
+    | { kind: 'face'; shellId: number; verts: number[]; tris: [number, number, number][] }
+  const hover = useRef<Hover | null>(null)
   const pxThreshold = () => 11 / (camera.zoom || 1)
 
   const pickVertex = (wx: number, wy: number) => {
@@ -387,9 +413,24 @@ export default function UVEditLayer({ aspect }: { aspect: number }) {
   }
 
   const onMove = (e: ThreeEvent<PointerEvent>) => {
-    if (!drag.current) return
     const wx = e.point.x,
       wy = e.point.y
+    if (!drag.current) {
+      // hover: pick the element under the cursor for the live highlight
+      let h: Hover | null = null
+      if (editMode === 'vertex') {
+        const v = pickVertex(wx, wy)
+        if (v) h = { kind: 'vert', shellId: v.shellId, v: v.v }
+      } else if (editMode === 'edge') {
+        const ed = pickEdge(wx, wy)
+        if (ed) h = { kind: 'edge', shellId: ed.shellId, a: ed.a, b: ed.b }
+      } else if (editMode === 'face') {
+        const f = pickFace(wx, wy)
+        if (f) h = { kind: 'face', shellId: f.shellId, verts: f.verts, tris: f.tris }
+      }
+      hover.current = h
+      return
+    }
     if (drag.current === 'move') {
       if (!moved.current) {
         useStore.getState().pushUndo()
@@ -574,6 +615,7 @@ export default function UVEditLayer({ aspect }: { aspect: number }) {
   const cEdge = new THREE.Color('#9fe0ff')
   const cSeam = new THREE.Color('#ff7a3c')
   const cSel = new THREE.Color('#ffffff') // selected vertices / edges — high contrast
+  const cHover = new THREE.Color('#ffd23f') // element under the cursor — gold
   const cObj = new THREE.Color('#8fd6ff')
   useFrame(() => {
     const sel = useStore.getState().mapSelection
@@ -612,13 +654,17 @@ export default function UVEditLayer({ aspect }: { aspect: number }) {
       topo.selGeo.getAttribute('position').needsUpdate = true
     }
 
-    // edge guides (fat lines) — seams (boundary) and creases, drawn separately
+    // edge guides (fat lines) — seams (boundary) thicker, creases thinner. In
+    // FACE mode they're DIMMED to a faint grid so the two modes read differently
+    // (edge mode = bright editable edges, face mode = fillable polygons).
     if (editMode === 'edge' || editMode === 'face') {
+      const dim = editMode === 'face' ? 0.38 : 0.95
       const drawEdges = (
         list: { shellId: number; a: number; b: number }[],
         set: { pos: Float32Array; col: Float32Array; geo: LineSegmentsGeometry; mat: LineMaterial },
         base: THREE.Color,
       ) => {
+        set.mat.opacity = dim
         if (!list.length) return
         const pa = set.pos
         const ca = set.col
@@ -636,12 +682,10 @@ export default function UVEditLayer({ aspect }: { aspect: number }) {
           pa[o + 3] = B[0]
           pa[o + 4] = B[1]
           pa[o + 5] = 0.12
-          const lit = sel.has(key(e.shellId, e.a)) && sel.has(key(e.shellId, e.b))
-          const c = lit ? cSel : base
           for (let k = 0; k < 2; k++) {
-            ca[o + k * 3] = c.r
-            ca[o + k * 3 + 1] = c.g
-            ca[o + k * 3 + 2] = c.b
+            ca[o + k * 3] = base.r
+            ca[o + k * 3 + 1] = base.g
+            ca[o + k * 3 + 2] = base.b
           }
         })
         set.geo.setPositions(pa)
@@ -650,6 +694,37 @@ export default function UVEditLayer({ aspect }: { aspect: number }) {
       }
       drawEdges(topo.seamEdges, topo.seam, cSeam)
       drawEdges(topo.creaseEdges, topo.crease, cEdge)
+
+      // selected edges — a thick WHITE overlay so a selection clearly pops
+      const se = topo.selEdge
+      let m = 0
+      if (editMode === 'edge') {
+        for (const e of topo.edges) {
+          if (!(sel.has(key(e.shellId, e.a)) && sel.has(key(e.shellId, e.b)))) continue
+          const A = worldOf(e.shellId, e.a),
+            B = worldOf(e.shellId, e.b)
+          if (!A || !B) continue
+          const o = m * 6
+          se.pos[o] = A[0]
+          se.pos[o + 1] = A[1]
+          se.pos[o + 2] = 0.2
+          se.pos[o + 3] = B[0]
+          se.pos[o + 4] = B[1]
+          se.pos[o + 5] = 0.2
+          for (let k = 0; k < 2; k++) {
+            se.col[o + k * 3] = cSel.r
+            se.col[o + k * 3 + 1] = cSel.g
+            se.col[o + k * 3 + 2] = cSel.b
+          }
+          m++
+        }
+      }
+      if (m > 0) {
+        se.geo.setPositions(se.pos.subarray(0, m * 6))
+        se.geo.setColors(se.col.subarray(0, m * 6))
+        se.mat.resolution.set(size.width, size.height)
+        se.lines.visible = true
+      } else se.lines.visible = false
     }
 
     // selected-face fills (face mode) — a polygon is selected when all its
@@ -678,6 +753,75 @@ export default function UVEditLayer({ aspect }: { aspect: number }) {
       }
       topo.faceFillGeo.setDrawRange(0, n)
       topo.faceFillGeo.getAttribute('position').needsUpdate = true
+    }
+
+    // hover highlight (gold) — the single element under the cursor, so it's
+    // obvious vertices / edges / polygons are editable
+    const hv = hover.current
+    {
+      const hd = topo.hoverDot.getAttribute('position').array as Float32Array
+      let on = false
+      if (editMode === 'vertex' && hv && hv.kind === 'vert') {
+        const w = worldOf(hv.shellId, hv.v)
+        if (w) {
+          hd[0] = w[0]
+          hd[1] = w[1]
+          hd[2] = 0.35
+          on = true
+        }
+      }
+      topo.hoverDot.setDrawRange(0, on ? 1 : 0)
+      topo.hoverDot.getAttribute('position').needsUpdate = true
+    }
+    {
+      const he = topo.hoverEdge
+      let on = false
+      if (editMode === 'edge' && hv && hv.kind === 'edge') {
+        const A = worldOf(hv.shellId, hv.a),
+          B = worldOf(hv.shellId, hv.b)
+        if (A && B) {
+          he.pos[0] = A[0]
+          he.pos[1] = A[1]
+          he.pos[2] = 0.16
+          he.pos[3] = B[0]
+          he.pos[4] = B[1]
+          he.pos[5] = 0.16
+          for (let k = 0; k < 2; k++) {
+            he.col[k * 3] = cHover.r
+            he.col[k * 3 + 1] = cHover.g
+            he.col[k * 3 + 2] = cHover.b
+          }
+          he.geo.setPositions(he.pos)
+          he.geo.setColors(he.col)
+          he.mat.resolution.set(size.width, size.height)
+          on = true
+        }
+      }
+      he.lines.visible = on
+    }
+    {
+      const fa = topo.hoverFaceGeo.getAttribute('position').array as Float32Array
+      let n = 0
+      if (editMode === 'face' && hv && hv.kind === 'face') {
+        for (const [a, b, c] of hv.tris) {
+          const A = worldOf(hv.shellId, a),
+            B = worldOf(hv.shellId, b),
+            C = worldOf(hv.shellId, c)
+          if (!A || !B || !C) continue
+          fa[n * 3] = A[0]
+          fa[n * 3 + 1] = A[1]
+          fa[n * 3 + 2] = 0.13
+          fa[n * 3 + 3] = B[0]
+          fa[n * 3 + 4] = B[1]
+          fa[n * 3 + 5] = 0.13
+          fa[n * 3 + 6] = C[0]
+          fa[n * 3 + 7] = C[1]
+          fa[n * 3 + 8] = 0.13
+          n += 3
+        }
+      }
+      topo.hoverFaceGeo.setDrawRange(0, n)
+      topo.hoverFaceGeo.getAttribute('position').needsUpdate = true
     }
 
     // object outlines + active fill — atlas mode only. In screen-mapping
@@ -763,7 +907,14 @@ export default function UVEditLayer({ aspect }: { aspect: number }) {
 
   return (
     <group>
-      <mesh position={[0, 0, 0.5]} onPointerDown={onDown} onPointerMove={onMove}>
+      <mesh
+        position={[0, 0, 0.5]}
+        onPointerDown={onDown}
+        onPointerMove={onMove}
+        onPointerOut={() => {
+          hover.current = null
+        }}
+      >
         <planeGeometry args={[10000, 10000]} />
         <meshBasicMaterial transparent opacity={0} depthTest={false} depthWrite={false} />
       </mesh>
@@ -774,10 +925,21 @@ export default function UVEditLayer({ aspect }: { aspect: number }) {
           {topo.seamEdges.length > 0 && <primitive object={topo.seam.lines} />}
         </>
       )}
+      {editMode === 'edge' && (
+        <>
+          <primitive object={topo.selEdge.lines} />
+          <primitive object={topo.hoverEdge.lines} />
+        </>
+      )}
       {editMode === 'face' && (
-        <mesh geometry={topo.faceFillGeo} renderOrder={4}>
-          <meshBasicMaterial color="#ffe14d" transparent opacity={0.32} depthTest={false} side={THREE.DoubleSide} />
-        </mesh>
+        <>
+          <mesh geometry={topo.hoverFaceGeo} renderOrder={3}>
+            <meshBasicMaterial color="#ffd23f" transparent opacity={0.24} depthTest={false} side={THREE.DoubleSide} />
+          </mesh>
+          <mesh geometry={topo.faceFillGeo} renderOrder={4}>
+            <meshBasicMaterial color="#ffffff" transparent opacity={0.3} depthTest={false} side={THREE.DoubleSide} />
+          </mesh>
+        </>
       )}
       {editMode === 'object' && !layeredMode && (
         <>
@@ -790,9 +952,14 @@ export default function UVEditLayer({ aspect }: { aspect: number }) {
         </>
       )}
       {editMode === 'vertex' && (
-        <points geometry={topo.pointsGeo} renderOrder={6}>
-          <pointsMaterial map={sprite} color="#5cc8ff" size={7} sizeAttenuation={false} transparent alphaTest={0.5} depthTest={false} />
-        </points>
+        <>
+          <points geometry={topo.pointsGeo} renderOrder={6}>
+            <pointsMaterial map={sprite} color="#5cc8ff" size={7} sizeAttenuation={false} transparent alphaTest={0.5} depthTest={false} />
+          </points>
+          <points geometry={topo.hoverDot} renderOrder={8}>
+            <pointsMaterial map={sprite} color="#ffd23f" size={14} sizeAttenuation={false} transparent alphaTest={0.5} depthTest={false} />
+          </points>
+        </>
       )}
       {showSelDots && (
         <points geometry={topo.selGeo} renderOrder={7}>
