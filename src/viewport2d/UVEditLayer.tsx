@@ -58,7 +58,9 @@ export default function UVEditLayer({ aspect }: { aspect: number }) {
     const verts: { shellId: number; v: number }[] = []
     const seamEdges: { shellId: number; a: number; b: number }[] = []
     const creaseEdges: { shellId: number; a: number; b: number }[] = []
-    const polys: { shellId: number; loop: number[] }[] = []
+    // a "face" is an original polygon: the group of triangles merged across
+    // their coplanar diagonals (so a quad is one face, not two triangles)
+    const faces: { shellId: number; tris: [number, number, number][]; verts: number[] }[] = []
     const shellObj = new Map<number, string>()
     const objKeys = new Map<string, string[]>()
     for (const ms of mapShells) {
@@ -69,11 +71,11 @@ export default function UVEditLayer({ aspect }: { aspect: number }) {
         ok.push(key(ms.id, v))
       }
       objKeys.set(ms.objName, ok)
-      for (const loop of ms.shell.polygons) polys.push({ shellId: ms.id, loop })
-      // Classify edges from the TRIANGLES: a boundary edge (one triangle) is a UV
-      // seam; an interior edge between two COPLANAR triangles is just a
-      // triangulation diagonal (hidden); an interior edge with a real dihedral
-      // angle is a crease (shown thin).
+      // Classify edges from the TRIANGLES and group triangles into polygons.
+      // A boundary edge (one triangle) is a UV seam; an interior edge between two
+      // COPLANAR triangles is a triangulation diagonal (hidden — and it MERGES the
+      // two triangles into one polygon); an interior edge with a real dihedral
+      // angle is a crease (shown thin, a real polygon boundary).
       const tris = ms.shell.triangles
       const P = ms.shell.positions
       const triNormal = (i0: number, i1: number, i2: number): [number, number, number] => {
@@ -89,8 +91,9 @@ export default function UVEditLayer({ aspect }: { aspect: number }) {
         const l = Math.hypot(nx, ny, nz) || 1
         return [nx / l, ny / l, nz / l]
       }
-      const em = new Map<number, { a: number; b: number; n: [number, number, number][] }>()
+      const em = new Map<number, { a: number; b: number; n: [number, number, number][]; t: number[] }>()
       for (let t = 0; t < tris.length; t += 3) {
+        const ti = t / 3
         const i0 = tris[t],
           i1 = tris[t + 1],
           i2 = tris[t + 2]
@@ -106,21 +109,79 @@ export default function UVEditLayer({ aspect }: { aspect: number }) {
           const ek = lo * 100000 + hi
           let e = em.get(ek)
           if (!e) {
-            e = { a: lo, b: hi, n: [] }
+            e = { a: lo, b: hi, n: [], t: [] }
             em.set(ek, e)
           }
           e.n.push(n)
+          e.t.push(ti)
         }
+      }
+      const triCount = tris.length / 3
+      const parent = new Int32Array(triCount)
+      for (let i = 0; i < triCount; i++) parent[i] = i
+      const find = (x: number): number => {
+        while (parent[x] !== x) {
+          parent[x] = parent[parent[x]]
+          x = parent[x]
+        }
+        return x
+      }
+      // Each triangle's LONGEST edge is its triangulation diagonal (the
+      // hypotenuse). Only that edge — coplanar and longest in BOTH triangles —
+      // is hidden and merges the pair into a quad; a quad's actual sides (shorter
+      // edges between adjacent quads) stay visible as thin edges.
+      const len3 = (a: number, b: number) =>
+        (P[a * 3] - P[b * 3]) ** 2 + (P[a * 3 + 1] - P[b * 3 + 1]) ** 2 + (P[a * 3 + 2] - P[b * 3 + 2]) ** 2
+      const triLong = new Array<number>(triCount)
+      for (let t = 0; t < triCount; t++) {
+        const i0 = tris[t * 3],
+          i1 = tris[t * 3 + 1],
+          i2 = tris[t * 3 + 2]
+        const e01 = len3(i0, i1),
+          e12 = len3(i1, i2),
+          e20 = len3(i2, i0)
+        let pa = i0,
+          pb = i1,
+          mx = e01
+        if (e12 > mx) {
+          mx = e12
+          pa = i1
+          pb = i2
+        }
+        if (e20 > mx) {
+          pa = i2
+          pb = i0
+        }
+        triLong[t] = Math.min(pa, pb) * 100000 + Math.max(pa, pb)
       }
       for (const e of em.values()) {
+        const ekey = e.a * 100000 + e.b
         if (e.n.length === 1) {
           seamEdges.push({ shellId: ms.id, a: e.a, b: e.b })
-        } else if (e.n.length === 2) {
-          const d = e.n[0][0] * e.n[1][0] + e.n[0][1] * e.n[1][1] + e.n[0][2] * e.n[1][2]
-          if (Math.abs(d) < 0.9995) creaseEdges.push({ shellId: ms.id, a: e.a, b: e.b })
-          // else coplanar → triangulation diagonal → hidden
+          continue
         }
+        if (e.n.length !== 2) continue
+        const d = e.n[0][0] * e.n[1][0] + e.n[0][1] * e.n[1][1] + e.n[0][2] * e.n[1][2]
+        const coplanar = Math.abs(d) >= 0.9995
+        const isDiagonal = coplanar && triLong[e.t[0]] === ekey && triLong[e.t[1]] === ekey
+        if (isDiagonal) parent[find(e.t[0])] = find(e.t[1]) // merge the quad's two triangles
+        else creaseEdges.push({ shellId: ms.id, a: e.a, b: e.b }) // quad side or crease — show thin
       }
+      const groups = new Map<number, { tris: [number, number, number][]; verts: Set<number> }>()
+      for (let ti = 0; ti < triCount; ti++) {
+        const r = find(ti)
+        let g = groups.get(r)
+        if (!g) {
+          g = { tris: [], verts: new Set() }
+          groups.set(r, g)
+        }
+        const a = tris[ti * 3],
+          b = tris[ti * 3 + 1],
+          c = tris[ti * 3 + 2]
+        g.tris.push([a, b, c])
+        g.verts.add(a).add(b).add(c)
+      }
+      for (const g of groups.values()) faces.push({ shellId: ms.id, tris: g.tris, verts: [...g.verts] })
     }
     const objList = [...objKeys.entries()].map(([name, keys]) => ({ name, keys }))
 
@@ -150,9 +211,8 @@ export default function UVEditLayer({ aspect }: { aspect: number }) {
     objGeo.setAttribute('color', attr(objList.length * 8))
     const fillGeo = new THREE.BufferGeometry()
     fillGeo.setAttribute('position', attr(6))
-    // selected-face highlight (face mode): one fan-triangulated fill for the
-    // selected polygons
-    const faceTris = polys.reduce((a, p) => a + Math.max(0, p.loop.length - 2), 0)
+    // selected-face highlight (face mode): fill for the selected polygons
+    const faceTris = faces.reduce((a, f) => a + f.tris.length, 0)
     const faceFillGeo = new THREE.BufferGeometry()
     faceFillGeo.setAttribute('position', attr(Math.max(1, faceTris) * 3))
 
@@ -161,7 +221,7 @@ export default function UVEditLayer({ aspect }: { aspect: number }) {
       edges: [...seamEdges, ...creaseEdges],
       seamEdges,
       creaseEdges,
-      polys,
+      faces,
       shellObj,
       objKeys,
       objList,
@@ -242,26 +302,29 @@ export default function UVEditLayer({ aspect }: { aspect: number }) {
     }
     return best
   }
+  const pointInTri = (
+    px: number,
+    py: number,
+    A: [number, number],
+    B: [number, number],
+    C: [number, number],
+  ) => {
+    const d1 = (px - B[0]) * (A[1] - B[1]) - (A[0] - B[0]) * (py - B[1])
+    const d2 = (px - C[0]) * (B[1] - C[1]) - (B[0] - C[0]) * (py - C[1])
+    const d3 = (px - A[0]) * (C[1] - A[1]) - (C[0] - A[0]) * (py - A[1])
+    const neg = d1 < 0 || d2 < 0 || d3 < 0
+    const pos = d1 > 0 || d2 > 0 || d3 > 0
+    return !(neg && pos)
+  }
+  // pick the POLYGON (merged coplanar triangles) under the cursor, not a triangle
   const pickFace = (wx: number, wy: number) => {
-    for (const p of topo.polys) {
-      const pts: [number, number][] = []
-      let ok = true
-      for (const v of p.loop) {
-        const w = worldOf(p.shellId, v)
-        if (!w) {
-          ok = false
-          break
-        }
-        pts.push(w)
+    for (const f of topo.faces) {
+      for (const [a, b, c] of f.tris) {
+        const A = worldOf(f.shellId, a),
+          B = worldOf(f.shellId, b),
+          C = worldOf(f.shellId, c)
+        if (A && B && C && pointInTri(wx, wy, A, B, C)) return f
       }
-      if (!ok) continue
-      let inside = false
-      for (let i = 0, j = pts.length - 1; i < pts.length; j = i++) {
-        const [xi, yi] = pts[i]
-        const [xj, yj] = pts[j]
-        if (yi > wy !== yj > wy && wx < ((xj - xi) * (wy - yi)) / (yj - yi) + xi) inside = !inside
-      }
-      if (inside) return p
     }
     return null
   }
@@ -282,7 +345,7 @@ export default function UVEditLayer({ aspect }: { aspect: number }) {
     }
     if (editMode === 'face') {
       const f = pickFace(wx, wy)
-      return f ? f.loop.map((v) => key(f.shellId, v)) : null
+      return f ? f.verts.map((v) => key(f.shellId, v)) : null
     }
     return null
   }
@@ -510,7 +573,7 @@ export default function UVEditLayer({ aspect }: { aspect: number }) {
   const cVert = new THREE.Color('#5cc8ff')
   const cEdge = new THREE.Color('#9fe0ff')
   const cSeam = new THREE.Color('#ff7a3c')
-  const cSel = new THREE.Color('#ffe14d')
+  const cSel = new THREE.Color('#ffffff') // selected vertices / edges — high contrast
   const cObj = new THREE.Color('#8fd6ff')
   useFrame(() => {
     const sel = useStore.getState().mapSelection
@@ -594,22 +657,21 @@ export default function UVEditLayer({ aspect }: { aspect: number }) {
     if (editMode === 'face') {
       const fa = topo.faceFillGeo.getAttribute('position').array as Float32Array
       let n = 0
-      for (const p of topo.polys) {
-        if (!p.loop.every((v) => sel.has(key(p.shellId, v)))) continue
-        const w0 = worldOf(p.shellId, p.loop[0])
-        if (!w0) continue
-        for (let i = 1; i + 1 < p.loop.length; i++) {
-          const wa = worldOf(p.shellId, p.loop[i]),
-            wb = worldOf(p.shellId, p.loop[i + 1])
-          if (!wa || !wb) continue
-          fa[n * 3] = w0[0]
-          fa[n * 3 + 1] = w0[1]
+      for (const f of topo.faces) {
+        if (!f.verts.every((v) => sel.has(key(f.shellId, v)))) continue
+        for (const [a, b, c] of f.tris) {
+          const A = worldOf(f.shellId, a),
+            B = worldOf(f.shellId, b),
+            C = worldOf(f.shellId, c)
+          if (!A || !B || !C) continue
+          fa[n * 3] = A[0]
+          fa[n * 3 + 1] = A[1]
           fa[n * 3 + 2] = 0.15
-          fa[n * 3 + 3] = wa[0]
-          fa[n * 3 + 4] = wa[1]
+          fa[n * 3 + 3] = B[0]
+          fa[n * 3 + 4] = B[1]
           fa[n * 3 + 5] = 0.15
-          fa[n * 3 + 6] = wb[0]
-          fa[n * 3 + 7] = wb[1]
+          fa[n * 3 + 6] = C[0]
+          fa[n * 3 + 7] = C[1]
           fa[n * 3 + 8] = 0.15
           n += 3
         }
@@ -734,7 +796,7 @@ export default function UVEditLayer({ aspect }: { aspect: number }) {
       )}
       {showSelDots && (
         <points geometry={topo.selGeo} renderOrder={7}>
-          <pointsMaterial map={sprite} color="#ffe14d" size={11} sizeAttenuation={false} transparent alphaTest={0.5} depthTest={false} />
+          <pointsMaterial map={sprite} color="#ffffff" size={12} sizeAttenuation={false} transparent alphaTest={0.5} depthTest={false} />
         </points>
       )}
 
