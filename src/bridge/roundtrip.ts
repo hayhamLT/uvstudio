@@ -1,4 +1,4 @@
-import type { Shell } from '../mesh/types'
+import type { Shell, SceneObject } from '../mesh/types'
 
 // ---------------------------------------------------------------------------
 // Lossless C4D <-> UV Studio round-trip payloads.
@@ -102,4 +102,21 @@ export function buildReturnObject(o: ReturnObjectInput): ReturnObject {
 
 export function buildReturnPayload(objects: ReturnObjectInput[], ts: number): ReturnPayload {
   return { v: ROUNDTRIP_V, ts, kind: 'uv-return', objects: objects.map(buildReturnObject) }
+}
+
+/**
+ * Build geometry-only SceneObjects DIRECTLY from a forward sidecar, so app
+ * vertices/faces are 1:1 with the DCC's points/polygons (no welding, no
+ * position-matching, quads preserved). Texture/media is applied later in the app.
+ */
+export function sceneFromSidecar(sidecar: ForwardSidecar): SceneObject[] {
+  return sidecar.objects.map((o) => ({
+    name: o.name,
+    c4dGuid: o.guid,
+    mesh: {
+      name: o.name,
+      positions: Float32Array.from(o.points),
+      faces: o.polys.map((p) => p.slice()),
+    },
+  }))
 }

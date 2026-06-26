@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { buildReturnObject, type ReturnObjectInput } from './roundtrip'
+import { buildReturnObject, sceneFromSidecar, type ReturnObjectInput, type ForwardSidecar } from './roundtrip'
 import type { Shell } from '../mesh/types'
 
 // A shell holding one quad (face 0, corners 0,1,2,3) and one triangle
@@ -58,5 +58,30 @@ describe('buildReturnObject', () => {
   it('skips a shell with no UVs', () => {
     const r = buildReturnObject({ ...input, uv: () => undefined })
     expect(r.uv).toEqual([null, null])
+  })
+})
+
+describe('sceneFromSidecar', () => {
+  const sidecar: ForwardSidecar = {
+    v: 2,
+    ts: 0,
+    kind: 'geo-forward',
+    objects: [
+      {
+        name: 'Wall',
+        guid: 'abc',
+        points: [0, 0, 0, 1, 0, 0, 1, 1, 0, 0, 1, 0],
+        polys: [[0, 1, 2, 3]],
+      },
+    ],
+  }
+
+  it('builds geometry 1:1 from points + polys with identity provenance', () => {
+    const objs = sceneFromSidecar(sidecar)
+    expect(objs).toHaveLength(1)
+    expect(objs[0].name).toBe('Wall')
+    expect(objs[0].c4dGuid).toBe('abc')
+    expect(Array.from(objs[0].mesh.positions)).toEqual([0, 0, 0, 1, 0, 0, 1, 1, 0, 0, 1, 0])
+    expect(objs[0].mesh.faces).toEqual([[0, 1, 2, 3]]) // quad preserved, not triangulated
   })
 })

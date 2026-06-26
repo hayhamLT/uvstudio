@@ -25,6 +25,13 @@ export interface SceneObject {
   textureImage?: CanvasImageSource
   /** imported texture aspect (w / h) */
   textureAspect?: number
+  /**
+   * Stable id of the source DCC object, set when the object came in via the
+   * lossless bridge (a forward sidecar). Lets the plugin re-find the exact object
+   * to write UVs back onto. When present, mesh vertices/faces are 1:1 with the
+   * DCC's points/polygons (built from the sidecar, not the welded glTF).
+   */
+  c4dGuid?: string
 }
 
 /**
