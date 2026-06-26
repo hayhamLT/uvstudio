@@ -286,9 +286,6 @@ const XformPath = (
 function EditToolbar() {
   const editMode = useStore((s) => s.editMode)
   const setEditMode = useStore((s) => s.setEditMode)
-  const selCount = useStore((s) => s.mapSelection.size)
-  const clear = useStore((s) => s.clearMapSelection)
-  const scaleSelection = useStore((s) => s.scaleSelection)
   const modes: {
     id: 'object' | 'vertex' | 'edge' | 'face'
     label: string
@@ -319,32 +316,6 @@ function EditToolbar() {
           </svg>
         </button>
       ))}
-      {selCount > 0 && editMode !== 'object' && (
-        <>
-          <div className="mx-0.5 h-5 w-px bg-line" />
-          <span className="px-1 text-[11px] tabular-nums text-fog-400">{selCount} sel</span>
-          <button
-            onClick={() => scaleSelection(1 / 1.05)}
-            title="Scale down (−)"
-            className="h-7 w-7 rounded-md text-fog-400 hover:bg-ink-700 hover:text-fog-100"
-          >
-            −
-          </button>
-          <button
-            onClick={() => scaleSelection(1.05)}
-            title="Scale up (+)"
-            className="h-7 w-7 rounded-md text-fog-400 hover:bg-ink-700 hover:text-fog-100"
-          >
-            +
-          </button>
-          <button
-            onClick={clear}
-            className="rounded-md px-1.5 py-1 text-[11px] text-fog-400 hover:bg-ink-700 hover:text-fog-100"
-          >
-            clear
-          </button>
-        </>
-      )}
     </div>
   )
 }
