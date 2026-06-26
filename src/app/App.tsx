@@ -14,6 +14,7 @@ import Landing from '../ui/Landing'
 import Preferences from '../ui/Preferences'
 import { watchIncoming, restore as restoreLink } from '../bridge/link'
 import { loadSceneFile } from '../mesh/loadFile'
+import { sceneFromSidecar } from '../bridge/roundtrip'
 
 export default function App() {
   const [help, setHelp] = useState(false)
@@ -77,10 +78,14 @@ export default function App() {
   // C4D → app: when the link folder is connected, auto-load any model the C4D
   // plugin drops into to_app/ (the round-trip "send to app" side).
   useEffect(() => {
-    return watchIncoming(async (buf) => {
+    return watchIncoming(async (inc) => {
       try {
-        const file = new File([buf], 'from-c4d.glb', { type: 'model/gltf-binary' })
-        useStore.getState().beginImport(await loadSceneFile(file), 'from-c4d.glb')
+        // Lossless path: build geometry 1:1 from the forward sidecar so UVs can
+        // be written straight back onto C4D's objects. Legacy/manual: parse GLB.
+        const objects = inc.sidecar
+          ? sceneFromSidecar(inc.sidecar)
+          : await loadSceneFile(new File([inc.glb!], 'from-c4d.glb', { type: 'model/gltf-binary' }))
+        useStore.getState().beginImport(objects, 'from-c4d.glb')
       } catch {
         /* ignore an unreadable payload */
       }

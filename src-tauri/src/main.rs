@@ -56,6 +56,14 @@ struct Picked {
     bytes: Vec<u8>,
 }
 
+/// What bridge_poll hands the app: the new scene.json (forward sidecar or legacy
+/// manifest) plus scene.glb bytes if present.
+#[derive(Serialize)]
+struct Poll {
+    json: String,
+    glb: Option<Vec<u8>>,
+}
+
 fn now_ms() -> i64 {
     SystemTime::now()
         .duration_since(UNIX_EPOCH)
@@ -138,9 +146,10 @@ async fn bridge_send_uvs(state: State<'_, Mutex<Bridge>>, json: String) -> Resul
     Ok(())
 }
 
-/// Poll to_app/ for a model sent from C4D (sync: frequent + cheap, no dialog).
+/// Poll to_app/ for geometry sent from C4D (sync: frequent + cheap, no dialog).
+/// Returns the new scene.json (forward sidecar) + scene.glb bytes if present.
 #[tauri::command]
-fn bridge_poll(state: State<Mutex<Bridge>>) -> Option<Vec<u8>> {
+fn bridge_poll(state: State<Mutex<Bridge>>) -> Option<Poll> {
     let mut b = state.lock().ok()?;
     let dir = b.dir.clone()?;
     let inbox = dir.join(TO_APP);
@@ -149,7 +158,9 @@ fn bridge_poll(state: State<Mutex<Bridge>>) -> Option<Vec<u8>> {
         return None; // nothing new
     }
     b.last_ts = Some(ts);
-    fs::read(inbox.join(GLB)).ok()
+    let json = fs::read_to_string(inbox.join(MANIFEST)).ok()?;
+    let glb = fs::read(inbox.join(GLB)).ok();
+    Some(Poll { json, glb })
 }
 
 /// Native Save dialog → write the GLB + a sidecar `<name>.json` next to it.

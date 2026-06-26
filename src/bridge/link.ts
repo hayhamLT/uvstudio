@@ -19,7 +19,11 @@
  * The same React app drives both — nothing here is bundled unless used.
  */
 
-import type { ReturnPayload } from './roundtrip'
+import type { ReturnPayload, ForwardSidecar } from './roundtrip'
+
+/** What the bridge delivers from the DCC: a forward sidecar (lossless, geometry
+ *  built 1:1) when present, else raw GLB bytes (manual/legacy). */
+export type Incoming = { sidecar?: ForwardSidecar; glb?: ArrayBuffer }
 
 const TO_APP = 'to_app'
 const TO_C4D = 'to_c4d'
@@ -155,12 +159,13 @@ async function webWrite(buf: ArrayBuffer, screens: LinkScreen[]): Promise<void> 
   await w.close()
 }
 
-async function webReadManifest(): Promise<Manifest | null> {
+type IncomingManifest = { ts: number; kind?: string } & Record<string, unknown>
+async function webReadManifest(): Promise<IncomingManifest | null> {
   if (!webRoot) return null
   try {
     const inbox = await webRoot.getDirectoryHandle(TO_APP, { create: true })
     const mh = await inbox.getFileHandle(MANIFEST)
-    return JSON.parse(await (await mh.getFile()).text()) as Manifest
+    return JSON.parse(await (await mh.getFile()).text()) as IncomingManifest
   } catch {
     return null
   }
@@ -186,10 +191,18 @@ async function deskConnect(): Promise<boolean> {
 async function deskWrite(buf: ArrayBuffer, screens: LinkScreen[]): Promise<void> {
   await tauri()!.core.invoke('bridge_send', { bytes: Array.from(new Uint8Array(buf)), screens })
 }
-async function deskPoll(): Promise<ArrayBuffer | null> {
-  // returns the new GLB bytes (or null) — Rust tracks the last-seen timestamp
-  const bytes = (await tauri()!.core.invoke('bridge_poll')) as number[] | null
-  return bytes ? new Uint8Array(bytes).buffer : null
+async function deskPoll(): Promise<Incoming | null> {
+  // Rust tracks the last-seen timestamp and returns the new scene.json (always)
+  // + scene.glb bytes (if present), or null when nothing changed.
+  const res = (await tauri()!.core.invoke('bridge_poll')) as { json: string; glb: number[] | null } | null
+  if (!res) return null
+  try {
+    const man = JSON.parse(res.json) as { kind?: string }
+    if (man.kind === 'geo-forward') return { sidecar: man as unknown as ForwardSidecar }
+  } catch {
+    /* not a forward sidecar — fall through to GLB */
+  }
+  return res.glb ? { glb: new Uint8Array(res.glb).buffer } : null
 }
 
 // ---- public API -------------------------------------------------------------
@@ -316,10 +329,10 @@ export async function importGlb(): Promise<{ name: string; buf: ArrayBuffer } | 
 }
 
 /**
- * Watch to_app/ for a model sent from C4D. Calls `onIncoming` with the GLB bytes
- * whenever a newer one appears. Returns a stop function.
+ * Watch to_app/ for geometry sent from C4D. Calls `onIncoming` with a forward
+ * sidecar (lossless, built 1:1) when present, else GLB bytes. Returns a stop fn.
  */
-export function watchIncoming(onIncoming: (buf: ArrayBuffer) => void, intervalMs = 1000): () => void {
+export function watchIncoming(onIncoming: (inc: Incoming) => void, intervalMs = 1000): () => void {
   let lastTs: number | null = null
   let stopped = false
 
@@ -327,14 +340,18 @@ export function watchIncoming(onIncoming: (buf: ArrayBuffer) => void, intervalMs
     if (stopped || !connected) return
     try {
       if (isDesktop()) {
-        const buf = await deskPoll()
-        if (buf) onIncoming(buf)
+        const inc = await deskPoll()
+        if (inc) onIncoming(inc)
       } else {
         const man = await webReadManifest()
         if (man && man.ts !== lastTs) {
           lastTs = man.ts
-          const buf = await webReadGlb()
-          if (buf) onIncoming(buf)
+          if (man.kind === 'geo-forward') {
+            onIncoming({ sidecar: man as unknown as ForwardSidecar })
+          } else {
+            const glb = await webReadGlb()
+            if (glb) onIncoming({ glb })
+          }
         }
       }
     } catch {
