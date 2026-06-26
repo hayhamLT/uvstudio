@@ -1760,10 +1760,21 @@ export const useStore = create<AppState>((set, get) => ({
     const importedObjects = g.importedObjects.filter((n) => n !== objName)
     const shellById = new Map(g.mapShells.map((m) => [m.id, m.shell]))
     const beforeVerts = obj.shellIds.map((id) => shellById.get(id)?.vertCount)
+    const beforeUV = obj.shellIds.map((id) => live.uv.get(id)?.slice())
     const s = mapObjectUV(obj, snapshot({ ...g, importedObjects }), shellById)
     // a projection may have changed a shell's topology (seam-split) → new mapShells
     // array ref so the 3D geometry rebuilds at the new vertex count
     const topoChanged = obj.shellIds.some((id, k) => shellById.get(id)?.vertCount !== beforeVerts[k])
+    // did re-mapping actually move anything? (so a no-op gives honest feedback)
+    const changed =
+      topoChanged ||
+      obj.shellIds.some((id, k) => {
+        const a = live.uv.get(id)
+        const b = beforeUV[k]
+        if (!a || !b || a.length !== b.length) return true
+        for (let i = 0; i < a.length; i++) if (Math.abs(a[i] - b[i]) > 1e-5) return true
+        return false
+      })
     const mapped = new Set(g.mappedObjects)
     const fitInfo = { ...g.mapFitInfo }
     if (s !== null) {
@@ -1781,7 +1792,12 @@ export const useStore = create<AppState>((set, get) => ({
       hasUV: mapped.size > 0,
       uvVersion: g.uvVersion + 1,
       ...(topoChanged ? { mapShells: [...g.mapShells] } : {}),
-      status: s !== null ? `Re-mapped ${objName}` : `${objName} unassigned`,
+      status:
+        s === null
+          ? `${objName} unassigned`
+          : changed
+            ? `Re-mapped ${objName}`
+            : `${objName} already mapped — nothing to change`,
     })
   },
 
