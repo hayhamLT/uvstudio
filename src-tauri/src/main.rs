@@ -213,10 +213,9 @@ fn main() {
                 .filter(|d| d.is_dir());
             if let Some(dir) = saved {
                 let state = handle.state::<Mutex<Bridge>>();
-                if let Ok(mut b) = state.lock() {
-                    b.last_ts = read_ts(&dir.join(TO_APP));
-                    b.dir = Some(dir);
-                }
+                let mut b = state.lock().expect("bridge state lock");
+                b.last_ts = read_ts(&dir.join(TO_APP));
+                b.dir = Some(dir);
             }
             Ok(())
         })
