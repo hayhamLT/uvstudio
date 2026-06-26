@@ -13,6 +13,9 @@ on:
     tags: ['v*']
   workflow_dispatch:
 
+permissions:
+  contents: write # tauri-action creates the GitHub Release + uploads installers
+
 jobs:
   build:
     strategy:
