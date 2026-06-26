@@ -139,8 +139,25 @@ export function linkFolderLabel(): string {
 
 /** Prompt for / open the shared link folder. Returns true on success. */
 export async function connect(): Promise<boolean> {
-  connected = isDesktop() ? await deskConnect() : await webConnect()
+  try {
+    connected = isDesktop() ? await deskConnect() : await webConnect()
+  } catch {
+    connected = false
+  }
   return connected
+}
+
+/**
+ * Desktop only: copy the bundled Cinema 4D plugin into a `plugins` folder the
+ * user picks. Returns the install path, or null (cancelled / not desktop).
+ */
+export async function installC4DPlugin(): Promise<string | null> {
+  if (!isDesktop()) return null
+  try {
+    return ((await tauri()!.core.invoke('install_c4d_plugin')) as string | null) ?? null
+  } catch {
+    return null
+  }
 }
 
 /** Write the mapped GLB (+ per-screen LED sizes) into to_c4d/ for C4D to pick up. */

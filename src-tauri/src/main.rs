@@ -1,13 +1,13 @@
 // UV Studio — desktop shell (Tauri v2).
 //
-// Wraps the exact same web frontend (../dist) and adds the Cinema 4D link-folder
-// bridge as three commands the frontend calls via window.__TAURI__.core.invoke:
+// Wraps the same web frontend (../dist) and adds the Cinema 4D link-folder bridge
+// + a one-click plugin installer, as commands the frontend invokes.
 //
-//   bridge_connect()                 -> Option<String>   (pick the shared folder)
-//   bridge_send(bytes, objects)      -> Result<(), Err>  (write to_c4d/scene.glb)
-//   bridge_poll()                    -> Option<Vec<u8>>  (new to_app/scene.glb)
+// IMPORTANT: every command that opens a native dialog is `async`. Plain (sync)
+// commands run on the MAIN UI thread, and a blocking dialog there freezes the
+// window; async commands run off the main thread, so the dialog is safe.
 //
-// Folder protocol matches the C4D plugin and src/bridge/link.ts:
+// Folder protocol (matches the C4D plugin + src/bridge/link.ts):
 //   <link>/to_app/scene.glb + scene.json   C4D -> app   (we read)
 //   <link>/to_c4d/scene.glb + scene.json   app -> C4D   (we write, manifest last)
 
@@ -19,7 +19,8 @@ use std::sync::Mutex;
 use std::time::{SystemTime, UNIX_EPOCH};
 
 use serde::{Deserialize, Serialize};
-use tauri::State;
+use tauri::path::BaseDirectory;
+use tauri::{Manager, State};
 use tauri_plugin_dialog::DialogExt;
 
 const TO_APP: &str = "to_app";
@@ -68,22 +69,26 @@ fn read_ts(folder: &PathBuf) -> Option<i64> {
     v.get("ts")?.as_i64()
 }
 
+/// Pick the shared link folder (async → dialog won't freeze the UI).
 #[tauri::command]
-fn bridge_connect(app: tauri::AppHandle, state: State<Mutex<Bridge>>) -> Option<String> {
-    let picked = app.dialog().file().blocking_pick_folder()?;
-    let dir = picked.into_path().ok()?;
-    let mut b = state.lock().unwrap();
-    // seed last_ts from any existing inbox so we don't re-import a stale model
-    b.last_ts = read_ts(&dir.join(TO_APP));
+async fn bridge_connect(app: tauri::AppHandle, state: State<'_, Mutex<Bridge>>) -> Result<Option<String>, String> {
+    let dir = match app.dialog().file().blocking_pick_folder().and_then(|fp| fp.into_path().ok()) {
+        Some(p) => p,
+        None => return Ok(None),
+    };
+    let mut b = state.lock().map_err(|e| e.to_string())?;
+    b.last_ts = read_ts(&dir.join(TO_APP)); // seed so we don't re-import a stale model
     let label = dir.to_string_lossy().to_string();
     b.dir = Some(dir);
-    Some(label)
+    Ok(Some(label))
 }
 
 #[tauri::command]
-fn bridge_send(state: State<Mutex<Bridge>>, bytes: Vec<u8>, screens: Vec<Screen>) -> Result<(), String> {
-    let b = state.lock().map_err(|e| e.to_string())?;
-    let dir = b.dir.clone().ok_or("no link folder")?;
+async fn bridge_send(state: State<'_, Mutex<Bridge>>, bytes: Vec<u8>, screens: Vec<Screen>) -> Result<(), String> {
+    let dir = {
+        let b = state.lock().map_err(|e| e.to_string())?;
+        b.dir.clone().ok_or("no link folder")?
+    };
     let out = dir.join(TO_C4D);
     fs::create_dir_all(&out).map_err(|e| e.to_string())?;
 
@@ -100,42 +105,7 @@ fn bridge_send(state: State<Mutex<Bridge>>, bytes: Vec<u8>, screens: Vec<Screen>
     Ok(())
 }
 
-/// Native Save dialog → write the GLB and a sidecar `<name>.json` next to it.
-#[tauri::command]
-fn export_glb(app: tauri::AppHandle, name: String, bytes: Vec<u8>, sidecar: String) -> Option<String> {
-    let path = app
-        .dialog()
-        .file()
-        .set_file_name(&name)
-        .add_filter("glTF binary", &["glb"])
-        .blocking_save_file()?
-        .into_path()
-        .ok()?;
-    fs::write(&path, &bytes).ok()?;
-    // sidecar manifest alongside the GLB (same stem, .json)
-    let json = path.with_extension("json");
-    let _ = fs::write(&json, sidecar.as_bytes());
-    Some(path.to_string_lossy().to_string())
-}
-
-/// Native Open dialog → return a picked GLB/glTF's bytes + file name.
-#[tauri::command]
-fn import_glb(app: tauri::AppHandle) -> Option<Picked> {
-    let path = app
-        .dialog()
-        .file()
-        .add_filter("glTF", &["glb", "gltf"])
-        .blocking_pick_file()?
-        .into_path()
-        .ok()?;
-    let bytes = fs::read(&path).ok()?;
-    let name = path
-        .file_name()
-        .map(|s| s.to_string_lossy().to_string())
-        .unwrap_or_else(|| "model.glb".into());
-    Some(Picked { name, bytes })
-}
-
+/// Poll to_app/ for a model sent from C4D (sync: frequent + cheap, no dialog).
 #[tauri::command]
 fn bridge_poll(state: State<Mutex<Bridge>>) -> Option<Vec<u8>> {
     let mut b = state.lock().ok()?;
@@ -149,6 +119,70 @@ fn bridge_poll(state: State<Mutex<Bridge>>) -> Option<Vec<u8>> {
     fs::read(inbox.join(GLB)).ok()
 }
 
+/// Native Save dialog → write the GLB + a sidecar `<name>.json` next to it.
+#[tauri::command]
+async fn export_glb(app: tauri::AppHandle, name: String, bytes: Vec<u8>, sidecar: String) -> Result<Option<String>, String> {
+    let path = match app
+        .dialog()
+        .file()
+        .set_file_name(&name)
+        .add_filter("glTF binary", &["glb"])
+        .blocking_save_file()
+        .and_then(|fp| fp.into_path().ok())
+    {
+        Some(p) => p,
+        None => return Ok(None),
+    };
+    fs::write(&path, &bytes).map_err(|e| e.to_string())?;
+    let _ = fs::write(path.with_extension("json"), sidecar.as_bytes());
+    Ok(Some(path.to_string_lossy().to_string()))
+}
+
+/// Native Open dialog → return a picked GLB/glTF's bytes + file name.
+#[tauri::command]
+async fn import_glb(app: tauri::AppHandle) -> Result<Option<Picked>, String> {
+    let path = match app
+        .dialog()
+        .file()
+        .add_filter("glTF", &["glb", "gltf"])
+        .blocking_pick_file()
+        .and_then(|fp| fp.into_path().ok())
+    {
+        Some(p) => p,
+        None => return Ok(None),
+    };
+    let bytes = fs::read(&path).map_err(|e| e.to_string())?;
+    let name = path
+        .file_name()
+        .map(|s| s.to_string_lossy().to_string())
+        .unwrap_or_else(|| "model.glb".into());
+    Ok(Some(Picked { name, bytes }))
+}
+
+/// Copy the bundled C4D plugin into a `plugins` folder the user picks.
+#[tauri::command]
+async fn install_c4d_plugin(app: tauri::AppHandle) -> Result<Option<String>, String> {
+    let dest = match app.dialog().file().blocking_pick_folder().and_then(|fp| fp.into_path().ok()) {
+        Some(p) => p,
+        None => return Ok(None),
+    };
+    // bundled plugin files (see tauri.conf → bundle.resources)
+    let src = app.path().resolve("c4d-plugin", BaseDirectory::Resource).map_err(|e| e.to_string())?;
+    let target = dest.join("UVStudioBridge");
+    fs::create_dir_all(&target).map_err(|e| e.to_string())?;
+    let mut n = 0;
+    for entry in fs::read_dir(&src).map_err(|e| format!("plugin files not found: {e}"))? {
+        let p = entry.map_err(|e| e.to_string())?.path();
+        if p.is_file() {
+            if let Some(fname) = p.file_name() {
+                fs::copy(&p, target.join(fname)).map_err(|e| e.to_string())?;
+                n += 1;
+            }
+        }
+    }
+    Ok(Some(format!("{} ({} files)", target.to_string_lossy(), n)))
+}
+
 fn main() {
     tauri::Builder::default()
         .plugin(tauri_plugin_dialog::init())
@@ -158,7 +192,8 @@ fn main() {
             bridge_send,
             bridge_poll,
             export_glb,
-            import_glb
+            import_glb,
+            install_c4d_plugin
         ])
         .run(tauri::generate_context!())
         .expect("error while running UV Studio");

@@ -10,6 +10,10 @@ C4D  ◀──(GLB)──  <link folder>/to_c4d/    ◀──  UV Studio   (Send
 
 ## Install
 
+**Easiest (desktop app):** click **Install plugin** in UV Studio's top bar and pick
+your Cinema 4D `plugins/` folder — it copies the plugin in for you. Then restart
+C4D. (Manual steps below if you prefer, or you're on the web version.)
+
 1. Copy the `c4d-plugin` folder into your Cinema 4D **`plugins/`** directory
    (rename it `UVStudioBridge` if you like). Typical locations:
    - macOS: `~/Library/Preferences/Maxon/<version>/plugins/`

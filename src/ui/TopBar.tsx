@@ -132,6 +132,25 @@ export default function TopBar({ onHelp }: { onHelp: () => void }) {
         </button>
       )}
 
+      {link.isDesktop() && (
+        <button
+          onClick={async () => {
+            const setStatus = useStore.getState().setStatus
+            setStatus('Choose your Cinema 4D “plugins” folder…')
+            const where = await link.installC4DPlugin()
+            setStatus(where ? `Installed C4D plugin → ${where} (restart C4D)` : 'Plugin install cancelled')
+          }}
+          title="Copy the UV Studio Bridge plugin into Cinema 4D's plugins folder"
+          className="flex items-center gap-1.5 rounded-md px-2 py-1.5 text-sm text-fog-200 hover:bg-ink-700/70 ring-focus"
+        >
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M12 3v12M8 11l4 4 4-4" />
+            <path d="M4 17v2a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-2" />
+          </svg>
+          Install plugin
+        </button>
+      )}
+
       <button
         onClick={() => refreshModel(modelRef.current)}
         disabled={!lastImportName}
