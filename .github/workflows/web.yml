@@ -1,0 +1,25 @@
+# Build the static web bundle (dist/) for embedding in preshow.link.
+# Uploads it as an artifact; wire the final `deploy` step to your host
+# (Vercel / Netlify / S3 / preshow.link's own pipeline).
+name: Web build
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+      - run: npm ci
+      - run: npm run build
+      - uses: actions/upload-artifact@v4
+        with:
+          name: uvstudio-web
+          path: dist

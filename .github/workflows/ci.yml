@@ -1,0 +1,27 @@
+# Fast smoke test on every push / PR: type-check + unit tests + a web build.
+# Keeps both the web and (frontend of the) desktop target honest before the
+# heavier desktop.yml installer build runs on a tag.
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+      - run: npm ci
+      - name: Type-check
+        run: npm run typecheck
+      - name: Unit tests
+        run: npm test
+      - name: Web build
+        run: npm run build

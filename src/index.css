@@ -1,0 +1,112 @@
+@import 'tailwindcss';
+
+/* ---- UV Studio design tokens (dark studio theme) ---- */
+@theme {
+  --color-ink-950: #07090d;
+  --color-ink-900: #0b0e14;
+  --color-ink-850: #11151d;
+  --color-ink-800: #161b25;
+  --color-ink-700: #1e2531;
+  --color-ink-600: #2a3340;
+  --color-ink-500: #3a4655;
+  --color-line: #232c39;
+
+  --color-fog-400: #8a97a8;
+  --color-fog-300: #aab4c2;
+  --color-fog-200: #cdd5e0;
+  --color-fog-100: #e8edf4;
+
+  --color-brand-400: #5cc8ff;
+  --color-brand-500: #2da9f7;
+  --color-brand-600: #1183d6;
+
+  --color-accent-400: #ff8a5c;
+  --color-accent-500: #ff6b35;
+
+  --color-good: #46d39a;
+  --color-warn: #f5c451;
+  --color-bad: #ff5277;
+
+  --font-sans: 'Inter var', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+  --font-mono: ui-monospace, 'SF Mono', 'JetBrains Mono', 'Cascadia Code', monospace;
+}
+
+:root {
+  color-scheme: dark;
+}
+
+html,
+body,
+#root {
+  height: 100%;
+  margin: 0;
+}
+
+body {
+  background: var(--color-ink-950);
+  color: var(--color-fog-200);
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+  overflow: hidden;
+}
+
+/* Thin, dark scrollbars */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: var(--color-ink-600) transparent;
+}
+*::-webkit-scrollbar {
+  width: 9px;
+  height: 9px;
+}
+*::-webkit-scrollbar-thumb {
+  background: var(--color-ink-600);
+  border-radius: 999px;
+  border: 2px solid transparent;
+  background-clip: padding-box;
+}
+*::-webkit-scrollbar-thumb:hover {
+  background: var(--color-ink-500);
+}
+
+/* Glassy panel surface used across the chrome */
+.glass {
+  background: color-mix(in srgb, var(--color-ink-850) 86%, transparent);
+  backdrop-filter: blur(14px) saturate(140%);
+  border: 1px solid color-mix(in srgb, var(--color-line) 90%, transparent);
+}
+
+/* Soft focus ring */
+.ring-focus:focus-visible {
+  outline: 2px solid var(--color-brand-500);
+  outline-offset: 1px;
+}
+
+@keyframes pulse-ring {
+  0% { box-shadow: 0 0 0 0 color-mix(in srgb, var(--color-brand-500) 55%, transparent); }
+  70% { box-shadow: 0 0 0 8px transparent; }
+  100% { box-shadow: 0 0 0 0 transparent; }
+}
+.animate-pulse-ring {
+  animation: pulse-ring 1.6s ease-out infinite;
+}
+
+@keyframes float-up {
+  from { opacity: 0; transform: translateY(6px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+.animate-float-up {
+  animation: float-up 0.18s ease-out forwards;
+}
+
+/* Menus must never be gated behind opacity (a paused/throttled animation would
+   leave them invisible). Animate transform only — opacity stays 1. */
+@keyframes menu-pop {
+  from { transform: translateY(-4px) scale(0.98); }
+  to { transform: translateY(0) scale(1); }
+}
+.animate-menu-pop {
+  animation: menu-pop 0.12s ease-out;
+  transform-origin: top left;
+}

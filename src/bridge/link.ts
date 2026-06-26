@@ -1,0 +1,207 @@
+/**
+ * UV Studio ⇄ Cinema 4D link bridge.
+ *
+ * Transport is a SHARED FOLDER — the same one the C4D plugin watches:
+ *
+ *     <link>/to_app/scene.glb   C4D → UV Studio   (we READ this)
+ *     <link>/to_c4d/scene.glb   UV Studio → C4D   (we WRITE this)
+ *
+ * Each writer drops `scene.glb` then writes `scene.json` LAST; the reader polls
+ * the manifest's timestamp so it never reads a half-written GLB.
+ *
+ * Two backends, one API:
+ *   • Web  → File System Access API (Chromium). Lets the browser build (e.g.
+ *            embedded in preshow.link) talk to the same folder, with the user
+ *            granting access once via a directory picker.
+ *   • Desktop (Tauri) → native fs via invoke() commands (see src-tauri). No
+ *            picker permission prompts, survives restarts.
+ *
+ * The same React app drives both — nothing here is bundled unless used.
+ */
+
+const TO_APP = 'to_app'
+const TO_C4D = 'to_c4d'
+const GLB = 'scene.glb'
+const MANIFEST = 'scene.json'
+
+export type LinkScreen = { name: string; w: number; h: number; aspect: number }
+type Manifest = { v: number; ts: number; objects: string[]; screens: LinkScreen[] }
+
+// ---- backend detection ------------------------------------------------------
+interface TauriGlobal {
+  core: { invoke: (cmd: string, args?: Record<string, unknown>) => Promise<unknown> }
+}
+function tauri(): TauriGlobal | null {
+  const w = window as unknown as { __TAURI__?: TauriGlobal }
+  return w.__TAURI__ ?? null
+}
+export function isDesktop(): boolean {
+  return tauri() !== null
+}
+function hasFsAccess(): boolean {
+  return typeof (window as unknown as { showDirectoryPicker?: unknown }).showDirectoryPicker === 'function'
+}
+/** Whether a link folder can be used at all in this environment. */
+export function linkSupported(): boolean {
+  return isDesktop() || hasFsAccess()
+}
+
+// ---- web backend (File System Access API) -----------------------------------
+type DirHandle = {
+  name: string
+  getDirectoryHandle: (n: string, o?: { create?: boolean }) => Promise<DirHandle>
+  getFileHandle: (n: string, o?: { create?: boolean }) => Promise<FileHandle>
+  queryPermission?: (o: { mode: string }) => Promise<string>
+  requestPermission?: (o: { mode: string }) => Promise<string>
+}
+type FileHandle = {
+  getFile: () => Promise<File>
+  createWritable: () => Promise<{ write: (d: BufferSource | string) => Promise<void>; close: () => Promise<void> }>
+}
+
+let webRoot: DirHandle | null = null
+let folderLabel = ''
+
+async function webConnect(): Promise<boolean> {
+  const pick = (window as unknown as { showDirectoryPicker: (o?: unknown) => Promise<DirHandle> }).showDirectoryPicker
+  try {
+    const dir = await pick({ id: 'uvstudio-link', mode: 'readwrite' })
+    if (dir.requestPermission) await dir.requestPermission({ mode: 'readwrite' })
+    webRoot = dir
+    folderLabel = dir.name
+    return true
+  } catch {
+    return false // user cancelled
+  }
+}
+
+async function webWrite(buf: ArrayBuffer, screens: LinkScreen[]): Promise<void> {
+  if (!webRoot) throw new Error('no link folder')
+  const out = await webRoot.getDirectoryHandle(TO_C4D, { create: true })
+  const gh = await out.getFileHandle(GLB, { create: true })
+  let w = await gh.createWritable()
+  await w.write(buf)
+  await w.close()
+  // manifest LAST → signals the GLB is complete (carries the LED render sizes)
+  const man: Manifest = { v: 1, ts: Date.now(), objects: screens.map((s) => s.name), screens }
+  const mh = await out.getFileHandle(MANIFEST, { create: true })
+  w = await mh.createWritable()
+  await w.write(JSON.stringify(man))
+  await w.close()
+}
+
+async function webReadManifest(): Promise<Manifest | null> {
+  if (!webRoot) return null
+  try {
+    const inbox = await webRoot.getDirectoryHandle(TO_APP, { create: true })
+    const mh = await inbox.getFileHandle(MANIFEST)
+    return JSON.parse(await (await mh.getFile()).text()) as Manifest
+  } catch {
+    return null
+  }
+}
+
+async function webReadGlb(): Promise<ArrayBuffer | null> {
+  if (!webRoot) return null
+  try {
+    const inbox = await webRoot.getDirectoryHandle(TO_APP)
+    const gh = await inbox.getFileHandle(GLB)
+    return await (await gh.getFile()).arrayBuffer()
+  } catch {
+    return null
+  }
+}
+
+// ---- desktop backend (Tauri commands in src-tauri) --------------------------
+async function deskConnect(): Promise<boolean> {
+  const path = (await tauri()!.core.invoke('bridge_connect')) as string | null
+  if (path) folderLabel = path.split(/[/\\]/).pop() || path
+  return !!path
+}
+async function deskWrite(buf: ArrayBuffer, screens: LinkScreen[]): Promise<void> {
+  await tauri()!.core.invoke('bridge_send', { bytes: Array.from(new Uint8Array(buf)), screens })
+}
+async function deskPoll(): Promise<ArrayBuffer | null> {
+  // returns the new GLB bytes (or null) — Rust tracks the last-seen timestamp
+  const bytes = (await tauri()!.core.invoke('bridge_poll')) as number[] | null
+  return bytes ? new Uint8Array(bytes).buffer : null
+}
+
+// ---- public API -------------------------------------------------------------
+let connected = false
+
+export function isConnected(): boolean {
+  return connected
+}
+export function linkFolderLabel(): string {
+  return folderLabel
+}
+
+/** Prompt for / open the shared link folder. Returns true on success. */
+export async function connect(): Promise<boolean> {
+  connected = isDesktop() ? await deskConnect() : await webConnect()
+  return connected
+}
+
+/** Write the mapped GLB (+ per-screen LED sizes) into to_c4d/ for C4D to pick up. */
+export async function sendGlb(buf: ArrayBuffer, screens: LinkScreen[]): Promise<void> {
+  if (isDesktop()) await deskWrite(buf, screens)
+  else await webWrite(buf, screens)
+}
+
+/**
+ * Desktop only: native Save dialog → writes the GLB and a sidecar manifest next
+ * to it. Returns the saved path, or null (cancelled / not desktop, where the
+ * caller falls back to a browser download).
+ */
+export async function saveGlb(defaultName: string, buf: ArrayBuffer, sidecar: string): Promise<string | null> {
+  if (!isDesktop()) return null
+  const path = await tauri()!.core.invoke('export_glb', {
+    name: defaultName,
+    bytes: Array.from(new Uint8Array(buf)),
+    sidecar,
+  })
+  return (path as string | null) ?? null
+}
+
+/** Desktop only: native Open dialog for a GLB/glTF. Returns its bytes + name. */
+export async function importGlb(): Promise<{ name: string; buf: ArrayBuffer } | null> {
+  if (!isDesktop()) return null
+  const picked = (await tauri()!.core.invoke('import_glb')) as { name: string; bytes: number[] } | null
+  if (!picked) return null
+  return { name: picked.name, buf: new Uint8Array(picked.bytes).buffer }
+}
+
+/**
+ * Watch to_app/ for a model sent from C4D. Calls `onIncoming` with the GLB bytes
+ * whenever a newer one appears. Returns a stop function.
+ */
+export function watchIncoming(onIncoming: (buf: ArrayBuffer) => void, intervalMs = 1000): () => void {
+  let lastTs: number | null = null
+  let stopped = false
+
+  const tick = async () => {
+    if (stopped || !connected) return
+    try {
+      if (isDesktop()) {
+        const buf = await deskPoll()
+        if (buf) onIncoming(buf)
+      } else {
+        const man = await webReadManifest()
+        if (man && man.ts !== lastTs) {
+          lastTs = man.ts
+          const buf = await webReadGlb()
+          if (buf) onIncoming(buf)
+        }
+      }
+    } catch {
+      /* folder went away / permission lost — keep polling, recover on reconnect */
+    }
+  }
+
+  const id = window.setInterval(tick, intervalMs)
+  return () => {
+    stopped = true
+    window.clearInterval(id)
+  }
+}
