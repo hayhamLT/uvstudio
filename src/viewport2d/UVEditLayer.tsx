@@ -56,7 +56,8 @@ export default function UVEditLayer({ aspect }: { aspect: number }) {
 
   const topo = useMemo(() => {
     const verts: { shellId: number; v: number }[] = []
-    const edges: { shellId: number; a: number; b: number }[] = []
+    const seamEdges: { shellId: number; a: number; b: number }[] = []
+    const creaseEdges: { shellId: number; a: number; b: number }[] = []
     const polys: { shellId: number; loop: number[] }[] = []
     const shellObj = new Map<number, string>()
     const objKeys = new Map<string, string[]>()
@@ -68,19 +69,56 @@ export default function UVEditLayer({ aspect }: { aspect: number }) {
         ok.push(key(ms.id, v))
       }
       objKeys.set(ms.objName, ok)
-      const seen = new Set<number>()
-      for (const loop of ms.shell.polygons) {
-        polys.push({ shellId: ms.id, loop })
-        for (let i = 0; i < loop.length; i++) {
-          const a = loop[i]
-          const b = loop[(i + 1) % loop.length]
+      for (const loop of ms.shell.polygons) polys.push({ shellId: ms.id, loop })
+      // Classify edges from the TRIANGLES: a boundary edge (one triangle) is a UV
+      // seam; an interior edge between two COPLANAR triangles is just a
+      // triangulation diagonal (hidden); an interior edge with a real dihedral
+      // angle is a crease (shown thin).
+      const tris = ms.shell.triangles
+      const P = ms.shell.positions
+      const triNormal = (i0: number, i1: number, i2: number): [number, number, number] => {
+        const ax = P[i1 * 3] - P[i0 * 3],
+          ay = P[i1 * 3 + 1] - P[i0 * 3 + 1],
+          az = P[i1 * 3 + 2] - P[i0 * 3 + 2]
+        const bx = P[i2 * 3] - P[i0 * 3],
+          by = P[i2 * 3 + 1] - P[i0 * 3 + 1],
+          bz = P[i2 * 3 + 2] - P[i0 * 3 + 2]
+        const nx = ay * bz - az * by,
+          ny = az * bx - ax * bz,
+          nz = ax * by - ay * bx
+        const l = Math.hypot(nx, ny, nz) || 1
+        return [nx / l, ny / l, nz / l]
+      }
+      const em = new Map<number, { a: number; b: number; n: [number, number, number][] }>()
+      for (let t = 0; t < tris.length; t += 3) {
+        const i0 = tris[t],
+          i1 = tris[t + 1],
+          i2 = tris[t + 2]
+        const n = triNormal(i0, i1, i2)
+        const pairs: [number, number][] = [
+          [i0, i1],
+          [i1, i2],
+          [i2, i0],
+        ]
+        for (const [a, b] of pairs) {
           const lo = Math.min(a, b),
             hi = Math.max(a, b)
           const ek = lo * 100000 + hi
-          if (!seen.has(ek)) {
-            seen.add(ek)
-            edges.push({ shellId: ms.id, a: lo, b: hi })
+          let e = em.get(ek)
+          if (!e) {
+            e = { a: lo, b: hi, n: [] }
+            em.set(ek, e)
           }
+          e.n.push(n)
+        }
+      }
+      for (const e of em.values()) {
+        if (e.n.length === 1) {
+          seamEdges.push({ shellId: ms.id, a: e.a, b: e.b })
+        } else if (e.n.length === 2) {
+          const d = e.n[0][0] * e.n[1][0] + e.n[0][1] * e.n[1][1] + e.n[0][2] * e.n[1][2]
+          if (Math.abs(d) < 0.9995) creaseEdges.push({ shellId: ms.id, a: e.a, b: e.b })
+          // else coplanar → triangulation diagonal → hidden
         }
       }
     }
@@ -91,21 +129,21 @@ export default function UVEditLayer({ aspect }: { aspect: number }) {
     pointsGeo.setAttribute('position', attr(verts.length))
     const selGeo = new THREE.BufferGeometry()
     selGeo.setAttribute('position', attr(verts.length))
-    // edges as fat lines (LineSegments2) — real pixel width, unlike gl lines
-    const edgePos = new Float32Array(Math.max(1, edges.length) * 6)
-    const edgeCol = new Float32Array(Math.max(1, edges.length) * 6)
-    const edgeLineGeo = new LineSegmentsGeometry()
-    edgeLineGeo.setPositions(edgePos)
-    edgeLineGeo.setColors(edgeCol)
-    const edgeLineMat = new LineMaterial({
-      linewidth: 2.6,
-      vertexColors: true,
-      transparent: true,
-      depthTest: false,
-    })
-    const edgeLines = new LineSegments2(edgeLineGeo, edgeLineMat)
-    edgeLines.frustumCulled = false
-    edgeLines.renderOrder = 5
+    // edges as fat lines (LineSegments2) — seams thicker, creases thinner
+    const mkLines = (count: number, width: number) => {
+      const pos = new Float32Array(Math.max(1, count) * 6)
+      const col = new Float32Array(Math.max(1, count) * 6)
+      const geo = new LineSegmentsGeometry()
+      geo.setPositions(pos)
+      geo.setColors(col)
+      const mat = new LineMaterial({ linewidth: width, vertexColors: true, transparent: true, depthTest: false })
+      const lines = new LineSegments2(geo, mat)
+      lines.frustumCulled = false
+      lines.renderOrder = 5
+      return { pos, col, geo, mat, lines }
+    }
+    const seam = mkLines(seamEdges.length, 2.8)
+    const crease = mkLines(creaseEdges.length, 1.2)
 
     const objGeo = new THREE.BufferGeometry()
     objGeo.setAttribute('position', attr(objList.length * 8))
@@ -115,18 +153,17 @@ export default function UVEditLayer({ aspect }: { aspect: number }) {
 
     return {
       verts,
-      edges,
+      edges: [...seamEdges, ...creaseEdges],
+      seamEdges,
+      creaseEdges,
       polys,
       shellObj,
       objKeys,
       objList,
       pointsGeo,
       selGeo,
-      edgePos,
-      edgeCol,
-      edgeLineGeo,
-      edgeLineMat,
-      edgeLines,
+      seam,
+      crease,
       objGeo,
       fillGeo,
     }
@@ -136,8 +173,10 @@ export default function UVEditLayer({ aspect }: { aspect: number }) {
     () => () => {
       topo.pointsGeo.dispose()
       topo.selGeo.dispose()
-      topo.edgeLineGeo.dispose()
-      topo.edgeLineMat.dispose()
+      topo.seam.geo.dispose()
+      topo.seam.mat.dispose()
+      topo.crease.geo.dispose()
+      topo.crease.mat.dispose()
       topo.objGeo.dispose()
       topo.fillGeo.dispose()
     },
@@ -463,6 +502,7 @@ export default function UVEditLayer({ aspect }: { aspect: number }) {
   // ---- per-frame overlay rendering ----
   const cVert = new THREE.Color('#5cc8ff')
   const cEdge = new THREE.Color('#9fe0ff')
+  const cSeam = new THREE.Color('#ff7a3c')
   const cSel = new THREE.Color('#ffe14d')
   const cObj = new THREE.Color('#8fd6ff')
   useFrame(() => {
@@ -502,35 +542,44 @@ export default function UVEditLayer({ aspect }: { aspect: number }) {
       topo.selGeo.getAttribute('position').needsUpdate = true
     }
 
-    // edge guides (fat lines)
-    if ((editMode === 'edge' || editMode === 'face') && topo.edges.length) {
-      const pa = topo.edgePos
-      const ca = topo.edgeCol
-      topo.edges.forEach((e, i) => {
-        const A = worldOf(e.shellId, e.a),
-          B = worldOf(e.shellId, e.b)
-        const o = i * 6
-        if (!A || !B) {
-          pa[o] = pa[o + 3] = -9999
-          return
-        }
-        pa[o] = A[0]
-        pa[o + 1] = A[1]
-        pa[o + 2] = 0.12
-        pa[o + 3] = B[0]
-        pa[o + 4] = B[1]
-        pa[o + 5] = 0.12
-        const lit = sel.has(key(e.shellId, e.a)) && sel.has(key(e.shellId, e.b))
-        const c = lit ? cSel : cEdge
-        for (let k = 0; k < 2; k++) {
-          ca[o + k * 3] = c.r
-          ca[o + k * 3 + 1] = c.g
-          ca[o + k * 3 + 2] = c.b
-        }
-      })
-      topo.edgeLineGeo.setPositions(pa)
-      topo.edgeLineGeo.setColors(ca)
-      topo.edgeLineMat.resolution.set(size.width, size.height)
+    // edge guides (fat lines) — seams (boundary) and creases, drawn separately
+    if (editMode === 'edge' || editMode === 'face') {
+      const drawEdges = (
+        list: { shellId: number; a: number; b: number }[],
+        set: { pos: Float32Array; col: Float32Array; geo: LineSegmentsGeometry; mat: LineMaterial },
+        base: THREE.Color,
+      ) => {
+        if (!list.length) return
+        const pa = set.pos
+        const ca = set.col
+        list.forEach((e, i) => {
+          const A = worldOf(e.shellId, e.a),
+            B = worldOf(e.shellId, e.b)
+          const o = i * 6
+          if (!A || !B) {
+            pa[o] = pa[o + 3] = -9999
+            return
+          }
+          pa[o] = A[0]
+          pa[o + 1] = A[1]
+          pa[o + 2] = 0.12
+          pa[o + 3] = B[0]
+          pa[o + 4] = B[1]
+          pa[o + 5] = 0.12
+          const lit = sel.has(key(e.shellId, e.a)) && sel.has(key(e.shellId, e.b))
+          const c = lit ? cSel : base
+          for (let k = 0; k < 2; k++) {
+            ca[o + k * 3] = c.r
+            ca[o + k * 3 + 1] = c.g
+            ca[o + k * 3 + 2] = c.b
+          }
+        })
+        set.geo.setPositions(pa)
+        set.geo.setColors(ca)
+        set.mat.resolution.set(size.width, size.height)
+      }
+      drawEdges(topo.seamEdges, topo.seam, cSeam)
+      drawEdges(topo.creaseEdges, topo.crease, cEdge)
     }
 
     // object outlines + active fill — atlas mode only. In screen-mapping
@@ -619,8 +668,11 @@ export default function UVEditLayer({ aspect }: { aspect: number }) {
         <meshBasicMaterial transparent opacity={0} depthTest={false} depthWrite={false} />
       </mesh>
 
-      {(editMode === 'edge' || editMode === 'face') && topo.edges.length > 0 && (
-        <primitive object={topo.edgeLines} />
+      {(editMode === 'edge' || editMode === 'face') && (
+        <>
+          {topo.creaseEdges.length > 0 && <primitive object={topo.crease.lines} />}
+          {topo.seamEdges.length > 0 && <primitive object={topo.seam.lines} />}
+        </>
       )}
       {editMode === 'object' && !layeredMode && (
         <>
