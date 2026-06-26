@@ -206,7 +206,8 @@ fn main() {
         .manage(Mutex::new(Bridge::default()))
         .setup(|app| {
             // reload a previously-chosen link folder so it's "set once, ever"
-            if let Some(cf) = config_file(&app.handle()) {
+            let handle = app.handle().clone();
+            if let Some(cf) = config_file(&handle) {
                 if let Ok(saved) = fs::read_to_string(&cf) {
                     let p = saved.trim();
                     if !p.is_empty() {
