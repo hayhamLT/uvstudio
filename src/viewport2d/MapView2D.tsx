@@ -120,6 +120,24 @@ function Scene({
   }, [srcRect, aspect])
   useEffect(() => () => chunkGeom?.dispose(), [chunkGeom])
 
+  // dark bands covering everything OUTSIDE the chunk this screen uses, so the
+  // slice it actually covers stands out (vs the whole PSD). [cx, cy, w, h]
+  const dimBands = useMemo<[number, number, number, number][]>(() => {
+    if (!srcRect) return []
+    const x0 = srcRect.x0 * aspect
+    const x1 = srcRect.x1 * aspect
+    const yb = 1 - srcRect.y1
+    const yt = 1 - srcRect.y0
+    return (
+      [
+        [x0 / 2, 0.5, x0, 1],
+        [(x1 + aspect) / 2, 0.5, aspect - x1, 1],
+        [(x0 + x1) / 2, (yt + 1) / 2, x1 - x0, 1 - yt],
+        [(x0 + x1) / 2, yb / 2, x1 - x0, yb],
+      ] as [number, number, number, number][]
+    ).filter(([, , w, h]) => w > 1e-4 && h > 1e-4)
+  }, [srcRect, aspect])
+
   // region outline rectangles (image y-down -> y-up display)
   const regionLines = useMemo(() => {
     const assignedIds = new Set(Object.values(assignment))
@@ -152,6 +170,13 @@ function Scene({
           <meshBasicMaterial map={bgTex} toneMapped={false} transparent />
         </mesh>
       )}
+      {/* dim the PSD outside the slice this screen covers */}
+      {dimBands.map(([cx, cy, w, h], i) => (
+        <mesh key={`dim${i}`} position={[cx, cy, -0.015]} renderOrder={1}>
+          <planeGeometry args={[w, h]} />
+          <meshBasicMaterial color="#05070b" transparent opacity={0.74} depthTest={false} toneMapped={false} />
+        </mesh>
+      ))}
       {/* detected region outlines */}
       {regionLines.map((r, i) => (
         <lineSegments key={i} geometry={lineLoopToSegments(r.g)} renderOrder={2}>
