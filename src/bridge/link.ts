@@ -60,15 +60,78 @@ type FileHandle = {
 }
 
 let webRoot: DirHandle | null = null
+let savedHandle: DirHandle | null = null // remembered across reloads (IndexedDB)
 let folderLabel = ''
 
+// --- tiny IndexedDB kv store (FileSystemDirectoryHandle is structured-cloneable,
+//     so the browser can remember the chosen link folder across reloads) --------
+const IDB_DB = 'uvstudio'
+const IDB_STORE = 'kv'
+const IDB_KEY = 'linkDir'
+function idbOpen(): Promise<IDBDatabase> {
+  return new Promise((res, rej) => {
+    const req = indexedDB.open(IDB_DB, 1)
+    req.onupgradeneeded = () => req.result.createObjectStore(IDB_STORE)
+    req.onsuccess = () => res(req.result)
+    req.onerror = () => rej(req.error)
+  })
+}
+async function idbSet(val: unknown): Promise<void> {
+  const db = await idbOpen()
+  await new Promise<void>((res, rej) => {
+    const tx = db.transaction(IDB_STORE, 'readwrite')
+    tx.objectStore(IDB_STORE).put(val, IDB_KEY)
+    tx.oncomplete = () => res()
+    tx.onerror = () => rej(tx.error)
+  })
+  db.close()
+}
+async function idbGet(): Promise<DirHandle | undefined> {
+  const db = await idbOpen()
+  const v = await new Promise<DirHandle | undefined>((res, rej) => {
+    const r = db.transaction(IDB_STORE, 'readonly').objectStore(IDB_STORE).get(IDB_KEY)
+    r.onsuccess = () => res(r.result as DirHandle | undefined)
+    r.onerror = () => rej(r.error)
+  })
+  db.close()
+  return v
+}
+async function loadSaved(): Promise<DirHandle | null> {
+  if (savedHandle) return savedHandle
+  if (!hasFsAccess()) return null
+  try {
+    savedHandle = (await idbGet()) ?? null
+  } catch {
+    savedHandle = null
+  }
+  return savedHandle
+}
+
 async function webConnect(): Promise<boolean> {
+  // first connect this session → try to re-grant the remembered folder (no
+  // re-browsing). If already connected ("Change…"), skip straight to the picker.
+  if (!webRoot) {
+    const saved = await loadSaved()
+    if (saved?.requestPermission) {
+      try {
+        if ((await saved.requestPermission({ mode: 'readwrite' })) === 'granted') {
+          webRoot = saved
+          folderLabel = saved.name
+          return true
+        }
+      } catch {
+        /* fall through to the picker */
+      }
+    }
+  }
   const pick = (window as unknown as { showDirectoryPicker: (o?: unknown) => Promise<DirHandle> }).showDirectoryPicker
   try {
     const dir = await pick({ id: 'uvstudio-link', mode: 'readwrite' })
     if (dir.requestPermission) await dir.requestPermission({ mode: 'readwrite' })
     webRoot = dir
+    savedHandle = dir
     folderLabel = dir.name
+    void idbSet(dir).catch(() => {}) // remember for next time
     return true
   } catch {
     return false // user cancelled
@@ -143,18 +206,40 @@ export function linkFolderLabel(): string {
  * folder was restored. (Web can't silently restore a directory handle yet.)
  */
 export async function restore(): Promise<boolean> {
-  if (!isDesktop()) return false
-  try {
-    const path = (await tauri()!.core.invoke('bridge_restore')) as string | null
-    if (path) {
-      folderLabel = path.split(/[/\\]/).pop() || path
-      connected = true
-      return true
+  if (isDesktop()) {
+    try {
+      const path = (await tauri()!.core.invoke('bridge_restore')) as string | null
+      if (path) {
+        folderLabel = path.split(/[/\\]/).pop() || path
+        connected = true
+        return true
+      }
+    } catch {
+      /* ignore */
     }
-  } catch {
-    /* ignore */
+    return false
+  }
+  // web: silently re-attach the saved folder if its permission still holds
+  const saved = await loadSaved()
+  if (saved?.queryPermission) {
+    try {
+      if ((await saved.queryPermission({ mode: 'readwrite' })) === 'granted') {
+        webRoot = saved
+        folderLabel = saved.name
+        connected = true
+        return true
+      }
+    } catch {
+      /* permission needs a gesture — user clicks Connect to re-grant */
+    }
   }
   return false
+}
+
+/** A remembered (web) folder name even when not yet reconnected — for the UI. */
+export async function savedLabel(): Promise<string> {
+  const saved = await loadSaved()
+  return saved?.name ?? ''
 }
 
 /** Prompt for / open the shared link folder. Returns true on success. */

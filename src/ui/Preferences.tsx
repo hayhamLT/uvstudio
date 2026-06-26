@@ -1,4 +1,4 @@
-import { useState, type ReactNode } from 'react'
+import { useEffect, useState, type ReactNode } from 'react'
 import { useStore } from '../state/store'
 import * as link from '../bridge/link'
 
@@ -8,7 +8,11 @@ export default function Preferences({ open, onClose }: { open: boolean; onClose:
   const setAutoMap = useStore((s) => s.setAutoMapOnImport)
   const setStatus = useStore((s) => s.setStatus)
   const [linkLabel, setLinkLabel] = useState(link.isConnected() ? link.linkFolderLabel() : '')
+  const [saved, setSaved] = useState('')
   const [busy, setBusy] = useState('')
+  useEffect(() => {
+    if (open) void link.savedLabel().then(setSaved)
+  }, [open])
   if (!open) return null
 
   const connect = async () => {
@@ -53,10 +57,16 @@ export default function Preferences({ open, onClose }: { open: boolean; onClose:
             <>
               <Row
                 label="Link folder"
-                hint={linkLabel ? `Connected · ${linkLabel}` : 'The shared folder both apps hand GLBs through'}
+                hint={
+                  linkLabel
+                    ? `Connected · ${linkLabel}`
+                    : saved
+                      ? `Remembered · ${saved}`
+                      : 'The shared folder both apps hand GLBs through'
+                }
               >
                 <Btn onClick={connect} busy={busy === 'link'}>
-                  {linkLabel ? 'Change…' : 'Connect…'}
+                  {linkLabel ? 'Change…' : saved ? 'Reconnect…' : 'Connect…'}
                 </Btn>
               </Row>
               {link.isDesktop() && (
