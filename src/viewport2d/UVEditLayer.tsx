@@ -299,6 +299,9 @@ export default function UVEditLayer({ aspect }: { aspect: number }) {
         uv[vi * 2 + 1] += dv
       }
       live.dirty = true
+      // the 2D coverage marker (and RES readout) are memoised on uvVersion — bump
+      // it so the yellow box physically follows the drag in the 2D view.
+      useStore.setState({ uvVersion: useStore.getState().uvVersion + 1 })
     } else if (drag.current === 'marquee') {
       setMarquee([start.current[0], start.current[1], wx, wy])
     }
