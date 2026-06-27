@@ -17,9 +17,10 @@ welding/triangulation, no exporter required.
 
 ## Install
 
-**Easiest (desktop app):** click **Install plugin** in UV Studio's top bar and pick
-your Cinema 4D `plugins/` folder — it copies the plugin in for you. Then restart
-C4D. (Manual steps below if you prefer, or you're on the web version.)
+**Easiest (desktop app):** click **Install plugin** in UV Studio. It auto-finds
+every Cinema 4D install on your machine and copies the plugin in — no folder to
+pick. Then restart C4D. (Manual steps below if you're on the web version or want
+to place it yourself.)
 
 1. Copy the `c4d-plugin` folder into your Cinema 4D **`plugins/`** directory
    (rename it `UVStudioBridge` if you like). Typical locations:
