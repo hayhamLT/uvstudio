@@ -1,6 +1,6 @@
 [package]
 name = "uvstudio"
-version = "0.1.0"
+version = "0.2.0"
 description = "UV Studio — screen mapping (desktop)"
 edition = "2021"
 
