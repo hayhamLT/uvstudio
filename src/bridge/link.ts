@@ -297,19 +297,53 @@ export async function connect(): Promise<boolean> {
 export type PluginInstall = { auto: boolean; paths: string[] }
 
 /**
- * Desktop only: install the bundled Cinema 4D plugin. Tries to auto-detect every
- * installed C4D's user plugin folder and copies into each (no picking). Only if
- * no Cinema 4D is found does it fall back to a manual folder picker.
+ * Desktop only: install the bundled Cinema 4D plugin into the LATEST installed
+ * C4D (newest version) — no picking. Falls back to a manual folder picker only
+ * if no Cinema 4D is found.
  */
 export async function installC4DPlugin(): Promise<PluginInstall | null> {
   if (!isDesktop()) return null
   try {
-    const auto = (await tauri()!.core.invoke('install_c4d_plugin_auto')) as string[] | null
-    if (auto && auto.length) return { auto: true, paths: auto }
+    const latest = (await tauri()!.core.invoke('install_c4d_plugin_latest')) as string | null
+    if (latest) return { auto: true, paths: [latest] }
     const manual = (await tauri()!.core.invoke('install_c4d_plugin')) as string | null
     return manual ? { auto: false, paths: [manual] } : null
   } catch {
     return null
+  }
+}
+
+/** Desktop only: silently refresh the bundled plugin into the latest C4D. Run on
+ *  launch so updating the app keeps the C4D-side plugin current. */
+export async function refreshPluginSilently(): Promise<void> {
+  if (!isDesktop()) return
+  try {
+    await tauri()!.core.invoke('install_c4d_plugin_latest')
+  } catch {
+    /* no C4D / not ready — ignore */
+  }
+}
+
+/** Open a URL in the default browser (desktop → native; web → new tab). */
+export async function openExternal(url: string): Promise<void> {
+  if (isDesktop()) {
+    try {
+      await tauri()!.core.invoke('open_url', { url })
+    } catch {
+      /* ignore */
+    }
+  } else {
+    window.open(url, '_blank')
+  }
+}
+
+/** Quit the desktop app (after starting an update download). */
+export async function quitApp(): Promise<void> {
+  if (!isDesktop()) return
+  try {
+    await tauri()!.core.invoke('quit_app')
+  } catch {
+    /* ignore */
   }
 }
 

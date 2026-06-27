@@ -12,13 +12,16 @@ import ImportDialog from '../ui/ImportDialog'
 import LinkWizard from '../ui/LinkWizard'
 import Landing from '../ui/Landing'
 import Preferences from '../ui/Preferences'
-import { watchIncoming, restore as restoreLink } from '../bridge/link'
+import UpdateBanner from '../ui/UpdateBanner'
+import { watchIncoming, restore as restoreLink, isDesktop, refreshPluginSilently } from '../bridge/link'
 import { loadSceneFile } from '../mesh/loadFile'
 import { sceneFromSidecar } from '../bridge/roundtrip'
+import { checkForUpdate, type UpdateInfo } from './updater'
 
 export default function App() {
   const [help, setHelp] = useState(false)
   const [prefs, setPrefs] = useState(false)
+  const [update, setUpdate] = useState<UpdateInfo | null>(null)
   const [primary, setPrimary] = useState<'2d' | '3d'>(() => {
     try {
       return (localStorage.getItem('uvstudio.primary') as '2d' | '3d') || '2d'
@@ -73,6 +76,16 @@ export default function App() {
   // desktop: re-attach the link folder chosen on a previous launch (set once)
   useEffect(() => {
     void restoreLink()
+  }, [])
+
+  // desktop: on launch, keep the bundled C4D plugin current in the latest C4D,
+  // and check for a newer app version (prompt to download if so).
+  useEffect(() => {
+    if (!isDesktop()) return
+    void refreshPluginSilently()
+    void checkForUpdate().then((u) => {
+      if (u) setUpdate(u)
+    })
   }, [])
 
   // C4D → app: when the link folder is connected, auto-load any model the C4D
@@ -218,6 +231,7 @@ export default function App() {
       <StatusBar />
       {help && <HelpOverlay onClose={() => setHelp(false)} />}
       <Preferences open={prefs} onClose={() => setPrefs(false)} />
+      {update && <UpdateBanner info={update} onClose={() => setUpdate(null)} />}
       <ImportDialog />
       <LinkWizard />
     </div>

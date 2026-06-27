@@ -291,7 +291,7 @@ fn find_c4d_plugin_dirs() -> Vec<PathBuf> {
         roots.push(PathBuf::from(appdata).join("Maxon"));
     }
     let mut seen: HashSet<PathBuf> = HashSet::new();
-    let mut found: Vec<(SystemTime, PathBuf)> = Vec::new();
+    let mut found: Vec<(u32, SystemTime, PathBuf)> = Vec::new();
     for root in roots {
         let rd = match fs::read_dir(&root) {
             Ok(r) => r,
@@ -302,7 +302,8 @@ fn find_c4d_plugin_dirs() -> Vec<PathBuf> {
             if !dir.is_dir() {
                 continue;
             }
-            if !e.file_name().to_string_lossy().to_lowercase().contains("cinema 4d") {
+            let name = e.file_name().to_string_lossy().to_string();
+            if !name.to_lowercase().contains("cinema 4d") {
                 continue; // skip App Manager, Autograph, caches, etc.
             }
             // canonicalize the (existing) version dir so Maxon/MAXON collapse to one
@@ -312,11 +313,25 @@ fn find_c4d_plugin_dirs() -> Vec<PathBuf> {
                 continue;
             }
             let mtime = fs::metadata(&dir).and_then(|m| m.modified()).unwrap_or(UNIX_EPOCH);
-            found.push((mtime, plugins));
+            found.push((c4d_version_key(&name), mtime, plugins));
         }
     }
-    found.sort_by(|a, b| b.0.cmp(&a.0)); // most recently used first
-    found.into_iter().map(|(_, p)| p).collect()
+    // newest version first, then most-recently-used among equal versions
+    found.sort_by(|a, b| b.0.cmp(&a.0).then(b.1.cmp(&a.1)));
+    found.into_iter().map(|(_, _, p)| p).collect()
+}
+
+/// Sortable version from a prefs folder name like "Maxon Cinema 4D 2026_9D810372"
+/// → 2026. Year-numbered releases compare directly; anything else sorts as 0.
+fn c4d_version_key(name: &str) -> u32 {
+    let lower = name.to_lowercase();
+    let after = lower.split("cinema 4d").nth(1).unwrap_or("");
+    let digits: String = after
+        .chars()
+        .skip_while(|c| !c.is_ascii_digit())
+        .take_while(|c| c.is_ascii_digit())
+        .collect();
+    digits.parse().unwrap_or(0)
 }
 
 /// Install the bundled C4D plugin automatically into every detected Cinema 4D
@@ -336,6 +351,36 @@ async fn install_c4d_plugin_auto(app: tauri::AppHandle) -> Result<Option<Vec<Str
     } else {
         Ok(Some(installed))
     }
+}
+
+/// Install the bundled C4D plugin into ONLY the latest Cinema 4D found (newest
+/// version, most-recently-used). Used for the silent on-launch refresh and the
+/// Install button. Returns the install path, or None if no C4D was found.
+#[tauri::command]
+async fn install_c4d_plugin_latest(app: tauri::AppHandle) -> Result<Option<String>, String> {
+    let src = app.path().resolve("c4d-plugin", BaseDirectory::Resource).map_err(|e| e.to_string())?;
+    match find_c4d_plugin_dirs().into_iter().next() {
+        Some(dir) => Ok(Some(copy_plugin_into(&src, &dir)?.to_string_lossy().to_string())),
+        None => Ok(None),
+    }
+}
+
+/// Open a URL in the user's default browser (used to start an update download).
+#[tauri::command]
+fn open_url(url: String) -> Result<(), String> {
+    #[cfg(target_os = "macos")]
+    let spawned = std::process::Command::new("open").arg(&url).spawn();
+    #[cfg(target_os = "windows")]
+    let spawned = std::process::Command::new("cmd").args(["/C", "start", "", &url]).spawn();
+    #[cfg(all(not(target_os = "macos"), not(target_os = "windows")))]
+    let spawned = std::process::Command::new("xdg-open").arg(&url).spawn();
+    spawned.map(|_| ()).map_err(|e| e.to_string())
+}
+
+/// Quit the app (after kicking off an update download).
+#[tauri::command]
+fn quit_app(app: tauri::AppHandle) {
+    app.exit(0);
 }
 
 /// Manual fallback: copy the bundled C4D plugin into a `plugins` folder the user
@@ -383,7 +428,10 @@ fn main() {
             export_glb,
             import_glb,
             install_c4d_plugin,
-            install_c4d_plugin_auto
+            install_c4d_plugin_auto,
+            install_c4d_plugin_latest,
+            open_url,
+            quit_app
         ])
         .run(tauri::generate_context!())
         .expect("error while running UV Studio");
