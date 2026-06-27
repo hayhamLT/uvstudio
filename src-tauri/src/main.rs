@@ -18,20 +18,23 @@ use std::path::PathBuf;
 use std::sync::Mutex;
 use std::time::{SystemTime, UNIX_EPOCH};
 
+use notify::{RecursiveMode, Watcher};
 use serde::{Deserialize, Serialize};
 use tauri::path::BaseDirectory;
-use tauri::{Manager, State};
+use tauri::{Emitter, Manager, State};
 use tauri_plugin_dialog::DialogExt;
 
 const TO_APP: &str = "to_app";
 const TO_C4D: &str = "to_c4d";
 const GLB: &str = "scene.glb";
 const MANIFEST: &str = "scene.json";
+const ACK: &str = "ack.json";
 
 #[derive(Default)]
 struct Bridge {
     dir: Option<PathBuf>,
     last_ts: Option<i64>,
+    last_ack_ts: Option<i64>,
 }
 
 #[derive(Deserialize, Serialize, Clone)]
@@ -82,10 +85,39 @@ fn now_ms() -> i64 {
         .unwrap_or(0)
 }
 
-fn read_ts(folder: &PathBuf) -> Option<i64> {
-    let txt = fs::read_to_string(folder.join(MANIFEST)).ok()?;
+fn read_ts_at(path: &PathBuf) -> Option<i64> {
+    let txt = fs::read_to_string(path).ok()?;
     let v: serde_json::Value = serde_json::from_str(&txt).ok()?;
     v.get("ts")?.as_i64()
+}
+
+fn read_ts(folder: &PathBuf) -> Option<i64> {
+    read_ts_at(&folder.join(MANIFEST))
+}
+
+/// Watch the to_app/ inbox and push a `bridge-changed` event the instant C4D
+/// drops anything there — so the app reacts immediately instead of waiting for
+/// the next poll. The fallback poll on the frontend covers any missed event.
+fn start_watcher(app: tauri::AppHandle, dir: PathBuf) {
+    std::thread::spawn(move || {
+        let inbox = dir.join(TO_APP);
+        let _ = fs::create_dir_all(&inbox);
+        let mut watcher = match notify::recommended_watcher(move |res: notify::Result<notify::Event>| {
+            if res.is_ok() {
+                let _ = app.emit("bridge-changed", ());
+            }
+        }) {
+            Ok(w) => w,
+            Err(_) => return,
+        };
+        if watcher.watch(&inbox, RecursiveMode::NonRecursive).is_err() {
+            return;
+        }
+        // hold the watcher alive for the life of the process
+        loop {
+            std::thread::park();
+        }
+    });
 }
 
 /// Where we remember the chosen link folder (so it's picked once, ever).
@@ -174,6 +206,21 @@ fn bridge_poll(state: State<Mutex<Bridge>>) -> Option<Poll> {
     Some(Poll { json, glb })
 }
 
+/// Read C4D's apply-ack (to_app/ack.json), deduped by ts — returns the JSON once
+/// per new ack so the app can confirm "Cinema 4D applied UVs to N objects".
+#[tauri::command]
+fn bridge_ack(state: State<Mutex<Bridge>>) -> Option<String> {
+    let mut b = state.lock().ok()?;
+    let dir = b.dir.clone()?;
+    let path = dir.join(TO_APP).join(ACK);
+    let ts = read_ts_at(&path)?;
+    if Some(ts) == b.last_ack_ts {
+        return None; // already reported
+    }
+    b.last_ack_ts = Some(ts);
+    fs::read_to_string(&path).ok()
+}
+
 /// Native Save dialog → write the GLB + a sidecar `<name>.json` next to it.
 #[tauri::command]
 async fn export_glb(app: tauri::AppHandle, name: String, bytes: Vec<u8>, sidecar: String) -> Result<Option<String>, String> {
@@ -252,10 +299,14 @@ fn main() {
                 .map(|s| PathBuf::from(s.trim()))
                 .filter(|d| d.is_dir())
                 .unwrap_or_else(default_link_dir);
-            let state = handle.state::<Mutex<Bridge>>();
-            let mut b = state.lock().expect("bridge state lock");
-            b.last_ts = read_ts(&dir.join(TO_APP));
-            b.dir = Some(dir);
+            {
+                let state = handle.state::<Mutex<Bridge>>();
+                let mut b = state.lock().expect("bridge state lock");
+                b.last_ts = read_ts(&dir.join(TO_APP));
+                b.last_ack_ts = read_ts_at(&dir.join(TO_APP).join(ACK)); // don't replay an old ack
+                b.dir = Some(dir.clone());
+            }
+            start_watcher(app.handle().clone(), dir); // instant push on inbox changes
             Ok(())
         })
         .invoke_handler(tauri::generate_handler![
@@ -264,6 +315,7 @@ fn main() {
             bridge_send,
             bridge_send_uvs,
             bridge_poll,
+            bridge_ack,
             export_glb,
             import_glb,
             install_c4d_plugin

@@ -75,13 +75,17 @@ def _read_manifest(folder):
         return None
 
 
-def _write_json_atomic(folder, payload):
-    """Write scene.json atomically (temp + rename) — readers never see a partial."""
-    p = os.path.join(_ensure(folder), MANIFEST)
+def _write_json_named(folder, name, payload):
+    """Write a JSON file atomically (temp + rename) — readers never see a partial."""
+    p = os.path.join(_ensure(folder), name)
     tmp = p + ".tmp"
     with open(tmp, "w") as f:
         json.dump(payload, f)
     os.replace(tmp, p)
+
+
+def _write_json_atomic(folder, payload):
+    _write_json_named(folder, MANIFEST, payload)
 
 
 def _object_guid(op):
@@ -258,6 +262,15 @@ class BridgeDialog(gui.GeDialog):
                 missed.append(obj.get("name", "?"))
         doc.EndUndo()
         c4d.EventAdd()
+        # ack back to the app so it can confirm the round-trip closed
+        try:
+            _write_json_named(
+                os.path.join(self.link_dir, TO_APP), "ack.json",
+                {"v": 1, "ts": int(time.time() * 1000), "kind": "uv-ack",
+                 "applied": applied, "missed": missed},
+            )
+        except Exception:
+            pass
         if missed:
             self._status("UVs applied to %d; could not match: %s" % (applied, ", ".join(missed)))
         else:

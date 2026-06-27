@@ -78,18 +78,31 @@ export default function App() {
   // C4D → app: when the link folder is connected, auto-load any model the C4D
   // plugin drops into to_app/ (the round-trip "send to app" side).
   useEffect(() => {
-    return watchIncoming(async (inc) => {
-      try {
-        // Lossless path: build geometry 1:1 from the forward sidecar so UVs can
-        // be written straight back onto C4D's objects. Legacy/manual: parse GLB.
-        const objects = inc.sidecar
-          ? sceneFromSidecar(inc.sidecar)
-          : await loadSceneFile(new File([inc.glb!], 'from-c4d.glb', { type: 'model/gltf-binary' }))
-        useStore.getState().beginImport(objects, 'from-c4d.glb')
-      } catch {
-        /* ignore an unreadable payload */
-      }
-    })
+    return watchIncoming(
+      async (inc) => {
+        try {
+          // Lossless path: build geometry 1:1 from the forward sidecar so UVs can
+          // be written straight back onto C4D's objects. Legacy/manual: parse GLB.
+          const objects = inc.sidecar
+            ? sceneFromSidecar(inc.sidecar)
+            : await loadSceneFile(new File([inc.glb!], 'from-c4d.glb', { type: 'model/gltf-binary' }))
+          useStore.getState().beginImport(objects, 'from-c4d.glb')
+        } catch {
+          /* ignore an unreadable payload */
+        }
+      },
+      (ack) => {
+        // C4D confirmed the returned UVs landed — close the round-trip loop.
+        const plural = ack.applied === 1 ? '' : 's'
+        useStore
+          .getState()
+          .setStatus(
+            ack.missed.length
+              ? `Cinema 4D applied UVs to ${ack.applied} object${plural} · skipped ${ack.missed.length}`
+              : `Cinema 4D applied UVs to ${ack.applied} object${plural}`,
+          )
+      },
+    )
   }, [])
 
   useKeyboardShortcuts(setHelp)

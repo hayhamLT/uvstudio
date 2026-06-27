@@ -29,13 +29,17 @@ const TO_APP = 'to_app'
 const TO_C4D = 'to_c4d'
 const GLB = 'scene.glb'
 const MANIFEST = 'scene.json'
+const ACK = 'ack.json'
 
 export type LinkScreen = { name: string; w: number; h: number; aspect: number }
 type Manifest = { v: number; ts: number; objects: string[]; screens: LinkScreen[] }
+/** C4D → app confirmation that the returned UVs landed on the objects. */
+export type UvAck = { ts: number; applied: number; missed: string[] }
 
 // ---- backend detection ------------------------------------------------------
 interface TauriGlobal {
   core: { invoke: (cmd: string, args?: Record<string, unknown>) => Promise<unknown> }
+  event?: { listen: (name: string, cb: (e: unknown) => void) => Promise<() => void> }
 }
 function tauri(): TauriGlobal | null {
   const w = window as unknown as { __TAURI__?: TauriGlobal }
@@ -182,6 +186,17 @@ async function webReadGlb(): Promise<ArrayBuffer | null> {
   }
 }
 
+async function webReadAck(): Promise<UvAck | null> {
+  if (!webRoot) return null
+  try {
+    const inbox = await webRoot.getDirectoryHandle(TO_APP)
+    const ah = await inbox.getFileHandle(ACK)
+    return JSON.parse(await (await ah.getFile()).text()) as UvAck
+  } catch {
+    return null
+  }
+}
+
 // ---- desktop backend (Tauri commands in src-tauri) --------------------------
 async function deskConnect(): Promise<boolean> {
   const path = (await tauri()!.core.invoke('bridge_connect')) as string | null
@@ -203,6 +218,16 @@ async function deskPoll(): Promise<Incoming | null> {
     /* not a forward sidecar — fall through to GLB */
   }
   return res.glb ? { glb: new Uint8Array(res.glb).buffer } : null
+}
+async function deskAck(): Promise<UvAck | null> {
+  // Rust dedupes by ts and returns the ack JSON only once per new ack.
+  const json = (await tauri()!.core.invoke('bridge_ack')) as string | null
+  if (!json) return null
+  try {
+    return JSON.parse(json) as UvAck
+  } catch {
+    return null
+  }
 }
 
 // ---- public API -------------------------------------------------------------
@@ -329,19 +354,35 @@ export async function importGlb(): Promise<{ name: string; buf: ArrayBuffer } | 
 }
 
 /**
- * Watch to_app/ for geometry sent from C4D. Calls `onIncoming` with a forward
- * sidecar (lossless, built 1:1) when present, else GLB bytes. Returns a stop fn.
+ * Watch to_app/ for messages from C4D:
+ *   • `onIncoming` — geometry (forward sidecar, else GLB bytes)
+ *   • `onAck`      — confirmation that returned UVs landed on the objects
+ *
+ * Desktop is EVENT-DRIVEN: a Rust filesystem watcher pushes `bridge-changed`
+ * the instant C4D drops a file, so reactions are immediate. A slow fallback
+ * poll covers any missed event (and folder overrides). Web has no fs-watch API,
+ * so it polls. Returns a stop fn.
  */
-export function watchIncoming(onIncoming: (inc: Incoming) => void, intervalMs = 1000): () => void {
+export function watchIncoming(
+  onIncoming: (inc: Incoming) => void,
+  onAck?: (ack: UvAck) => void,
+  intervalMs = 1000,
+): () => void {
   let lastTs: number | null = null
+  let lastAckTs: number | null = null
   let stopped = false
+  let unlisten: (() => void) | null = null
 
-  const tick = async () => {
+  const pull = async () => {
     if (stopped || !connected) return
     try {
       if (isDesktop()) {
         const inc = await deskPoll()
         if (inc) onIncoming(inc)
+        if (onAck) {
+          const ack = await deskAck()
+          if (ack) onAck(ack)
+        }
       } else {
         const man = await webReadManifest()
         if (man && man.ts !== lastTs) {
@@ -353,15 +394,33 @@ export function watchIncoming(onIncoming: (inc: Incoming) => void, intervalMs = 
             if (glb) onIncoming({ glb })
           }
         }
+        if (onAck) {
+          const ack = await webReadAck()
+          if (ack && ack.ts !== lastAckTs) {
+            lastAckTs = ack.ts
+            onAck(ack)
+          }
+        }
       }
     } catch {
       /* folder went away / permission lost — keep polling, recover on reconnect */
     }
   }
 
-  const id = window.setInterval(tick, intervalMs)
+  // desktop: react instantly to the Rust watcher's push event
+  const t = tauri()
+  if (t?.event?.listen) {
+    void t.event.listen('bridge-changed', () => void pull()).then((un) => {
+      if (stopped) un()
+      else unlisten = un
+    })
+  }
+
+  // poll: the only channel on web; a slow safety net on desktop
+  const id = window.setInterval(pull, isDesktop() ? 2500 : intervalMs)
   return () => {
     stopped = true
     window.clearInterval(id)
+    if (unlisten) unlisten()
   }
 }
