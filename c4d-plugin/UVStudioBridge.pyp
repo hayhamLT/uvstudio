@@ -2,25 +2,30 @@
 UV Studio Bridge — Cinema 4D plugin
 ===================================
 
-A tiny dockable panel that round-trips the SELECTED objects to UV Studio:
+A tiny dockable panel that LOSSLESSLY round-trips the SELECTED objects to UV
+Studio. The geometry NEVER leaves C4D — only UV coordinates come back, written
+straight onto each object's existing UVW tag. So normals, materials, hierarchy,
+extra UV tags, point order — everything but the UVs — is preserved by construction.
 
-    C4D  --(GLB)-->  <link folder>/to_app/    -->  UV Studio   (unwrap / edit)
-    C4D  <--(GLB)--  <link folder>/to_c4d/     <--  UV Studio   (Send back)
+    C4D  --(points+polys sidecar)-->  <link>/to_app/scene.json   -->  UV Studio
+    C4D  <--(per-polygon-corner UVs)-- <link>/to_c4d/scene.json    <--  UV Studio
 
-It is deliberately minimal and uses a *shared folder* as the transport — the
-most robust, firewall-free way for two local apps to talk. No servers, no ports.
+How it stays lossless:
+  * FORWARD: we write the object's points (world) + polygons (corner point
+    indices) + a stable guid to a JSON sidecar. UV Studio builds its mesh 1:1
+    from this — every app vertex IS a C4D point, every app face IS a C4D polygon.
+    No glTF, so no triangulation / welding / reordering and no exporter needed.
+  * RETURN: UV Studio sends one UV row per ORIGINAL polygon (corners a,b,c,d).
+    We SetSlow() those onto the object's UVW tag, addressed by polygon + corner.
+    C4D UVW tags are per-corner, so a UV seam needs zero extra points.
 
-How the handshake works (both directions are symmetric):
-  * the SENDER writes `scene.glb`, then writes `scene.json` LAST. Writing the
-    small manifest last guarantees the reader never sees a half-written GLB.
-  * the RECEIVER polls the manifest's timestamp; when it changes it loads the GLB.
+The handshake stays the same: scene.json carries a `ts`; the receiver polls it.
 
 Install:  Copy this whole `c4d-plugin` folder (renamed e.g. `UVStudioBridge`)
 into your Cinema 4D `plugins/` directory, restart C4D, then
 Extensions ▸ UV Studio Bridge.
 
-Tested against the C4D Python (R23+/2024+) API. The glTF im/exporter is found
-dynamically by name, so no version-specific format IDs are hardcoded.
+Tested against the C4D Python (R23+ / 2024+) API.
 """
 
 import os
@@ -37,27 +42,11 @@ TO_C4D = "to_c4d"     # UV Studio -> C4D
 GLB = "scene.glb"
 MANIFEST = "scene.json"
 
-PREF_KEY = "uvstudio_link_dir"  # remembered between sessions via World Container
+PREF_KEY = 1000          # link-folder path, in the World plugin container
+GUID_KEY = 1062500       # per-object stable id, stored in the object's container
 
 
 # ---- helpers ----------------------------------------------------------------
-def _find_format(keyword, plugin_type):
-    """Find a scene saver/loader plugin id by a substring of its name
-    (e.g. 'gltf'), so we don't depend on version-specific format constants."""
-    for p in plugins.FilterPluginList(plugin_type, True):
-        if keyword.lower() in p.GetName().lower():
-            return p.GetID()
-    return None
-
-
-def _gltf_export_id():
-    return _find_format("gltf", c4d.PLUGINTYPE_SCENESAVER) or _find_format("glb", c4d.PLUGINTYPE_SCENESAVER)
-
-
-def _gltf_import_id():
-    return _find_format("gltf", c4d.PLUGINTYPE_SCENELOADER) or _find_format("glb", c4d.PLUGINTYPE_SCENELOADER)
-
-
 def _ensure(path):
     if not os.path.isdir(path):
         os.makedirs(path)
@@ -75,26 +64,56 @@ def _read_manifest(folder):
         return None
 
 
-def _write_manifest(folder, objects):
-    # written LAST so the GLB is guaranteed complete before the reader reacts
-    p = os.path.join(folder, MANIFEST)
+def _write_json_atomic(folder, payload):
+    """Write scene.json atomically (temp + rename) — readers never see a partial."""
+    p = os.path.join(_ensure(folder), MANIFEST)
     tmp = p + ".tmp"
     with open(tmp, "w") as f:
-        json.dump({"v": 1, "ts": int(time.time() * 1000), "objects": objects}, f)
-    os.replace(tmp, p)  # atomic
+        json.dump(payload, f)
+    os.replace(tmp, p)
 
 
 def _get_pref():
     bc = c4d.plugins.GetWorldPluginData(PLUGIN_ID)
-    if bc is not None and bc[1000]:
-        return bc[1000]
+    if bc is not None and bc[PREF_KEY]:
+        return bc[PREF_KEY]
     return ""
 
 
 def _set_pref(path):
     bc = c4d.BaseContainer()
-    bc[1000] = path
+    bc[PREF_KEY] = path
     c4d.plugins.SetWorldPluginData(PLUGIN_ID, bc, add=True)
+
+
+def _object_guid(op):
+    """A stable id stored on the object so we can re-find it exactly on the way
+    back (names can collide / change). Persists with the object in the session."""
+    bc = op.GetDataInstance()
+    g = bc.GetString(GUID_KEY)
+    if not g:
+        g = "uvs-%x-%x" % (int(time.time() * 1e6) & 0xFFFFFFFF, id(op) & 0xFFFFFF)
+        bc.SetString(GUID_KEY, g)
+    return g
+
+
+def _collect_polys(roots):
+    """Flatten the selection to editable polygon objects (descend into children).
+    Generators/SDS are skipped in this version — make them editable (C) first."""
+    out = []
+    seen = set()
+
+    def walk(o):
+        while o:
+            if o.CheckType(c4d.Opolygon) and id(o) not in seen:
+                seen.add(id(o))
+                out.append(o)
+            walk(o.GetDown())
+            o = o.GetNext()
+
+    for r in roots:
+        walk(r)
+    return out
 
 
 def _selected_roots(doc):
@@ -115,6 +134,28 @@ def _selected_roots(doc):
     return roots
 
 
+def _find_by_guid(node, guid):
+    while node:
+        if node.CheckType(c4d.Opolygon) and node.GetDataInstance().GetString(GUID_KEY) == guid:
+            return node
+        hit = _find_by_guid(node.GetDown(), guid)
+        if hit:
+            return hit
+        node = node.GetNext()
+    return None
+
+
+def _find_by_name(node, name):
+    while node:
+        if node.GetName() == name:
+            return node
+        hit = _find_by_name(node.GetDown(), name)
+        if hit:
+            return hit
+        node = node.GetNext()
+    return None
+
+
 # ---- the dock panel ---------------------------------------------------------
 BTN_FOLDER = 2001
 BTN_SEND = 2002
@@ -127,7 +168,7 @@ class BridgeDialog(gui.GeDialog):
     def __init__(self):
         super(BridgeDialog, self).__init__()
         self.link_dir = _get_pref()
-        self.last_in_ts = None  # last to_c4d manifest ts we imported
+        self.last_in_ts = None  # last to_c4d manifest ts we applied
 
     # --- layout ---
     def CreateLayout(self):
@@ -141,7 +182,7 @@ class BridgeDialog(gui.GeDialog):
         self.GroupEnd()
 
         self.AddButton(BTN_SEND, c4d.BFH_SCALEFIT, initw=0, inith=30, name="Send selection to UV Studio")
-        self.AddCheckbox(CHK_WATCH, c4d.BFH_LEFT, initw=0, inith=0, name="Auto-receive edits from UV Studio")
+        self.AddCheckbox(CHK_WATCH, c4d.BFH_LEFT, initw=0, inith=0, name="Auto-receive UVs from UV Studio")
         self.AddStaticText(TXT_STATUS, c4d.BFH_SCALEFIT, name="Ready.")
         self.GroupEnd()
         return True
@@ -176,39 +217,41 @@ class BridgeDialog(gui.GeDialog):
         if self.GetBool(CHK_WATCH):
             self.poll_incoming()
 
-    # --- send: selection -> to_app/scene.glb ---
+    # --- send: selection -> to_app/scene.json (points + polys + guid) ---
     def send_selection(self):
         if not self.link_dir:
             self._status("Set the link folder first.")
             return
         doc = documents.GetActiveDocument()
-        roots = _selected_roots(doc)
-        if not roots:
-            self._status("Select one or more objects first.")
-            return
-        fmt = _gltf_export_id()
-        if not fmt:
-            self._status("No glTF exporter found in this C4D install.")
+        objs = _collect_polys(_selected_roots(doc))
+        if not objs:
+            self._status("Select one or more editable polygon objects first.")
             return
 
-        # build a temp doc containing clones of the selection (names preserved)
-        tmp = documents.BaseDocument()
-        names = []
-        for o in roots:
-            clone = o.GetClone(c4d.COPYFLAGS_NONE)
-            tmp.InsertObject(clone)
-            names.append(o.GetName())
+        out = []
+        for op in objs:
+            mg = op.GetMg()
+            pts = []
+            for p in op.GetAllPoints():
+                wp = mg * p  # world space, matches how UV Studio bakes geometry
+                pts.extend([wp.x, wp.y, wp.z])
+            polys = []
+            for poly in op.GetAllPolygons():
+                if poly.c == poly.d:  # triangle
+                    polys.append([poly.a, poly.b, poly.c])
+                else:                 # quad
+                    polys.append([poly.a, poly.b, poly.c, poly.d])
+            out.append({"name": op.GetName(), "guid": _object_guid(op), "points": pts, "polys": polys})
 
-        out = _ensure(os.path.join(self.link_dir, TO_APP))
-        glb = os.path.join(out, GLB)
-        ok = documents.SaveDocument(tmp, glb, c4d.SAVEDOCUMENTFLAGS_DONTADDTORECENTLIST, fmt)
-        if not ok:
-            self._status("glTF export failed.")
+        payload = {"v": 2, "ts": int(time.time() * 1000), "kind": "geo-forward", "objects": out}
+        try:
+            _write_json_atomic(os.path.join(self.link_dir, TO_APP), payload)
+        except Exception as e:
+            self._status("Send failed: %s" % e)
             return
-        _write_manifest(out, names)  # manifest last = GLB ready
-        self._status("Sent %d object(s) to UV Studio." % len(names))
+        self._status("Sent %d object(s) to UV Studio." % len(out))
 
-    # --- receive: to_c4d/scene.glb -> merge UVs back by name ---
+    # --- receive: to_c4d/scene.json -> write UVs onto the existing objects ---
     def poll_incoming(self):
         if not self.link_dir:
             return
@@ -220,71 +263,66 @@ class BridgeDialog(gui.GeDialog):
         if ts is None or ts == self.last_in_ts:
             return  # nothing new
         self.last_in_ts = ts
-        self.import_back(os.path.join(inbox, GLB))
+        if man.get("kind") == "uv-return":
+            self.apply_uvs(man)
+        else:
+            self._status("Ignored a non-UV payload (update UV Studio?).")
 
-    def import_back(self, glb):
-        if not os.path.isfile(glb):
-            return
-        fmt = _gltf_import_id()
-        if not fmt:
-            self._status("No glTF importer found.")
-            return
+    def apply_uvs(self, payload):
         doc = documents.GetActiveDocument()
-        incoming = documents.LoadDocument(glb, c4d.SCENEFILTER_OBJECTS, None, fmt)
-        if incoming is None:
-            self._status("Couldn't read the returned GLB.")
-            return
-
         doc.StartUndo()
-        updated, added = 0, 0
-        ret = incoming.GetFirstObject()
-        ret_objs = []
-        while ret:
-            ret_objs.append(ret)
-            ret = ret.GetNext()
-
-        for ro in ret_objs:
-            target = self._find_by_name(doc.GetFirstObject(), ro.GetName())
-            if target and self._copy_uvs(doc, ro, target):
-                updated += 1
+        applied, missed = 0, []
+        for obj in payload.get("objects", []):
+            target = None
+            guid = obj.get("guid")
+            if guid:
+                target = _find_by_guid(doc.GetFirstObject(), guid)
+            if target is None:
+                target = _find_by_name(doc.GetFirstObject(), obj.get("name", ""))
+            if self._write_uvw(doc, target, obj):
+                applied += 1
             else:
-                # topology differs (or no match) → drop in the returned object so
-                # the user can swap it in manually
-                clone = ro.GetClone(c4d.COPYFLAGS_NONE)
-                doc.InsertObject(clone)
-                doc.AddUndo(c4d.UNDOTYPE_NEWOBJ, clone)
-                added += 1
-
+                missed.append(obj.get("name", "?"))
         doc.EndUndo()
         c4d.EventAdd()
-        self._status("Received: %d UV update(s), %d new object(s)." % (updated, added))
+        if missed:
+            self._status("UVs applied to %d; could not match: %s" % (applied, ", ".join(missed)))
+        else:
+            self._status("UVs applied to %d object(s)." % applied)
 
-    def _find_by_name(self, node, name):
-        while node:
-            if node.GetName() == name:
-                return node
-            hit = self._find_by_name(node.GetDown(), name)
-            if hit:
-                return hit
-            node = node.GetNext()
-        return None
+    def _write_uvw(self, doc, target, obj):
+        """Write per-polygon-corner UVs onto target's UVW tag. Geometry untouched."""
+        if target is None or not target.CheckType(c4d.Opolygon):
+            return False
+        poly_count = target.GetPolygonCount()
+        if poly_count != obj.get("polyCount"):
+            return False  # mesh changed since send — refuse rather than mis-map
+        rows = obj.get("uv") or []
+        vflip = obj.get("vFlip", True)
 
-    def _copy_uvs(self, doc, src, dst):
-        """Copy the UVW tag from src onto dst when point counts match (the common
-        case — UV Studio preserves topology unless you re-project a cylinder)."""
-        if not src.CheckType(c4d.Opolygon) or not dst.CheckType(c4d.Opolygon):
-            return False
-        if src.GetPointCount() != dst.GetPointCount() or src.GetPolygonCount() != dst.GetPolygonCount():
-            return False
-        suv = src.GetTag(c4d.Tuvw)
-        if not suv:
-            return False
-        doc.AddUndo(c4d.UNDOTYPE_CHANGE, dst)
-        old = dst.GetTag(c4d.Tuvw)
-        if old:
-            old.Remove()
-        dst.InsertTag(suv.GetClone(c4d.COPYFLAGS_NONE))
-        dst.Message(c4d.MSG_UPDATE)
+        tag = target.GetTag(c4d.Tuvw)
+        new_tag = tag is None
+        if new_tag:
+            tag = c4d.UVWTag(poly_count)
+        else:
+            doc.AddUndo(c4d.UNDOTYPE_CHANGE, tag)
+
+        for i in range(poly_count):
+            row = rows[i] if i < len(rows) else None
+            if not row or len(row) < 8:
+                continue
+
+            def corner(j):
+                u = row[j * 2]
+                v = row[j * 2 + 1]
+                return c4d.Vector(u, 1.0 - v if vflip else v, 0.0)
+
+            tag.SetSlow(i, corner(0), corner(1), corner(2), corner(3))
+
+        if new_tag:
+            target.InsertTag(tag)
+            doc.AddUndo(c4d.UNDOTYPE_NEWOBJ, tag)
+        target.Message(c4d.MSG_UPDATE)
         return True
 
 
@@ -309,7 +347,7 @@ def main():
         str="UV Studio Bridge",
         info=0,
         icon=None,
-        help="Round-trip the selection to UV Studio",
+        help="Round-trip the selection to UV Studio (lossless UVs)",
         dat=BridgeCommand(),
     )
 
