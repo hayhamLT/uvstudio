@@ -356,15 +356,13 @@ fn main() {
         .plugin(tauri_plugin_dialog::init())
         .manage(Mutex::new(Bridge::default()))
         .setup(|app| {
-            // Link folder is automatic: use a previously-chosen one if the user
-            // ever overrode it, else fall back to the shared temp folder the C4D
-            // plugin also computes — so the bridge "just works" with no picking.
+            // Link folder is automatic and FIXED to the shared temp folder the
+            // C4D plugin also computes — so the bridge always "just works". We
+            // intentionally ignore any link_folder.txt saved by older builds: the
+            // plugin is hardwired to the temp folder and there's no desktop UI to
+            // set one, so honoring a stale saved path only desynced the two ends.
             let handle = app.handle().clone();
-            let dir = config_file(&handle)
-                .and_then(|cf| fs::read_to_string(cf).ok())
-                .map(|s| PathBuf::from(s.trim()))
-                .filter(|d| d.is_dir())
-                .unwrap_or_else(default_link_dir);
+            let dir = default_link_dir();
             {
                 let state = handle.state::<Mutex<Bridge>>();
                 let mut b = state.lock().expect("bridge state lock");
