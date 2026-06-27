@@ -28,18 +28,16 @@ C4D. (Manual steps below if you prefer, or you're on the web version.)
 2. Restart Cinema 4D.
 3. Open it from **Extensions ▸ UV Studio Bridge**. Dock the panel anywhere.
 
-## One-time setup
+## Setup
 
-Pick a **shared link folder** that both apps point at (e.g.
-`~/UVStudioLink`). In the panel click **Link folder…** and choose it. UV Studio
-will point at the *same* folder (Link C4D button → choose the same directory).
-
-The plugin creates `to_app/` and `to_c4d/` inside it automatically.
+None. The plugin and the UV Studio desktop app both link through the **same
+shared temp folder automatically** (`<system temp>/UVStudioBridge`) — there's
+nothing to pick. The panel is just one button.
 
 ## Use
 
 - **Send:** select **editable polygon** object(s) in C4D → click **Send selection
-  to UV Studio**. UV Studio (if its Link folder is connected) auto-loads them.
+  to UV Studio**. UV Studio auto-loads them.
 - **Receive:** in UV Studio, unwrap, then **Export ▸ Send to Cinema 4D**.
   With *Auto-receive* ticked, the plugin writes the new UVs onto your original
   objects within a second — matched by a stable id (then by name) — leaving the

@@ -31,8 +31,9 @@ Tested against the C4D Python (R23+ / 2024+) API.
 import os
 import json
 import time
+import tempfile
 import c4d
-from c4d import gui, plugins, documents, storage
+from c4d import gui, plugins, documents
 
 PLUGIN_ID = 1066001  # NOTE: register your own at https://plugincafe.maxon.net for release
 
@@ -42,7 +43,6 @@ TO_C4D = "to_c4d"     # UV Studio -> C4D
 GLB = "scene.glb"
 MANIFEST = "scene.json"
 
-PREF_KEY = 1000          # link-folder path, in the World plugin container
 GUID_KEY = 1062500       # per-object stable id, stored in the object's container
 
 
@@ -51,6 +51,17 @@ def _ensure(path):
     if not os.path.isdir(path):
         os.makedirs(path)
     return path
+
+
+def _default_link_dir():
+    """Zero-config shared folder: a fixed name inside the OS per-user temp dir.
+    The UV Studio desktop app computes the SAME path (Rust env::temp_dir() and
+    Python tempfile.gettempdir() resolve to the same per-user location), so the
+    two link up automatically — nothing to pick. Created on first use."""
+    d = os.path.join(tempfile.gettempdir(), "UVStudioBridge")
+    _ensure(os.path.join(d, TO_APP))
+    _ensure(os.path.join(d, TO_C4D))
+    return d
 
 
 def _read_manifest(folder):
@@ -71,19 +82,6 @@ def _write_json_atomic(folder, payload):
     with open(tmp, "w") as f:
         json.dump(payload, f)
     os.replace(tmp, p)
-
-
-def _get_pref():
-    bc = c4d.plugins.GetWorldPluginData(PLUGIN_ID)
-    if bc is not None and bc[PREF_KEY]:
-        return bc[PREF_KEY]
-    return ""
-
-
-def _set_pref(path):
-    bc = c4d.BaseContainer()
-    bc[PREF_KEY] = path
-    c4d.plugins.SetWorldPluginData(PLUGIN_ID, bc, add=True)
 
 
 def _object_guid(op):
@@ -157,41 +155,30 @@ def _find_by_name(node, name):
 
 
 # ---- the dock panel ---------------------------------------------------------
-BTN_FOLDER = 2001
 BTN_SEND = 2002
-TXT_FOLDER = 2003
 TXT_STATUS = 2004
-CHK_WATCH = 2005
 
 
 class BridgeDialog(gui.GeDialog):
     def __init__(self):
         super(BridgeDialog, self).__init__()
-        self.link_dir = _get_pref()
-        self.last_in_ts = None  # last to_c4d manifest ts we applied
+        # Link folder is automatic — a shared temp folder the UV Studio app also
+        # uses. No picking, no setup: just select objects and Send.
+        self.link_dir = _default_link_dir()
+        self.last_in_ts = (_read_manifest(os.path.join(self.link_dir, TO_C4D)) or {}).get("ts")
 
     # --- layout ---
     def CreateLayout(self):
         self.SetTitle("UV Studio Bridge")
         self.GroupBegin(0, c4d.BFH_SCALEFIT, 1, 0, "")
         self.GroupBorderSpace(8, 8, 8, 8)
-
-        self.GroupBegin(0, c4d.BFH_SCALEFIT, 2, 0, "")
-        self.AddButton(BTN_FOLDER, c4d.BFH_LEFT, name="Link folder…")
-        self.AddStaticText(TXT_FOLDER, c4d.BFH_SCALEFIT, name=self.link_dir or "— not set —")
-        self.GroupEnd()
-
-        self.AddButton(BTN_SEND, c4d.BFH_SCALEFIT, initw=0, inith=30, name="Send selection to UV Studio")
-        self.AddCheckbox(CHK_WATCH, c4d.BFH_LEFT, initw=0, inith=0, name="Auto-receive UVs from UV Studio")
-        self.AddStaticText(TXT_STATUS, c4d.BFH_SCALEFIT, name="Ready.")
+        self.AddButton(BTN_SEND, c4d.BFH_SCALEFIT, initw=0, inith=34, name="Send selection to UV Studio")
+        self.AddStaticText(TXT_STATUS, c4d.BFH_SCALEFIT, name="Select objects, then Send.")
         self.GroupEnd()
         return True
 
     def InitValues(self):
-        self.SetBool(CHK_WATCH, True)
-        self.SetTimer(1000)  # poll the inbox once a second
-        if self.link_dir:
-            self.last_in_ts = (_read_manifest(os.path.join(self.link_dir, TO_C4D)) or {}).get("ts")
+        self.SetTimer(1000)  # auto-receive: poll the inbox once a second
         return True
 
     def _status(self, msg):
@@ -199,29 +186,15 @@ class BridgeDialog(gui.GeDialog):
 
     # --- events ---
     def Command(self, cid, msg):
-        if cid == BTN_FOLDER:
-            path = storage.LoadDialog(type=c4d.FILESELECTTYPE_ANYTHING,
-                                      title="Choose the shared UV Studio link folder",
-                                      flags=c4d.FILESELECT_DIRECTORY)
-            if path:
-                self.link_dir = path
-                _set_pref(path)
-                self.SetString(TXT_FOLDER, path)
-                self.last_in_ts = (_read_manifest(os.path.join(path, TO_C4D)) or {}).get("ts")
-                self._status("Link folder set.")
-        elif cid == BTN_SEND:
+        if cid == BTN_SEND:
             self.send_selection()
         return True
 
     def Timer(self, msg):
-        if self.GetBool(CHK_WATCH):
-            self.poll_incoming()
+        self.poll_incoming()
 
     # --- send: selection -> to_app/scene.json (points + polys + guid) ---
     def send_selection(self):
-        if not self.link_dir:
-            self._status("Set the link folder first.")
-            return
         doc = documents.GetActiveDocument()
         objs = _collect_polys(_selected_roots(doc))
         if not objs:
@@ -333,7 +306,7 @@ class BridgeCommand(plugins.CommandData):
     def Execute(self, doc):
         if self.dlg is None:
             self.dlg = BridgeDialog()
-        return self.dlg.Open(c4d.DLG_TYPE_ASYNC, pluginid=PLUGIN_ID, defaultw=320, defaulth=140)
+        return self.dlg.Open(c4d.DLG_TYPE_ASYNC, pluginid=PLUGIN_ID, defaultw=300, defaulth=88)
 
     def RestoreLayout(self, sec_ref):
         if self.dlg is None:

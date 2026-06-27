@@ -64,6 +64,17 @@ struct Poll {
     glb: Option<Vec<u8>>,
 }
 
+/// The zero-config shared bridge folder: a fixed name inside the OS per-user temp
+/// dir. The C4D plugin computes the SAME path (Python's tempfile.gettempdir() and
+/// Rust's env::temp_dir() resolve to the same per-user location), so the two link
+/// up with nothing to pick. Created (incl. both subfolders) on demand.
+fn default_link_dir() -> PathBuf {
+    let dir = std::env::temp_dir().join("UVStudioBridge");
+    let _ = fs::create_dir_all(dir.join(TO_APP));
+    let _ = fs::create_dir_all(dir.join(TO_C4D));
+    dir
+}
+
 fn now_ms() -> i64 {
     SystemTime::now()
         .duration_since(UNIX_EPOCH)
@@ -232,18 +243,19 @@ fn main() {
         .plugin(tauri_plugin_dialog::init())
         .manage(Mutex::new(Bridge::default()))
         .setup(|app| {
-            // reload a previously-chosen link folder so it's "set once, ever"
+            // Link folder is automatic: use a previously-chosen one if the user
+            // ever overrode it, else fall back to the shared temp folder the C4D
+            // plugin also computes — so the bridge "just works" with no picking.
             let handle = app.handle().clone();
-            let saved = config_file(&handle)
+            let dir = config_file(&handle)
                 .and_then(|cf| fs::read_to_string(cf).ok())
                 .map(|s| PathBuf::from(s.trim()))
-                .filter(|d| d.is_dir());
-            if let Some(dir) = saved {
-                let state = handle.state::<Mutex<Bridge>>();
-                let mut b = state.lock().expect("bridge state lock");
-                b.last_ts = read_ts(&dir.join(TO_APP));
-                b.dir = Some(dir);
-            }
+                .filter(|d| d.is_dir())
+                .unwrap_or_else(default_link_dir);
+            let state = handle.state::<Mutex<Bridge>>();
+            let mut b = state.lock().expect("bridge state lock");
+            b.last_ts = read_ts(&dir.join(TO_APP));
+            b.dir = Some(dir);
             Ok(())
         })
         .invoke_handler(tauri::generate_handler![
