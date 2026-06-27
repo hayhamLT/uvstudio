@@ -55,20 +55,27 @@ export default function Preferences({ open, onClose }: { open: boolean; onClose:
             </p>
           ) : (
             <>
-              <Row
-                label="Link folder"
-                hint={
-                  linkLabel
-                    ? `Connected · ${linkLabel}`
-                    : saved
-                      ? `Remembered · ${saved}`
-                      : 'The shared folder both apps hand GLBs through'
-                }
-              >
-                <Btn onClick={connect} busy={busy === 'link'}>
-                  {linkLabel ? 'Change…' : saved ? 'Reconnect…' : 'Connect…'}
-                </Btn>
-              </Row>
+              {link.isDesktop() ? (
+                <Row
+                  label="Link folder"
+                  hint="Automatic — shares a temp folder with the C4D plugin. Nothing to set up."
+                />
+              ) : (
+                <Row
+                  label="Link folder"
+                  hint={
+                    linkLabel
+                      ? `Connected · ${linkLabel}`
+                      : saved
+                        ? `Remembered · ${saved}`
+                        : 'Pick the shared folder both apps hand files through'
+                  }
+                >
+                  <Btn onClick={connect} busy={busy === 'link'}>
+                    {linkLabel ? 'Change…' : saved ? 'Reconnect…' : 'Connect…'}
+                  </Btn>
+                </Row>
+              )}
               {link.isDesktop() && (
                 <Row label="Plugin" hint="Copy the UV Studio Bridge plugin into Cinema 4D’s plugins folder">
                   <Btn onClick={install} busy={busy === 'install'}>
@@ -107,7 +114,7 @@ function Section({ title, children }: { title: string; children: ReactNode }) {
   )
 }
 
-function Row({ label, hint, children }: { label: string; hint?: string; children: ReactNode }) {
+function Row({ label, hint, children }: { label: string; hint?: string; children?: ReactNode }) {
   return (
     <div className="flex items-center justify-between gap-4">
       <div className="min-w-0">
