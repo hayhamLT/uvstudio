@@ -22,9 +22,16 @@ export default function Preferences({ open, onClose }: { open: boolean; onClose:
   }
   const install = async () => {
     setBusy('install')
-    setStatus('Choose your Cinema 4D “plugins” folder…')
-    const where = await link.installC4DPlugin()
-    setStatus(where ? `Installed C4D plugin → ${where} (restart C4D)` : 'Plugin install cancelled')
+    setStatus('Looking for Cinema 4D…')
+    const res = await link.installC4DPlugin()
+    if (!res) {
+      setStatus('Plugin install cancelled')
+    } else if (res.auto) {
+      const n = res.paths.length
+      setStatus(`Installed C4D plugin into ${n} Cinema 4D folder${n === 1 ? '' : 's'} — restart C4D`)
+    } else {
+      setStatus(`Installed C4D plugin → ${res.paths[0]} — restart C4D`)
+    }
     setBusy('')
   }
 
@@ -77,9 +84,9 @@ export default function Preferences({ open, onClose }: { open: boolean; onClose:
                 </Row>
               )}
               {link.isDesktop() && (
-                <Row label="Plugin" hint="Copy the UV Studio Bridge plugin into Cinema 4D’s plugins folder">
+                <Row label="Plugin" hint="Auto-installs the UV Studio Bridge into your Cinema 4D — no folder to pick">
                   <Btn onClick={install} busy={busy === 'install'}>
-                    Install plugin…
+                    Install plugin
                   </Btn>
                 </Row>
               )}

@@ -292,14 +292,22 @@ export async function connect(): Promise<boolean> {
   return connected
 }
 
+/** Result of an install: auto = found & installed into N C4D folders; manual =
+ *  user picked a folder; null = cancelled / no C4D / not desktop. */
+export type PluginInstall = { auto: boolean; paths: string[] }
+
 /**
- * Desktop only: copy the bundled Cinema 4D plugin into a `plugins` folder the
- * user picks. Returns the install path, or null (cancelled / not desktop).
+ * Desktop only: install the bundled Cinema 4D plugin. Tries to auto-detect every
+ * installed C4D's user plugin folder and copies into each (no picking). Only if
+ * no Cinema 4D is found does it fall back to a manual folder picker.
  */
-export async function installC4DPlugin(): Promise<string | null> {
+export async function installC4DPlugin(): Promise<PluginInstall | null> {
   if (!isDesktop()) return null
   try {
-    return ((await tauri()!.core.invoke('install_c4d_plugin')) as string | null) ?? null
+    const auto = (await tauri()!.core.invoke('install_c4d_plugin_auto')) as string[] | null
+    if (auto && auto.length) return { auto: true, paths: auto }
+    const manual = (await tauri()!.core.invoke('install_c4d_plugin')) as string | null
+    return manual ? { auto: false, paths: [manual] } : null
   } catch {
     return null
   }

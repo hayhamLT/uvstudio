@@ -13,8 +13,9 @@
 
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
+use std::collections::HashSet;
 use std::fs;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use std::sync::Mutex;
 use std::time::{SystemTime, UNIX_EPOCH};
 
@@ -261,28 +262,93 @@ async fn import_glb(app: tauri::AppHandle) -> Result<Option<Picked>, String> {
     Ok(Some(Picked { name, bytes }))
 }
 
-/// Copy the bundled C4D plugin into a `plugins` folder the user picks.
+/// Copy the bundled plugin files into <plugins_dir>/UVStudioBridge/. Returns the
+/// install path. Overwrites in place so re-installing always lands the latest.
+fn copy_plugin_into(src: &Path, plugins_dir: &Path) -> Result<PathBuf, String> {
+    let target = plugins_dir.join("UVStudioBridge");
+    fs::create_dir_all(&target).map_err(|e| e.to_string())?;
+    for entry in fs::read_dir(src).map_err(|e| format!("plugin files not found: {e}"))? {
+        let p = entry.map_err(|e| e.to_string())?.path();
+        if p.is_file() {
+            if let Some(fname) = p.file_name() {
+                fs::copy(&p, target.join(fname)).map_err(|e| e.to_string())?;
+            }
+        }
+    }
+    Ok(target)
+}
+
+/// Auto-find Cinema 4D user plugin folders — `<prefs>/Maxon Cinema 4D <ver>_<id>/
+/// plugins` — which are writable without admin. Deduped across the case-insensitive
+/// Maxon/MAXON roots (and the Windows %APPDATA% equivalent). Newest-used first.
+fn find_c4d_plugin_dirs() -> Vec<PathBuf> {
+    let mut roots: Vec<PathBuf> = Vec::new();
+    if let Some(h) = std::env::var_os("HOME").map(PathBuf::from) {
+        roots.push(h.join("Library/Preferences/Maxon"));
+        roots.push(h.join("Library/Preferences/MAXON"));
+    }
+    if let Some(appdata) = std::env::var_os("APPDATA") {
+        roots.push(PathBuf::from(appdata).join("Maxon"));
+    }
+    let mut seen: HashSet<PathBuf> = HashSet::new();
+    let mut found: Vec<(SystemTime, PathBuf)> = Vec::new();
+    for root in roots {
+        let rd = match fs::read_dir(&root) {
+            Ok(r) => r,
+            Err(_) => continue,
+        };
+        for e in rd.flatten() {
+            let dir = e.path();
+            if !dir.is_dir() {
+                continue;
+            }
+            if !e.file_name().to_string_lossy().to_lowercase().contains("cinema 4d") {
+                continue; // skip App Manager, Autograph, caches, etc.
+            }
+            // canonicalize the (existing) version dir so Maxon/MAXON collapse to one
+            let canon = fs::canonicalize(&dir).unwrap_or_else(|_| dir.clone());
+            let plugins = canon.join("plugins");
+            if !seen.insert(plugins.clone()) {
+                continue;
+            }
+            let mtime = fs::metadata(&dir).and_then(|m| m.modified()).unwrap_or(UNIX_EPOCH);
+            found.push((mtime, plugins));
+        }
+    }
+    found.sort_by(|a, b| b.0.cmp(&a.0)); // most recently used first
+    found.into_iter().map(|(_, p)| p).collect()
+}
+
+/// Install the bundled C4D plugin automatically into every detected Cinema 4D
+/// user plugin folder. Returns the install paths, or None if no C4D was found
+/// (the caller then falls back to the manual picker).
+#[tauri::command]
+async fn install_c4d_plugin_auto(app: tauri::AppHandle) -> Result<Option<Vec<String>>, String> {
+    let src = app.path().resolve("c4d-plugin", BaseDirectory::Resource).map_err(|e| e.to_string())?;
+    let mut installed = Vec::new();
+    for dir in find_c4d_plugin_dirs() {
+        if let Ok(target) = copy_plugin_into(&src, &dir) {
+            installed.push(target.to_string_lossy().to_string());
+        }
+    }
+    if installed.is_empty() {
+        Ok(None)
+    } else {
+        Ok(Some(installed))
+    }
+}
+
+/// Manual fallback: copy the bundled C4D plugin into a `plugins` folder the user
+/// picks (used only when auto-detection finds no Cinema 4D install).
 #[tauri::command]
 async fn install_c4d_plugin(app: tauri::AppHandle) -> Result<Option<String>, String> {
     let dest = match app.dialog().file().blocking_pick_folder().and_then(|fp| fp.into_path().ok()) {
         Some(p) => p,
         None => return Ok(None),
     };
-    // bundled plugin files (see tauri.conf → bundle.resources)
     let src = app.path().resolve("c4d-plugin", BaseDirectory::Resource).map_err(|e| e.to_string())?;
-    let target = dest.join("UVStudioBridge");
-    fs::create_dir_all(&target).map_err(|e| e.to_string())?;
-    let mut n = 0;
-    for entry in fs::read_dir(&src).map_err(|e| format!("plugin files not found: {e}"))? {
-        let p = entry.map_err(|e| e.to_string())?.path();
-        if p.is_file() {
-            if let Some(fname) = p.file_name() {
-                fs::copy(&p, target.join(fname)).map_err(|e| e.to_string())?;
-                n += 1;
-            }
-        }
-    }
-    Ok(Some(format!("{} ({} files)", target.to_string_lossy(), n)))
+    let target = copy_plugin_into(&src, &dest)?;
+    Ok(Some(target.to_string_lossy().to_string()))
 }
 
 fn main() {
@@ -318,7 +384,8 @@ fn main() {
             bridge_ack,
             export_glb,
             import_glb,
-            install_c4d_plugin
+            install_c4d_plugin,
+            install_c4d_plugin_auto
         ])
         .run(tauri::generate_context!())
         .expect("error while running UV Studio");
