@@ -371,20 +371,37 @@ struct C4dStatus {
     found: bool,        // any Cinema 4D detected
     installed: bool,    // the plugin file exists in the latest one
     path: Option<String>,
+    version: Option<String>, // PLUGIN_VERSION of the installed .pyp (to flag stale)
+}
+
+/// Read PLUGIN_VERSION = "x.y.z" out of an installed plugin file.
+fn read_plugin_version(p: &PathBuf) -> Option<String> {
+    let txt = fs::read_to_string(p).ok()?;
+    for line in txt.lines() {
+        let t = line.trim_start();
+        if t.starts_with("PLUGIN_VERSION") {
+            let q1 = t.find('"')?;
+            let q2 = t[q1 + 1..].find('"')?;
+            return Some(t[q1 + 1..q1 + 1 + q2].to_string());
+        }
+    }
+    None
 }
 
 #[tauri::command]
 fn c4d_status() -> C4dStatus {
     match find_c4d_plugin_dirs().into_iter().next() {
         Some(dir) => {
-            let target = dir.join("UVStudioBridge");
+            let pyp = dir.join("UVStudioBridge").join("UVStudioBridge.pyp");
+            let installed = pyp.is_file();
             C4dStatus {
                 found: true,
-                installed: target.join("UVStudioBridge.pyp").is_file(),
-                path: Some(target.to_string_lossy().to_string()),
+                installed,
+                path: Some(dir.join("UVStudioBridge").to_string_lossy().to_string()),
+                version: if installed { read_plugin_version(&pyp) } else { None },
             }
         }
-        None => C4dStatus { found: false, installed: false, path: None },
+        None => C4dStatus { found: false, installed: false, path: None, version: None },
     }
 }
 

@@ -109,7 +109,7 @@ export default function Preferences({ open, onClose }: { open: boolean; onClose:
                   label="Plugin"
                   hint={
                     c4d?.installed
-                      ? `Installed in ${c4dName(c4d.path)} ✓ — Reinstall after an app update`
+                      ? `Installed in ${c4dName(c4d.path)} ✓ — kept up to date automatically`
                       : c4d && !c4d.found
                         ? 'No Cinema 4D found — pick its plugins folder'
                         : 'Install the UV Studio Bridge into your latest Cinema 4D'

@@ -328,7 +328,12 @@ export async function installC4DPluginToFolder(): Promise<PluginInstall | null> 
 
 /** Desktop: whether the bundled C4D plugin is already installed in the latest
  *  Cinema 4D (so the UI can hide the Install button when it's not needed). */
-export type C4DStatus = { found: boolean; installed: boolean; path: string | null }
+export type C4DStatus = {
+  found: boolean
+  installed: boolean
+  path: string | null
+  version?: string | null
+}
 export async function c4dStatus(): Promise<C4DStatus | null> {
   if (!isDesktop()) return null
   try {
