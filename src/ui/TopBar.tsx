@@ -57,6 +57,8 @@ export default function TopBar({ onHelp, onPrefs }: { onHelp: () => void; onPref
   const sendToC4D = useStore((s) => s.sendToC4D)
   const lastImportName = useStore((s) => s.lastImportName)
   const mappedCount = useStore((s) => s.mappedObjects.length)
+  const runMapping = useStore((s) => s.runMapping)
+  const screenCount = useStore((s) => s.mapObjects.length)
   const undo = useStore((s) => s.undo)
   const redo = useStore((s) => s.redo)
   const undoCount = useStore((s) => s.undoCount)
@@ -74,18 +76,20 @@ export default function TopBar({ onHelp, onPrefs }: { onHelp: () => void; onPref
 
   return (
     <header className="relative z-50 flex h-12 items-center gap-2 border-b border-line bg-ink-900/80 px-3 backdrop-blur">
-      <div className="flex items-center gap-2 pr-1">
-        <div className="flex h-7 w-7 items-center justify-center rounded-md bg-linear-to-br from-brand-400 to-brand-600 text-ink-950 shadow-lg shadow-brand-600/30">
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2">
-            <path d="M12 3 21 8v8l-9 5-9-5V8l9-5Z" strokeLinejoin="round" />
-            <path d="M3.5 8 12 13l8.5-5M12 13v8" strokeLinejoin="round" />
-          </svg>
-        </div>
-        <div className="leading-tight">
-          <div className="text-[13px] font-semibold tracking-tight text-fog-100">UV Studio</div>
-          <div className="-mt-0.5 text-[10px] uppercase tracking-widest text-fog-400/70">screen map</div>
-        </div>
-      </div>
+      <button
+        onClick={() => runMapping()}
+        disabled={!screenCount}
+        title="Auto-map every screen to fit its content"
+        className="flex items-center gap-1.5 rounded-md bg-brand-500/90 px-3 py-1.5 text-sm font-semibold text-ink-950 hover:bg-brand-400 disabled:cursor-default disabled:opacity-35 ring-focus"
+      >
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+          <rect x="3" y="3" width="7" height="7" rx="1" />
+          <rect x="14" y="3" width="7" height="7" rx="1" />
+          <rect x="3" y="14" width="7" height="7" rx="1" />
+          <rect x="14" y="14" width="7" height="7" rx="1" />
+        </svg>
+        Auto-map ALL
+      </button>
 
       <div className="mx-1 h-6 w-px bg-line" />
 
