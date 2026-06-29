@@ -1948,7 +1948,12 @@ export const useStore = create<AppState>((set, get) => ({
     const shellsByObj = new Map<string, Shell[]>()
     for (const ms of g.mapShells) {
       const arr = shellsByObj.get(ms.objName) ?? []
-      arr.push(ms.shell)
+      // CRITICAL: live.uv is keyed by the MapShell id (ms.id = oi*1000+si), but
+      // shell.id is a local 0-based index — identical across objects (every
+      // object's first shell is id 0). Using shell.id made every object read
+      // shell-0's UVs (the first object / floor), so each got the FLOOR's unwrap
+      // → tangled in C4D. Override the shell id with the live.uv key.
+      arr.push({ ...ms.shell, id: ms.id })
       shellsByObj.set(ms.objName, arr)
     }
     // Each C4D object has its OWN material/UV space, so its unwrap should FILL
