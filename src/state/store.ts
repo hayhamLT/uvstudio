@@ -162,6 +162,10 @@ interface AppState {
   /** Parse media files into linkable items and open the link wizard with names
    *  auto-suggested. */
   beginLink: (files: File[] | FileList) => Promise<void>
+  /** Open the link wizard for the current screens with no media yet. */
+  openLinkWizard: () => void
+  /** Add media files into the already-open link wizard. */
+  addLinkMedia: (files: File[] | FileList) => Promise<void>
   /** Apply the wizard's object→item links (each linked layer/file to its screen). */
   confirmLink: (links: Record<string, number>) => Promise<void>
   cancelLink: () => void
@@ -754,6 +758,65 @@ function computePacked(
   const out = new Map<number, Float32Array>()
   ids.forEach((id, i) => out.set(id, result.uv[i]))
   return out
+}
+
+/** Explode media files into linkable items: one per image, one per PSD layer. */
+async function parseMediaItems(files: File[], startId: number): Promise<MediaItem[]> {
+  const items: MediaItem[] = []
+  let idc = startId
+  for (const f of files) {
+    if (await isPsd(f)) {
+      try {
+        const psd = await loadPsdFile(f)
+        if (psd.layers.length > 1) {
+          for (const l of psd.layers)
+            items.push({ id: idc++, label: l.name, file: f, layerName: l.name, group: f.name })
+        } else {
+          items.push({ id: idc++, label: f.name.replace(/\.[^.]+$/, ''), file: f })
+        }
+      } catch {
+        /* skip unreadable PSD */
+      }
+    } else {
+      items.push({ id: idc++, label: f.name.replace(/\.[^.]+$/, ''), file: f })
+    }
+  }
+  return items
+}
+
+/** Suggest object→item links: exact name match first, then high-similarity,
+ *  one-to-one, keeping any links the user already made. */
+function suggestLinks(
+  objects: string[],
+  items: MediaItem[],
+  existing: Record<string, number> = {},
+): Record<string, number> {
+  const links: Record<string, number> = { ...existing }
+  const usedItem = new Set<number>(Object.values(links))
+  for (const name of objects) {
+    if (links[name] != null) continue
+    const it = items.find((i) => !usedItem.has(i.id) && normalize(i.label) === normalize(name))
+    if (it) {
+      links[name] = it.id
+      usedItem.add(it.id)
+    }
+  }
+  const pairs: { name: string; id: number; sim: number }[] = []
+  for (const name of objects) {
+    if (links[name] != null) continue
+    for (const it of items) {
+      if (usedItem.has(it.id)) continue
+      pairs.push({ name, id: it.id, sim: similarity(name, it.label) })
+    }
+  }
+  pairs.sort((a, b) => b.sim - a.sim)
+  for (const p of pairs) {
+    if (p.sim < 0.82) break
+    if (links[p.name] != null || usedItem.has(p.id)) continue
+    links[p.name] = p.id
+    usedItem.add(p.id)
+  }
+  return links
 }
 
 export const useStore = create<AppState>((set, get) => ({
@@ -1424,56 +1487,30 @@ export const useStore = create<AppState>((set, get) => ({
   },
 
   beginLink: async (files) => {
-    const arr = Array.from(files)
-    if (!arr.length) return
-    // explode media into linkable items: one per image, one per PSD layer
-    const items: MediaItem[] = []
-    let idc = 0
-    for (const f of arr) {
-      if (await isPsd(f)) {
-        try {
-          const psd = await loadPsdFile(f)
-          if (psd.layers.length > 1) {
-            for (const l of psd.layers)
-              items.push({ id: idc++, label: l.name, file: f, layerName: l.name, group: f.name })
-          } else {
-            items.push({ id: idc++, label: f.name.replace(/\.[^.]+$/, ''), file: f })
-          }
-        } catch {
-          /* skip unreadable PSD */
-        }
-      } else {
-        items.push({ id: idc++, label: f.name.replace(/\.[^.]+$/, ''), file: f })
-      }
-    }
+    const items = await parseMediaItems(Array.from(files), 0)
     if (!items.length) return
-    // auto-suggest links: exact-name first, then high-similarity, one-to-one
     const objects = get().mapObjects.map((o) => o.name)
-    const links: Record<string, number> = {}
-    const usedItem = new Set<number>()
-    for (const name of objects) {
-      const it = items.find((i) => !usedItem.has(i.id) && normalize(i.label) === normalize(name))
-      if (it) {
-        links[name] = it.id
-        usedItem.add(it.id)
-      }
-    }
-    const pairs: { name: string; id: number; sim: number }[] = []
-    for (const name of objects) {
-      if (links[name] != null) continue
-      for (const it of items) {
-        if (usedItem.has(it.id)) continue
-        pairs.push({ name, id: it.id, sim: similarity(name, it.label) })
-      }
-    }
-    pairs.sort((a, b) => b.sim - a.sim)
-    for (const p of pairs) {
-      if (p.sim < 0.82) break
-      if (links[p.name] != null || usedItem.has(p.id)) continue
-      links[p.name] = p.id
-      usedItem.add(p.id)
-    }
-    set({ pendingLink: { objects, items, links } })
+    set({ pendingLink: { objects, items, links: suggestLinks(objects, items) } })
+  },
+
+  // Open the link wizard for the current screens with NO media yet — the user
+  // adds PSDs/images inside it (used after a Cinema 4D Send).
+  openLinkWizard: () => {
+    const objects = get().mapObjects.map((o) => o.name)
+    if (!objects.length) return
+    set({ pendingLink: { objects, items: [], links: {} } })
+  },
+
+  // Add media into the open wizard: parse new files, append, re-suggest links
+  // for still-unlinked screens (keeps the user's manual choices).
+  addLinkMedia: async (files) => {
+    const pl = get().pendingLink
+    if (!pl) return
+    const nextId = pl.items.reduce((m, i) => Math.max(m, i.id), -1) + 1
+    const more = await parseMediaItems(Array.from(files), nextId)
+    if (!more.length) return
+    const items = [...pl.items, ...more]
+    set({ pendingLink: { ...pl, items, links: suggestLinks(pl.objects, items, pl.links) } })
   },
 
   confirmLink: async (links) => {

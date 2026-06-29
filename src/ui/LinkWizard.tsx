@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState, type ChangeEvent } from 'react'
 import clsx from 'clsx'
 import { useStore } from '../state/store'
 
@@ -18,7 +18,9 @@ export default function LinkWizard() {
   const pending = useStore((s) => s.pendingLink)
   const confirmLink = useStore((s) => s.confirmLink)
   const cancelLink = useStore((s) => s.cancelLink)
+  const addLinkMedia = useStore((s) => s.addLinkMedia)
   const [links, setLinks] = useState<Record<string, number>>({})
+  const fileRef = useRef<HTMLInputElement>(null)
 
   useEffect(() => {
     if (pending) setLinks(pending.links)
@@ -26,6 +28,12 @@ export default function LinkWizard() {
 
   if (!pending) return null
   const { objects, items } = pending
+
+  const onAddFiles = async (e: ChangeEvent<HTMLInputElement>) => {
+    const files = Array.from(e.target.files ?? [])
+    if (files.length) await addLinkMedia(files)
+    e.target.value = ''
+  }
 
   const setLink = (obj: string, id: number | null) => {
     setLinks((p) => {
@@ -55,9 +63,18 @@ export default function LinkWizard() {
           </span>
         </div>
         <p className="mb-3 text-xs text-fog-400">
-          Each screen takes one image / PSD layer. Name matches are pre-linked — adjust any that
-          are wrong. Screens left as <span className="text-fog-200">keep imported</span> stay on
-          their imported texture &amp; UVs.
+          {items.length === 0 ? (
+            <>
+              Add the PSD(s) / images for these screens with{' '}
+              <span className="text-fog-200">Add PSD / images</span>, then link each to its screen.
+            </>
+          ) : (
+            <>
+              Each screen takes one image / PSD layer. Name matches are pre-linked — adjust any that
+              are wrong. Screens left as <span className="text-fog-200">keep imported</span> stay on
+              their imported texture &amp; UVs.
+            </>
+          )}
         </p>
 
         <ul className="min-h-0 flex-1 space-y-1 overflow-y-auto rounded-lg border border-line bg-ink-950/40 p-2">
@@ -88,20 +105,36 @@ export default function LinkWizard() {
           ))}
         </ul>
 
-        <div className="mt-4 flex justify-end gap-2">
+        <div className="mt-4 flex items-center justify-between gap-2">
           <button
-            onClick={cancelLink}
-            className="rounded-md px-3 py-1.5 text-sm text-fog-300 hover:bg-ink-700 hover:text-fog-100"
+            onClick={() => fileRef.current?.click()}
+            className="rounded-md border border-line bg-ink-700/60 px-3 py-1.5 text-[12px] text-fog-100 hover:bg-ink-600 ring-focus"
           >
-            Skip
+            + Add PSD / images
           </button>
-          <button
-            onClick={() => confirmLink(links)}
-            disabled={linkedCount === 0}
-            className="rounded-md bg-brand-500/90 px-3 py-1.5 text-sm font-medium text-ink-950 hover:bg-brand-400 disabled:opacity-40"
-          >
-            Apply to {linkedCount} screen{linkedCount === 1 ? '' : 's'}
-          </button>
+          <input
+            ref={fileRef}
+            type="file"
+            accept=".psd,image/*"
+            multiple
+            className="hidden"
+            onChange={onAddFiles}
+          />
+          <div className="flex gap-2">
+            <button
+              onClick={cancelLink}
+              className="rounded-md px-3 py-1.5 text-sm text-fog-300 hover:bg-ink-700 hover:text-fog-100"
+            >
+              Skip
+            </button>
+            <button
+              onClick={() => confirmLink(links)}
+              disabled={linkedCount === 0}
+              className="rounded-md bg-brand-500/90 px-3 py-1.5 text-sm font-medium text-ink-950 hover:bg-brand-400 disabled:opacity-40"
+            >
+              Apply to {linkedCount} screen{linkedCount === 1 ? '' : 's'}
+            </button>
+          </div>
         </div>
       </div>
     </div>

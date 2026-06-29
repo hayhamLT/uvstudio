@@ -103,6 +103,7 @@ export default function App() {
           // (skip the screen-picker dialog) so it shows immediately.
           useStore.getState().loadScene(objects, { screenNames: objects.map((o) => o.name) })
           useStore.getState().setStatus(`Loaded ${objects.length} object(s) from Cinema 4D`)
+          useStore.getState().openLinkWizard() // attach PSDs/images to the screens
           void focusWindow() // C4D sent geometry — bring the app forward
         } catch {
           /* ignore an unreadable payload */
