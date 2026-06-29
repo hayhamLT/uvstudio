@@ -55,7 +55,7 @@ def _open_app():
         pass
 
 PLUGIN_ID = 1066001  # NOTE: register your own at https://plugincafe.maxon.net for release
-PLUGIN_VERSION = "0.2.9"  # shown in the panel; bump together with the app version
+PLUGIN_VERSION = "0.3.0"  # shown in the panel; bump together with the app version
 
 # ---- folder protocol --------------------------------------------------------
 TO_APP = "to_app"     # C4D -> UV Studio
@@ -369,12 +369,14 @@ class BridgeDialog(gui.GeDialog):
         rows = obj.get("uv") or []
         vflip = obj.get("vFlip", True)
 
-        tag = target.GetTag(c4d.Tuvw)
-        new_tag = tag is None
-        if new_tag:
-            tag = c4d.UVWTag(poly_count)
-        else:
-            doc.AddUndo(c4d.UNDOTYPE_CHANGE, tag)
+        # Industry-standard: remove the old UV set(s) and add a brand-new one,
+        # rather than editing in place. Avoids any stale/partial UV state.
+        old = target.GetTag(c4d.Tuvw)
+        while old:
+            doc.AddUndo(c4d.UNDOTYPE_DELETE, old)
+            old.Remove()
+            old = target.GetTag(c4d.Tuvw)
+        tag = c4d.UVWTag(poly_count)
 
         for i in range(poly_count):
             row = rows[i] if i < len(rows) else None
@@ -389,9 +391,8 @@ class BridgeDialog(gui.GeDialog):
                 c4d.Vector(u[6], 1.0 - u[7] if vflip else u[7], 0.0),
             )
 
-        if new_tag:
-            target.InsertTag(tag)
-            doc.AddUndo(c4d.UNDOTYPE_NEWOBJ, tag)
+        target.InsertTag(tag)
+        doc.AddUndo(c4d.UNDOTYPE_NEWOBJ, tag)
         tag.SetDirty(c4d.DIRTYFLAGS_DATA)
 
         # Make the UVs actually drive the texture: set every texture tag on the

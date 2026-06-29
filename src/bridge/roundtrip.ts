@@ -143,13 +143,15 @@ export function sceneFromSidecar(sidecar: ForwardSidecar): SceneObject[] {
 }
 
 /**
- * Build a welded mesh from polygon corners.
- *  - No UVs: merge coincident points (rounded to 1e-5) → connected manifold.
- *  - With UVs: merge by position AND uv, so UV seams stay split (a point shared
- *    by polygons with different UVs becomes separate vertices) and the result
- *    carries per-vertex UVs aligned to positions.
- * Face count and corner order are always preserved (the lossless return maps by
- * polygon index + corner order).
+ * Build a welded mesh from polygon corners, merging coincident points (rounded
+ * to 1e-5) into ONE vertex — always by POSITION, never by UV.
+ *
+ * Welding by position+UV would split a mesh whose imported UVs are per-triangle
+ * (a "wrong"/unwelded UV set) back into a triangle soup → auto-map then scatters
+ * each triangle. Position-only welding always yields a clean connected manifold,
+ * which is what the unwrap needs. Imported UVs (if any) are still carried per
+ * welded vertex (first corner wins) for display; the round-trip replaces them.
+ * Face count and corner order are preserved (the return maps by polygon + corner).
  */
 function weldFromCorners(
   points: number[],
@@ -168,9 +170,7 @@ function weldFromCorners(
         z = points[pi * 3 + 2]
       const u = cornerUV ? cornerUV[j * 2] : 0
       const v = cornerUV ? cornerUV[j * 2 + 1] : 0
-      const k2 = hasUV
-        ? `${Math.round(x * 1e5)},${Math.round(y * 1e5)},${Math.round(z * 1e5)}|${Math.round(u * 1e4)},${Math.round(v * 1e4)}`
-        : `${Math.round(x * 1e5)},${Math.round(y * 1e5)},${Math.round(z * 1e5)}`
+      const k2 = `${Math.round(x * 1e5)},${Math.round(y * 1e5)},${Math.round(z * 1e5)}`
       let idx = key.get(k2)
       if (idx === undefined) {
         idx = pos.length / 3

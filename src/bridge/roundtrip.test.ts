@@ -133,8 +133,9 @@ describe('sceneFromSidecar', () => {
     expect(obj.mesh.faces).toEqual([[0, 1, 2]])
   })
 
-  it('splits a shared vertex when its UV differs across polygons', () => {
-    // two triangles share the point at (1,0,0) but with different UVs there
+  it('welds by POSITION only, even when imported UVs differ at a shared point', () => {
+    // two triangles share the point at (1,0,0) with different UVs there; we weld
+    // by position (clean topology for unwrap), so it stays ONE vertex, not split.
     const sc: ForwardSidecar = {
       v: 2,
       ts: 0,
@@ -156,6 +157,9 @@ describe('sceneFromSidecar', () => {
       ],
     }
     const [obj] = sceneFromSidecar(sc)
-    expect(obj.mesh.positions.length / 3).toBe(5) // the (1,0,0) corner splits by UV
+    expect(obj.mesh.positions.length / 3).toBe(4) // 4 unique positions, no UV split
+    // the two triangles share the welded corners (connected manifold)
+    const shared = obj.mesh.faces[0].filter((v) => obj.mesh.faces[1].includes(v))
+    expect(shared.length).toBe(2)
   })
 })
