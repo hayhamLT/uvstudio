@@ -97,7 +97,19 @@ export function buildReturnObject(o: ReturnObjectInput): ReturnObject {
       const loop = sh.polygons[k]
       if (!loop || loop.length < 3) return
       const corners: number[] = []
-      for (const lv of loop) corners.push(uv[lv * 2], uv[lv * 2 + 1]) // raw V-up; plugin flips
+      let bad = false
+      for (const lv of loop) {
+        const u = uv[lv * 2]
+        const v = uv[lv * 2 + 1]
+        if (!Number.isFinite(u) || !Number.isFinite(v)) {
+          bad = true // a corner with no/NaN UV — never emit null to the plugin
+          break
+        }
+        corners.push(u, v) // raw V-up; plugin flips
+      }
+      // Skip a polygon with any missing corner: leave it null so the plugin keeps
+      // that polygon's existing UV rather than crashing or writing garbage.
+      if (bad || corners.length < 6) return
       // C4D SetSlow always wants a,b,c,d — repeat the last corner for a triangle.
       while (corners.length < 8) corners.push(corners[corners.length - 2], corners[corners.length - 1])
       uvByPoly[faceId] = corners.slice(0, 8)
