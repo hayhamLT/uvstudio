@@ -241,6 +241,30 @@ export function linkFolderLabel(): string {
   return folderLabel
 }
 
+/** Desktop only: drop the custom link folder and go back to the shared temp
+ *  folder. Returns the new folder label (or null if not desktop / failed). */
+export async function useDefaultLinkFolder(): Promise<string | null> {
+  if (!isDesktop()) return null
+  try {
+    const path = (await tauri()!.core.invoke('bridge_use_default')) as string
+    folderLabel = path.split(/[/\\]/).pop() || path
+    connected = true
+    return folderLabel
+  } catch {
+    return null
+  }
+}
+
+/** Desktop only: whether a custom (non-temp) link folder is currently set. */
+export async function isCustomLinkFolder(): Promise<boolean> {
+  if (!isDesktop()) return false
+  try {
+    return !!(await tauri()!.core.invoke('bridge_is_custom'))
+  } catch {
+    return false
+  }
+}
+
 /**
  * Re-attach to a previously-chosen link folder without prompting. Desktop only:
  * Tauri remembers the path across launches (set once, ever). Returns true if a

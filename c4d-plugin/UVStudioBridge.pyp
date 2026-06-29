@@ -55,7 +55,7 @@ def _open_app():
         pass
 
 PLUGIN_ID = 1066001  # NOTE: register your own at https://plugincafe.maxon.net for release
-PLUGIN_VERSION = "0.3.14"  # shown in the panel; bump together with the app version
+PLUGIN_VERSION = "0.3.15"  # shown in the panel; bump together with the app version
 
 # ---- folder protocol --------------------------------------------------------
 TO_APP = "to_app"     # C4D -> UV Studio
@@ -77,11 +77,27 @@ def _default_link_dir():
     """Zero-config shared folder: a fixed name inside the OS per-user temp dir.
     The UV Studio desktop app computes the SAME path (Rust env::temp_dir() and
     Python tempfile.gettempdir() resolve to the same per-user location), so the
-    two link up automatically — nothing to pick. Created on first use."""
-    d = os.path.join(tempfile.gettempdir(), "UVStudioBridge")
-    _ensure(os.path.join(d, TO_APP))
-    _ensure(os.path.join(d, TO_C4D))
-    return d
+    two link up automatically — nothing to pick.
+
+    If the user picked a CUSTOM folder in the app, the app drops a pointer
+    (linkdir.txt) in this temp default naming it; we follow that so both ends
+    stay in sync. Falls back to the temp folder if the pointer is missing/bad."""
+    base = os.path.join(tempfile.gettempdir(), "UVStudioBridge")
+    _ensure(base)
+    ptr = os.path.join(base, "linkdir.txt")
+    try:
+        if os.path.isfile(ptr):
+            with open(ptr, "r") as f:
+                custom = f.read().strip()
+            if custom:
+                _ensure(os.path.join(custom, TO_APP))
+                _ensure(os.path.join(custom, TO_C4D))
+                return custom
+    except Exception:
+        pass  # unreadable / invalid path → fall back to the temp default
+    _ensure(os.path.join(base, TO_APP))
+    _ensure(os.path.join(base, TO_C4D))
+    return base
 
 
 def _read_manifest(folder):

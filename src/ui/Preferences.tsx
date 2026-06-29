@@ -9,6 +9,7 @@ export default function Preferences({ open, onClose }: { open: boolean; onClose:
   const setAutoMap = useStore((s) => s.setAutoMapOnImport)
   const setStatus = useStore((s) => s.setStatus)
   const [linkLabel, setLinkLabel] = useState(link.isConnected() ? link.linkFolderLabel() : '')
+  const [linkCustom, setLinkCustom] = useState(false)
   const [saved, setSaved] = useState('')
   const [busy, setBusy] = useState('')
   const [c4d, setC4d] = useState<link.C4DStatus | null>(null)
@@ -16,13 +17,28 @@ export default function Preferences({ open, onClose }: { open: boolean; onClose:
     if (open) {
       void link.savedLabel().then(setSaved)
       void link.c4dStatus().then(setC4d)
+      setLinkLabel(link.linkFolderLabel())
+      void link.isCustomLinkFolder().then(setLinkCustom)
     }
   }, [open])
   if (!open) return null
 
   const connect = async () => {
     setBusy('link')
-    if (await link.connect()) setLinkLabel(link.linkFolderLabel())
+    if (await link.connect()) {
+      setLinkLabel(link.linkFolderLabel())
+      void link.isCustomLinkFolder().then(setLinkCustom)
+    }
+    setBusy('')
+  }
+  // Desktop: drop the custom folder and return to the zero-config temp folder.
+  const useDefaultFolder = async () => {
+    setBusy('link')
+    const label = await link.useDefaultLinkFolder()
+    if (label !== null) {
+      setLinkLabel(label)
+      setLinkCustom(false)
+    }
     setBusy('')
   }
   const install = async () => {
@@ -86,8 +102,23 @@ export default function Preferences({ open, onClose }: { open: boolean; onClose:
               {link.isDesktop() ? (
                 <Row
                   label="Link folder"
-                  hint="Automatic — shares a temp folder with the C4D plugin. Nothing to set up."
-                />
+                  hint={
+                    linkCustom
+                      ? `Custom · ${linkLabel || '—'} — the C4D plugin follows this folder`
+                      : 'Automatic — a temp folder shared with the C4D plugin. Nothing to set up.'
+                  }
+                >
+                  <div className="flex gap-2">
+                    <Btn onClick={connect} busy={busy === 'link'}>
+                      Choose folder…
+                    </Btn>
+                    {linkCustom && (
+                      <Btn onClick={useDefaultFolder} busy={busy === 'link'}>
+                        Use temp folder
+                      </Btn>
+                    )}
+                  </div>
+                </Row>
               ) : (
                 <Row
                   label="Link folder"
@@ -159,11 +190,6 @@ export default function Preferences({ open, onClose }: { open: boolean; onClose:
             <span className="font-medium text-fog-300">Toy Robot Media</span>
           </div>
         </Section>
-
-        <p className="mt-5 text-[11px] leading-relaxed text-fog-500">
-          Per-screen tools (transform, projection, resolution, solo) stay inline on each screen —
-          this is just for things you set once.
-        </p>
       </div>
     </div>
   )

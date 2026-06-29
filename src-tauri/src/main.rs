@@ -79,6 +79,31 @@ fn default_link_dir() -> PathBuf {
     dir
 }
 
+/// Pointer the app writes when the user picks a CUSTOM link folder. It lives at
+/// the FIXED temp location so the C4D plugin (which defaults there) reads it and
+/// follows the app to the same custom folder — keeping both ends in sync. Absent
+/// = use the temp default.
+fn link_pointer() -> PathBuf {
+    std::env::temp_dir().join("UVStudioBridge").join("linkdir.txt")
+}
+
+/// The active link folder: the custom one named by the pointer (if it resolves),
+/// otherwise the temp default. Ensures both subfolders exist either way.
+fn resolve_link_dir() -> PathBuf {
+    if let Ok(p) = fs::read_to_string(link_pointer()) {
+        let p = p.trim();
+        if !p.is_empty() {
+            let dir = PathBuf::from(p);
+            if fs::create_dir_all(dir.join(TO_APP)).is_ok()
+                && fs::create_dir_all(dir.join(TO_C4D)).is_ok()
+            {
+                return dir;
+            }
+        }
+    }
+    default_link_dir()
+}
+
 fn now_ms() -> i64 {
     SystemTime::now()
         .duration_since(UNIX_EPOCH)
@@ -121,31 +146,50 @@ fn start_watcher(app: tauri::AppHandle, dir: PathBuf) {
     });
 }
 
-/// Where we remember the chosen link folder (so it's picked once, ever).
-fn config_file(app: &tauri::AppHandle) -> Option<PathBuf> {
-    let dir = app.path().app_config_dir().ok()?;
-    let _ = fs::create_dir_all(&dir);
-    Some(dir.join("link_folder.txt"))
-}
-
-/// Pick the shared link folder (async → dialog won't freeze the UI).
+/// Pick a CUSTOM shared link folder (async → dialog won't freeze the UI). Writes
+/// the shared pointer so the C4D plugin follows us to the same folder.
 #[tauri::command]
 async fn bridge_connect(app: tauri::AppHandle, state: State<'_, Mutex<Bridge>>) -> Result<Option<String>, String> {
     let dir = match app.dialog().file().blocking_pick_folder().and_then(|fp| fp.into_path().ok()) {
         Some(p) => p,
         None => return Ok(None),
     };
-    let label = dir.to_string_lossy().to_string();
-    if let Some(cf) = config_file(&app) {
-        let _ = fs::write(cf, label.as_bytes()); // remember for next launch
+    // make the bridge subfolders in the chosen folder
+    let _ = fs::create_dir_all(dir.join(TO_APP));
+    let _ = fs::create_dir_all(dir.join(TO_C4D));
+    // point both ends here: the plugin reads this pointer from the temp default
+    let ptr = link_pointer();
+    if let Some(parent) = ptr.parent() {
+        let _ = fs::create_dir_all(parent);
     }
+    let _ = fs::write(&ptr, dir.to_string_lossy().as_bytes());
+    let label = dir.to_string_lossy().to_string();
     let mut b = state.lock().map_err(|e| e.to_string())?;
     b.last_ts = read_ts(&dir.join(TO_APP)); // seed so we don't re-import a stale model
     b.dir = Some(dir);
     Ok(Some(label))
 }
 
-/// Return the remembered link folder (loaded at startup), if any.
+/// Switch back to the zero-config temp folder: drop the custom pointer so both
+/// ends fall back to the shared default.
+#[tauri::command]
+fn bridge_use_default(state: State<Mutex<Bridge>>) -> Result<String, String> {
+    let _ = fs::remove_file(link_pointer());
+    let dir = default_link_dir();
+    let mut b = state.lock().map_err(|e| e.to_string())?;
+    b.last_ts = read_ts(&dir.join(TO_APP));
+    let label = dir.to_string_lossy().to_string();
+    b.dir = Some(dir);
+    Ok(label)
+}
+
+/// True when a custom link folder is set (the pointer file exists).
+#[tauri::command]
+fn bridge_is_custom() -> bool {
+    link_pointer().is_file()
+}
+
+/// Return the active link folder, if any.
 #[tauri::command]
 fn bridge_restore(state: State<Mutex<Bridge>>) -> Option<String> {
     let b = state.lock().ok()?;
@@ -469,13 +513,12 @@ fn main() {
         .plugin(tauri_plugin_dialog::init())
         .manage(Mutex::new(Bridge::default()))
         .setup(|app| {
-            // Link folder is automatic and FIXED to the shared temp folder the
-            // C4D plugin also computes — so the bridge always "just works". We
-            // intentionally ignore any link_folder.txt saved by older builds: the
-            // plugin is hardwired to the temp folder and there's no desktop UI to
-            // set one, so honoring a stale saved path only desynced the two ends.
+            // Link folder defaults to the shared temp folder the C4D plugin also
+            // computes — zero-config, "just works". If the user picked a CUSTOM
+            // folder, a pointer (linkdir.txt in the temp default) names it and the
+            // plugin reads the same pointer, so both ends stay in sync.
             let handle = app.handle().clone();
-            let dir = default_link_dir();
+            let dir = resolve_link_dir();
             {
                 let state = handle.state::<Mutex<Bridge>>();
                 let mut b = state.lock().expect("bridge state lock");
@@ -493,6 +536,8 @@ fn main() {
         })
         .invoke_handler(tauri::generate_handler![
             bridge_connect,
+            bridge_use_default,
+            bridge_is_custom,
             bridge_restore,
             bridge_send,
             bridge_send_uvs,
