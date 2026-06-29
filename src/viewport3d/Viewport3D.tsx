@@ -193,6 +193,16 @@ export default function Viewport3D() {
 
 /** Frames the scene once on first load, then persists the camera position in
  *  `live.cam3d` so swapping primary/floating views doesn't re-fly. */
+/** Snug near/far around the framed distance so the depth buffer keeps its
+ *  precision (a fixed 0.01/1000 gives a ~100k:1 ratio → z-fighting / jagged
+ *  edges). Recomputed as the user orbits/zooms so it stays crisp at any range. */
+function setClips(camera: THREE.PerspectiveCamera, dist: number) {
+  const d = Math.max(dist, 0.1)
+  camera.near = d * 0.02
+  camera.far = d * 4 + 100
+  camera.updateProjectionMatrix()
+}
+
 function CameraRig() {
   const camera = useThree((s) => s.camera) as THREE.PerspectiveCamera
   const controls = useThree((s) => s.controls) as unknown as {
@@ -213,10 +223,8 @@ function CameraRig() {
     if (live.cam3d) {
       // Restore position from a previous mount (e.g. after Tab swap).
       camera.position.set(...live.cam3d.pos)
-      camera.near = 0.01
-      camera.far = 1000
-      camera.updateProjectionMatrix()
       controls.target.set(...live.cam3d.tgt)
+      setClips(camera, camera.position.distanceTo(controls.target))
       controls.update()
       framed.current = true
       return
@@ -248,10 +256,7 @@ function CameraRig() {
     const pos: [number,number,number] = [
       cx + dir.x * dist, cy + dir.y * dist, cz + dir.z * dist
     ]
-    // Keep generous near/far so nothing clips.
-    camera.near = 0.01
-    camera.far = Math.max(1000, dist * 10)
-    camera.updateProjectionMatrix()
+    setClips(camera, dist) // snug near/far → no z-fighting on the screen edges
     camera.position.set(...pos)
     controls.target.set(cx, cy, cz)
     controls.update()
@@ -267,6 +272,8 @@ function CameraRig() {
         pos: camera.position.toArray() as [number,number,number],
         tgt: controls.target.toArray() as [number,number,number],
       }
+      // keep depth precision crisp as the user orbits/dollies
+      setClips(camera, camera.position.distanceTo(controls.target))
     }
     controls.addEventListener('change', save)
     return () => controls.removeEventListener('change', save)
