@@ -92,7 +92,12 @@ export default function App() {
     if (!isDesktop()) return
     void c4dStatus().then((s) => {
       if (s?.installed && s.version && s.version !== currentVersion) {
-        void refreshPluginSilently()
+        void refreshPluginSilently().then((ok) => {
+          if (ok)
+            useStore
+              .getState()
+              .setStatus(`Cinema 4D plugin updated to v${currentVersion} — restart C4D to load it`)
+        })
       }
     })
     void checkForUpdate().then((u) => {

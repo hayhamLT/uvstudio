@@ -343,14 +343,14 @@ export async function c4dStatus(): Promise<C4DStatus | null> {
   }
 }
 
-/** Desktop only: silently refresh the bundled plugin into the latest C4D. Run on
- *  launch so updating the app keeps the C4D-side plugin current. */
-export async function refreshPluginSilently(): Promise<void> {
-  if (!isDesktop()) return
+/** Desktop only: silently refresh the bundled plugin into the latest C4D. Returns
+ *  true if it was (re)installed. Used to keep an existing install current. */
+export async function refreshPluginSilently(): Promise<boolean> {
+  if (!isDesktop()) return false
   try {
-    await tauri()!.core.invoke('install_c4d_plugin_latest')
+    return !!((await tauri()!.core.invoke('install_c4d_plugin_latest')) as string | null)
   } catch {
-    /* no C4D / not ready — ignore */
+    return false
   }
 }
 
