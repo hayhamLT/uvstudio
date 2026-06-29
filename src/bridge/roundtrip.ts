@@ -107,18 +107,47 @@ export function buildReturnPayload(objects: ReturnObjectInput[], ts: number): Re
 }
 
 /**
- * Build geometry-only SceneObjects DIRECTLY from a forward sidecar, so app
- * vertices/faces are 1:1 with the DCC's points/polygons (no welding, no
- * position-matching, quads preserved). Texture/media is applied later in the app.
+ * Build geometry-only SceneObjects from a forward sidecar.
+ *
+ * Vertices are WELDED by position: many C4D meshes arrive as an unwelded
+ * "triangle soup" (every triangle has its own 3 points, nothing shared), which
+ * leaves the half-edge/shell builder seeing hundreds of disconnected triangles
+ * and wrecks auto-map. Welding rebuilds a connected manifold.
+ *
+ * This stays LOSSLESS: the return maps UVs by ORIGINAL polygon index + corner
+ * ORDER (see buildReturnObject), and welding preserves both — it only collapses
+ * duplicate vertex INDICES, never reorders faces or corners. Texture/media is
+ * applied later in the app.
  */
 export function sceneFromSidecar(sidecar: ForwardSidecar): SceneObject[] {
-  return sidecar.objects.map((o) => ({
-    name: o.name,
-    c4dGuid: o.guid,
-    mesh: {
-      name: o.name,
-      positions: Float32Array.from(o.points),
-      faces: o.polys.map((p) => p.slice()),
-    },
-  }))
+  return sidecar.objects.map((o) => {
+    const { positions, faces } = weldByPosition(o.points, o.polys)
+    return { name: o.name, c4dGuid: o.guid, mesh: { name: o.name, positions, faces } }
+  })
+}
+
+/** Merge coincident points (rounded to 1e-5) and remap face corners to the
+ *  merged indices. Face count and corner order are preserved. */
+function weldByPosition(
+  points: number[],
+  polys: number[][],
+): { positions: Float32Array; faces: number[][] } {
+  const key = new Map<string, number>()
+  const out: number[] = []
+  const remap = new Int32Array(points.length / 3)
+  for (let i = 0; i < points.length / 3; i++) {
+    const x = points[i * 3],
+      y = points[i * 3 + 1],
+      z = points[i * 3 + 2]
+    const k = `${Math.round(x * 1e5)},${Math.round(y * 1e5)},${Math.round(z * 1e5)}`
+    let idx = key.get(k)
+    if (idx === undefined) {
+      idx = out.length / 3
+      out.push(x, y, z)
+      key.set(k, idx)
+    }
+    remap[i] = idx
+  }
+  const faces = polys.map((p) => p.map((vi) => remap[vi]))
+  return { positions: Float32Array.from(out), faces }
 }

@@ -76,12 +76,39 @@ describe('sceneFromSidecar', () => {
     ],
   }
 
-  it('builds geometry 1:1 from points + polys with identity provenance', () => {
+  it('builds geometry from points + polys (clean mesh unchanged, quad preserved)', () => {
     const objs = sceneFromSidecar(sidecar)
     expect(objs).toHaveLength(1)
     expect(objs[0].name).toBe('Wall')
     expect(objs[0].c4dGuid).toBe('abc')
     expect(Array.from(objs[0].mesh.positions)).toEqual([0, 0, 0, 1, 0, 0, 1, 1, 0, 0, 1, 0])
     expect(objs[0].mesh.faces).toEqual([[0, 1, 2, 3]]) // quad preserved, not triangulated
+  })
+
+  it('welds triangle-soup geometry so adjacent faces share vertices', () => {
+    // two triangles forming a quad, sent as a soup: 6 points, the shared edge
+    // duplicated (verts 0≡3 and 2≡4 by position).
+    const soup: ForwardSidecar = {
+      v: 2,
+      ts: 0,
+      kind: 'geo-forward',
+      objects: [
+        {
+          name: 'Soup',
+          guid: 'g',
+          points: [0, 0, 0, 1, 0, 0, 1, 1, 0, /*dup*/ 0, 0, 0, 1, 1, 0, 0, 1, 0],
+          polys: [
+            [0, 1, 2],
+            [3, 4, 5],
+          ],
+        },
+      ],
+    }
+    const [obj] = sceneFromSidecar(soup)
+    expect(obj.mesh.positions.length / 3).toBe(4) // 6 soup points → 4 unique
+    expect(obj.mesh.faces).toHaveLength(2) // face count + corner order preserved
+    // the two triangles now share their welded corner indices (connected)
+    const shared = obj.mesh.faces[0].filter((v) => obj.mesh.faces[1].includes(v))
+    expect(shared.length).toBe(2)
   })
 })
