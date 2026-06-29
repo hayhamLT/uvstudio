@@ -99,7 +99,10 @@ export default function App() {
           const objects = inc.sidecar
             ? sceneFromSidecar(inc.sidecar)
             : await loadSceneFile(new File([inc.glb!], 'from-c4d.glb', { type: 'model/gltf-binary' }))
-          useStore.getState().beginImport(objects, 'from-c4d.glb')
+          // From C4D the selection IS the screens — load straight into the scene
+          // (skip the screen-picker dialog) so it shows immediately.
+          useStore.getState().loadScene(objects, { screenNames: objects.map((o) => o.name) })
+          useStore.getState().setStatus(`Loaded ${objects.length} object(s) from Cinema 4D`)
           void focusWindow() // C4D sent geometry — bring the app forward
         } catch {
           /* ignore an unreadable payload */
