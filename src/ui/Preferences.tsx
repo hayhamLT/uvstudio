@@ -44,8 +44,14 @@ export default function Preferences({ open, onClose }: { open: boolean; onClose:
   const install = async () => {
     setBusy('install')
     setStatus('Looking for Cinema 4D…')
-    const res = await link.installC4DPlugin()
-    setStatus(res ? `Installed C4D plugin → ${res.paths[0]} — restart C4D` : 'Plugin install cancelled')
+    const res = await link.installC4DPluginLatest()
+    if (res && 'error' in res) {
+      setStatus(`Plugin install failed: ${res.error}`)
+    } else if (res) {
+      setStatus(`Installed C4D plugin → ${res.paths[0]} — restart C4D`)
+    } else {
+      setStatus('No Cinema 4D detected — use “Choose folder…” to pick its plugins folder')
+    }
     void link.c4dStatus().then(setC4d)
     setBusy('')
   }

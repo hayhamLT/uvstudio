@@ -333,6 +333,9 @@ fn find_c4d_plugin_dirs() -> Vec<PathBuf> {
     }
     if let Some(appdata) = std::env::var_os("APPDATA") {
         roots.push(PathBuf::from(appdata).join("Maxon"));
+    } else if let Some(up) = std::env::var_os("USERPROFILE") {
+        // fallback if %APPDATA% isn't set: the Roaming prefs live here on Windows
+        roots.push(PathBuf::from(up).join("AppData").join("Roaming").join("Maxon"));
     }
     let mut seen: HashSet<PathBuf> = HashSet::new();
     let mut found: Vec<(u32, SystemTime, PathBuf)> = Vec::new();
@@ -351,7 +354,13 @@ fn find_c4d_plugin_dirs() -> Vec<PathBuf> {
                 continue; // skip App Manager, Autograph, caches, etc.
             }
             // canonicalize the (existing) version dir so Maxon/MAXON collapse to one
-            let canon = fs::canonicalize(&dir).unwrap_or_else(|_| dir.clone());
+            // (macOS case-insensitive roots). On Windows canonicalize yields a
+            // \\?\ verbatim path, so skip it there — the dir is already unique.
+            let canon = if cfg!(windows) {
+                dir.clone()
+            } else {
+                fs::canonicalize(&dir).unwrap_or_else(|_| dir.clone())
+            };
             let plugins = canon.join("plugins");
             if !seen.insert(plugins.clone()) {
                 continue;

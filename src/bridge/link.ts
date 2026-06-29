@@ -338,6 +338,21 @@ export async function installC4DPlugin(): Promise<PluginInstall | null> {
   }
 }
 
+/** Desktop only: install into ONLY the latest detected C4D, with a precise
+ *  result so the UI can distinguish installed / no-C4D-found / error (important
+ *  for diagnosing Windows, where prefs paths vary). */
+export async function installC4DPluginLatest(): Promise<
+  PluginInstall | null | { error: string }
+> {
+  if (!isDesktop()) return null
+  try {
+    const p = (await tauri()!.core.invoke('install_c4d_plugin_latest')) as string | null
+    return p ? { auto: true, paths: [p] } : null
+  } catch (e) {
+    return { error: String(e) }
+  }
+}
+
 /** Desktop only: ALWAYS open a folder picker and install the plugin into the
  *  chosen `plugins` folder (re-route, e.g. a non-standard C4D install). */
 export async function installC4DPluginToFolder(): Promise<PluginInstall | null> {
