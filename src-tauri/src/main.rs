@@ -393,6 +393,55 @@ fn latest_version_plugin_dirs() -> Vec<PathBuf> {
     all.into_iter().filter(|x| x.0 == top).map(|(_, _, p)| p).collect()
 }
 
+/// The Cinema 4D APPLICATION plugins folders — `<install>/plugins` — the canonical
+/// place plugins live (alongside Redshift, Deadline, etc.), one per installed
+/// version and shared across all prefs configs. Newest version first.
+///   * macOS:   /Applications/Maxon Cinema 4D <ver>/plugins
+///   * Windows: %ProgramFiles%/Maxon Cinema 4D <ver>/plugins
+fn find_c4d_app_plugin_dirs() -> Vec<(u32, PathBuf)> {
+    let mut roots: Vec<PathBuf> = Vec::new();
+    #[cfg(target_os = "macos")]
+    roots.push(PathBuf::from("/Applications"));
+    #[cfg(target_os = "windows")]
+    for var in ["ProgramW6432", "PROGRAMFILES", "PROGRAMFILES(X86)"] {
+        if let Some(p) = std::env::var_os(var) {
+            roots.push(PathBuf::from(p));
+        }
+    }
+    let mut seen: HashSet<PathBuf> = HashSet::new();
+    let mut out: Vec<(u32, PathBuf)> = Vec::new();
+    for root in roots {
+        let rd = match fs::read_dir(&root) {
+            Ok(r) => r,
+            Err(_) => continue,
+        };
+        for e in rd.flatten() {
+            let name = e.file_name().to_string_lossy().to_string();
+            if !name.to_lowercase().contains("cinema 4d") {
+                continue;
+            }
+            let plugins = e.path().join("plugins");
+            if plugins.is_dir() && seen.insert(plugins.clone()) {
+                out.push((c4d_version_key(&name), plugins));
+            }
+        }
+    }
+    out.sort_by(|a, b| b.0.cmp(&a.0));
+    out
+}
+
+/// Remove our plugin from every per-user prefs config folder. Used after a
+/// successful install into the app plugins folder so the same PLUGIN_ID isn't
+/// registered twice (which makes C4D error / load the wrong copy).
+fn remove_plugin_from_prefs_configs() {
+    for dir in find_c4d_plugin_dirs() {
+        let t = dir.join("UVStudioBridge");
+        if t.is_dir() {
+            let _ = fs::remove_dir_all(&t);
+        }
+    }
+}
+
 /// Sortable version from a prefs folder name like "Maxon Cinema 4D 2026_9D810372"
 /// → 2026. Year-numbered releases compare directly; anything else sorts as 0.
 fn c4d_version_key(name: &str) -> u32 {
@@ -425,13 +474,25 @@ async fn install_c4d_plugin_auto(app: tauri::AppHandle) -> Result<Option<Vec<Str
     }
 }
 
-/// Install the bundled C4D plugin into EVERY config folder of the newest Cinema
-/// 4D version (so it loads whichever config C4D opens). Used for the version-
-/// driven refresh and the Install button. Returns the live (most-recently-used)
-/// install path, or None if no C4D was found.
+/// Install the bundled C4D plugin into the newest Cinema 4D's APPLICATION plugins
+/// folder (the canonical place, shared across configs). If that folder isn't
+/// writable (e.g. Windows Program Files without admin), fall back to the per-user
+/// prefs config folders. Returns the install path, or None if no C4D was found.
 #[tauri::command]
 async fn install_c4d_plugin_latest(app: tauri::AppHandle) -> Result<Option<String>, String> {
     let src = app.path().resolve("c4d-plugin", BaseDirectory::Resource).map_err(|e| e.to_string())?;
+
+    // 1) Preferred: the C4D application plugins folder (one per version).
+    if let Some((_, plugins)) = find_c4d_app_plugin_dirs().into_iter().next() {
+        if let Ok(target) = copy_plugin_into(&src, &plugins) {
+            // avoid double-registration: drop any stale per-config copies
+            remove_plugin_from_prefs_configs();
+            return Ok(Some(target.to_string_lossy().to_string()));
+        }
+        // not writable → fall through to the user-writable prefs folders
+    }
+
+    // 2) Fallback: every config folder of the newest version (writable w/o admin).
     let dirs = latest_version_plugin_dirs();
     if dirs.is_empty() {
         return Ok(None);
@@ -471,18 +532,30 @@ fn read_plugin_version(p: &PathBuf) -> Option<String> {
 
 #[tauri::command]
 fn c4d_status() -> C4dStatus {
-    match find_c4d_plugin_dirs().into_iter().next() {
-        Some(dir) => {
-            let pyp = dir.join("UVStudioBridge").join("UVStudioBridge.pyp");
-            let installed = pyp.is_file();
-            C4dStatus {
+    // Check the app plugins folder first (where we now install), then the per-user
+    // prefs configs (fallback / older installs). Report the first that has it.
+    let mut targets: Vec<PathBuf> = find_c4d_app_plugin_dirs().into_iter().map(|(_, p)| p).collect();
+    targets.extend(find_c4d_plugin_dirs());
+    if targets.is_empty() {
+        return C4dStatus { found: false, installed: false, path: None, version: None };
+    }
+    for t in &targets {
+        let pyp = t.join("UVStudioBridge").join("UVStudioBridge.pyp");
+        if pyp.is_file() {
+            return C4dStatus {
                 found: true,
-                installed,
-                path: Some(dir.join("UVStudioBridge").to_string_lossy().to_string()),
-                version: if installed { read_plugin_version(&pyp) } else { None },
-            }
+                installed: true,
+                path: Some(t.join("UVStudioBridge").to_string_lossy().to_string()),
+                version: read_plugin_version(&pyp),
+            };
         }
-        None => C4dStatus { found: false, installed: false, path: None, version: None },
+    }
+    // C4D present but plugin not installed anywhere yet — point at the preferred target
+    C4dStatus {
+        found: true,
+        installed: false,
+        path: Some(targets[0].join("UVStudioBridge").to_string_lossy().to_string()),
+        version: None,
     }
 }
 
