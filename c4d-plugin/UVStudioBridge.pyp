@@ -55,7 +55,7 @@ def _open_app():
         pass
 
 PLUGIN_ID = 1066001  # NOTE: register your own at https://plugincafe.maxon.net for release
-PLUGIN_VERSION = "0.2.8"  # shown in the panel; bump together with the app version
+PLUGIN_VERSION = "0.2.9"  # shown in the panel; bump together with the app version
 
 # ---- folder protocol --------------------------------------------------------
 TO_APP = "to_app"     # C4D -> UV Studio
@@ -312,7 +312,7 @@ class BridgeDialog(gui.GeDialog):
     def apply_uvs(self, payload):
         doc = documents.GetActiveDocument()
         doc.StartUndo()
-        applied, missed, errors = 0, [], []
+        applied, missed, errors, diag = 0, [], [], []
         for obj in payload.get("objects", []):
             name = obj.get("name", "?")
             try:
@@ -322,6 +322,16 @@ class BridgeDialog(gui.GeDialog):
                     target = _find_by_guid(doc.GetFirstObject(), guid)
                 if target is None:
                     target = _find_by_name(doc.GetFirstObject(), name)
+                # capture C4D-side state BEFORE we touch it, to diagnose look mismatches
+                if target is not None:
+                    texs = [t for t in target.GetTags() if t.GetType() == c4d.Ttexture]
+                    diag.append({
+                        "name": name,
+                        "hadUVW": target.GetTag(c4d.Tuvw) is not None,
+                        "texTags": len(texs),
+                        "proj": [t[c4d.TEXTURETAG_PROJECTION] for t in texs],
+                        "mats": [(t.GetMaterial().GetName() if t.GetMaterial() else None) for t in texs],
+                    })
                 if self._write_uvw(doc, target, obj):
                     applied += 1
                 else:
@@ -330,7 +340,14 @@ class BridgeDialog(gui.GeDialog):
                 errors.append("%s: %s" % (name, e))
         doc.EndUndo()
         c4d.EventAdd()
-        self._write_ack("applied", applied, missed, "; ".join(errors) if errors else None)
+        # include the diagnostics in the ack so the app/temp folder captures them
+        try:
+            _write_json_named(os.path.join(self.link_dir, TO_APP), "ack.json",
+                              {"v": 1, "ts": int(time.time() * 1000), "kind": "uv-ack",
+                               "stage": "applied", "applied": applied, "missed": missed,
+                               "error": ("; ".join(errors) if errors else None), "diag": diag})
+        except Exception:
+            pass
         if errors:
             self._status("Applied %d; errors: %s" % (applied, ("; ".join(errors))[:90]))
         elif missed:
