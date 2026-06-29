@@ -38,6 +38,7 @@ function triUVArea(uv: Float32Array, i: number, j: number, k: number, aspect: nu
 
 export default function MapSurfaces() {
   const mapShells = useStore((s) => s.mapShells)
+  const mapObjects = useStore((s) => s.mapObjects)
   const mappedObjects = useStore((s) => s.mappedObjects)
   const selectedObject = useStore((s) => s.selectedObject)
   const selectObject = useStore((s) => s.selectObject)
@@ -61,11 +62,28 @@ export default function MapSurfaces() {
   const aspectFor = (objName: string) =>
     layeredMode ? live.objAspect.get(objName) ?? 1 : live.atlasAspect || 1
 
+  // C4D-sourced objects had Z negated on import (left- → right-handed), which
+  // reverses triangle winding. Flip the winding for RENDERING only (so normals
+  // face out / shading is right) — the unwrap and the UVs sent back are untouched.
+  const flippedObjs = useMemo(() => {
+    const s = new Set<string>()
+    for (const o of mapObjects) if (o.c4dGuid) s.add(o.name)
+    return s
+  }, [mapObjects])
+
   const geoms = useMemo(() => {
     return mapShells.map((ms) => {
       const geo = new THREE.BufferGeometry()
       geo.setAttribute('position', new THREE.BufferAttribute(ms.shell.positions.slice(), 3))
-      geo.setIndex(Array.from(ms.shell.triangles))
+      const tris = Array.from(ms.shell.triangles)
+      if (flippedObjs.has(ms.objName)) {
+        for (let i = 0; i + 2 < tris.length; i += 3) {
+          const t = tris[i + 1]
+          tris[i + 1] = tris[i + 2]
+          tris[i + 2] = t
+        }
+      }
+      geo.setIndex(tris)
       geo.setAttribute('uv', new THREE.BufferAttribute(new Float32Array(ms.shell.vertCount * 2), 2))
       geo.setAttribute(
         'color',
@@ -77,7 +95,7 @@ export default function MapSurfaces() {
       return { geo, wire, edges }
     })
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [mapShells])
+  }, [mapShells, flippedObjs])
 
   useEffect(
     () => () =>
