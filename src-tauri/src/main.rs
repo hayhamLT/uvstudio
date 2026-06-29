@@ -421,7 +421,12 @@ fn main() {
             {
                 let state = handle.state::<Mutex<Bridge>>();
                 let mut b = state.lock().expect("bridge state lock");
-                b.last_ts = read_ts(&dir.join(TO_APP));
+                // If C4D *just* sent a scene (Send launches the app), DON'T seed
+                // last_ts so we import it on launch. Otherwise seed it so we don't
+                // re-import a stale model on every normal launch.
+                let pending = read_ts(&dir.join(TO_APP));
+                let fresh = pending.map_or(false, |t| now_ms() - t < 60_000);
+                b.last_ts = if fresh { None } else { pending };
                 b.last_ack_ts = read_ts_at(&dir.join(TO_APP).join(ACK)); // don't replay an old ack
                 b.dir = Some(dir.clone());
             }

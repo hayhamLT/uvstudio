@@ -468,6 +468,20 @@ export function watchIncoming(
     })
   }
 
+  // import anything already waiting (e.g. a Send that cold-launched the app),
+  // retrying briefly until the link is connected
+  let tries = 0
+  const warmup = window.setInterval(() => {
+    if (stopped || tries++ > 20) {
+      window.clearInterval(warmup)
+      return
+    }
+    if (connected) {
+      window.clearInterval(warmup)
+      void pull()
+    }
+  }, 250)
+
   // poll: the only channel on web; a slow safety net on desktop
   const id = window.setInterval(pull, isDesktop() ? 2500 : intervalMs)
   return () => {
