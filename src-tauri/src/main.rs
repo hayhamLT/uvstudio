@@ -365,6 +365,29 @@ async fn install_c4d_plugin_latest(app: tauri::AppHandle) -> Result<Option<Strin
     }
 }
 
+/// Whether the bundled C4D plugin is already installed in the latest Cinema 4D.
+#[derive(Serialize)]
+struct C4dStatus {
+    found: bool,        // any Cinema 4D detected
+    installed: bool,    // the plugin file exists in the latest one
+    path: Option<String>,
+}
+
+#[tauri::command]
+fn c4d_status() -> C4dStatus {
+    match find_c4d_plugin_dirs().into_iter().next() {
+        Some(dir) => {
+            let target = dir.join("UVStudioBridge");
+            C4dStatus {
+                found: true,
+                installed: target.join("UVStudioBridge.pyp").is_file(),
+                path: Some(target.to_string_lossy().to_string()),
+            }
+        }
+        None => C4dStatus { found: false, installed: false, path: None },
+    }
+}
+
 /// Open a URL in the user's default browser (used to start an update download).
 #[tauri::command]
 fn open_url(url: String) -> Result<(), String> {
@@ -445,6 +468,7 @@ fn main() {
             install_c4d_plugin,
             install_c4d_plugin_auto,
             install_c4d_plugin_latest,
+            c4d_status,
             open_url,
             quit_app,
             focus_window

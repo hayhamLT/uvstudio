@@ -313,6 +313,18 @@ export async function installC4DPlugin(): Promise<PluginInstall | null> {
   }
 }
 
+/** Desktop: whether the bundled C4D plugin is already installed in the latest
+ *  Cinema 4D (so the UI can hide the Install button when it's not needed). */
+export type C4DStatus = { found: boolean; installed: boolean; path: string | null }
+export async function c4dStatus(): Promise<C4DStatus | null> {
+  if (!isDesktop()) return null
+  try {
+    return (await tauri()!.core.invoke('c4d_status')) as C4DStatus
+  } catch {
+    return null
+  }
+}
+
 /** Desktop only: silently refresh the bundled plugin into the latest C4D. Run on
  *  launch so updating the app keeps the C4D-side plugin current. */
 export async function refreshPluginSilently(): Promise<void> {

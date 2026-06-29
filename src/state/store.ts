@@ -1526,8 +1526,15 @@ export const useStore = create<AppState>((set, get) => ({
       applied++
     }
     if (applied) {
-      get().runMapping()
-      set({ status: `Linked media to ${applied} screen${applied === 1 ? '' : 's'}` })
+      // respect the no-auto-map preference: by default show the media through the
+      // screens' existing UVs; the user maps on demand (Auto-map / M).
+      if (get().autoMapOnImport) get().runMapping()
+      const n = `${applied} screen${applied === 1 ? '' : 's'}`
+      set({
+        status: get().autoMapOnImport
+          ? `Linked media to ${n}`
+          : `Linked media to ${n} — Auto-map to fit`,
+      })
     }
   },
 

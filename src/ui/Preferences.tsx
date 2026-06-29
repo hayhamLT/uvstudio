@@ -11,8 +11,12 @@ export default function Preferences({ open, onClose }: { open: boolean; onClose:
   const [linkLabel, setLinkLabel] = useState(link.isConnected() ? link.linkFolderLabel() : '')
   const [saved, setSaved] = useState('')
   const [busy, setBusy] = useState('')
+  const [c4d, setC4d] = useState<link.C4DStatus | null>(null)
   useEffect(() => {
-    if (open) void link.savedLabel().then(setSaved)
+    if (open) {
+      void link.savedLabel().then(setSaved)
+      void link.c4dStatus().then(setC4d)
+    }
   }, [open])
   if (!open) return null
 
@@ -26,8 +30,11 @@ export default function Preferences({ open, onClose }: { open: boolean; onClose:
     setStatus('Looking for Cinema 4D…')
     const res = await link.installC4DPlugin()
     setStatus(res ? `Installed C4D plugin → ${res.paths[0]} — restart C4D` : 'Plugin install cancelled')
+    void link.c4dStatus().then(setC4d)
     setBusy('')
   }
+  // path is <prefs>/<Cinema 4D version>/plugins/UVStudioBridge — show the version
+  const c4dName = (p: string | null) => (p ? p.split(/[/\\]/).slice(-3, -2)[0] || p : '')
   const checkUpdate = async () => {
     setBusy('update')
     const u = await checkForUpdate()
@@ -88,13 +95,26 @@ export default function Preferences({ open, onClose }: { open: boolean; onClose:
                   </Btn>
                 </Row>
               )}
-              {link.isDesktop() && (
-                <Row label="Plugin" hint="Auto-installs the UV Studio Bridge into your latest Cinema 4D — no folder to pick">
-                  <Btn onClick={install} busy={busy === 'install'}>
-                    Install plugin
-                  </Btn>
-                </Row>
-              )}
+              {link.isDesktop() &&
+                (c4d?.installed ? (
+                  <Row
+                    label="Plugin"
+                    hint={`Installed in ${c4dName(c4d.path)} ✓ — updates automatically with the app`}
+                  />
+                ) : (
+                  <Row
+                    label="Plugin"
+                    hint={
+                      c4d && !c4d.found
+                        ? 'No Cinema 4D found — pick its plugins folder'
+                        : 'Install the UV Studio Bridge into your latest Cinema 4D'
+                    }
+                  >
+                    <Btn onClick={install} busy={busy === 'install'}>
+                      Install plugin
+                    </Btn>
+                  </Row>
+                ))}
             </>
           )}
         </Section>
