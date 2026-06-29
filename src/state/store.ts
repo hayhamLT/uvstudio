@@ -633,7 +633,10 @@ function mapObjectUV(obj: MapObject, st: MapSnapshot, shellById: Map<number, She
   const result = flattenAndFit(obj.he, rect, {
     relaxIters: 24,
     rot: o.rot,
-    flipX: o.flipX,
+    // C4D objects had Z negated on import (handedness), which mirrors the unwrap's
+    // U. Bake in the horizontal flip so auto-map comes out correct without the
+    // user flipping every screen by hand (XOR with any manual flip).
+    flipX: o.flipX !== !!obj.c4dGuid,
     flipY: o.flipY,
     fill: fit,
     projection: proj,
