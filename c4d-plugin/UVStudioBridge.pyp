@@ -29,11 +29,30 @@ Tested against the C4D Python (R23+ / 2024+) API.
 """
 
 import os
+import sys
 import json
 import time
 import tempfile
+import subprocess
 import c4d
 from c4d import gui, plugins, documents
+
+APP_BUNDLE_ID = "link.preshow.uvstudio"  # macOS bundle id of the UV Studio desktop app
+APP_NAME = "UV Studio"
+
+
+def _open_app():
+    """Launch the UV Studio desktop app, or bring it to the front if already
+    running, so a Send pops it up. Best-effort — silent if not installed."""
+    try:
+        if sys.platform == "darwin":
+            # `open -b` launches if not running, activates (raises) if it is
+            if subprocess.call(["open", "-b", APP_BUNDLE_ID]) != 0:
+                subprocess.call(["open", "-a", APP_NAME])
+        elif sys.platform.startswith("win"):
+            os.startfile(APP_NAME)  # noqa: needs the app on PATH / registered
+    except Exception:
+        pass
 
 PLUGIN_ID = 1066001  # NOTE: register your own at https://plugincafe.maxon.net for release
 
@@ -100,21 +119,27 @@ def _object_guid(op):
 
 
 def _collect_polys(roots):
-    """Flatten the selection to editable polygon objects (descend into children).
-    Generators/SDS are skipped in this version — make them editable (C) first."""
+    """Each selected object plus its descendants that are editable polygon objects.
+    Only walks each root's OWN subtree (NOT its siblings). Generators/SDS are
+    skipped in this version — make them editable (C) first."""
     out = []
     seen = set()
 
-    def walk(o):
-        while o:
-            if o.CheckType(c4d.Opolygon) and id(o) not in seen:
-                seen.add(id(o))
-                out.append(o)
-            walk(o.GetDown())
-            o = o.GetNext()
+    def add(o):
+        if o.CheckType(c4d.Opolygon) and id(o) not in seen:
+            seen.add(id(o))
+            out.append(o)
+
+    def descend(o):
+        c = o.GetDown()
+        while c:
+            add(c)
+            descend(c)
+            c = c.GetNext()
 
     for r in roots:
-        walk(r)
+        add(r)        # the selected object itself
+        descend(r)    # and any polygon objects nested under it
     return out
 
 
@@ -226,6 +251,7 @@ class BridgeDialog(gui.GeDialog):
         except Exception as e:
             self._status("Send failed: %s" % e)
             return
+        _open_app()  # launch / bring the app forward so the send is visible
         self._status("Sent %d object(s) to UV Studio." % len(out))
 
     # --- receive: to_c4d/scene.json -> write UVs onto the existing objects ---

@@ -13,7 +13,7 @@ import LinkWizard from '../ui/LinkWizard'
 import Landing from '../ui/Landing'
 import Preferences from '../ui/Preferences'
 import UpdateBanner from '../ui/UpdateBanner'
-import { watchIncoming, restore as restoreLink, isDesktop, refreshPluginSilently } from '../bridge/link'
+import { watchIncoming, restore as restoreLink, isDesktop, refreshPluginSilently, focusWindow } from '../bridge/link'
 import { loadSceneFile } from '../mesh/loadFile'
 import { sceneFromSidecar } from '../bridge/roundtrip'
 import { checkForUpdate, type UpdateInfo } from './updater'
@@ -100,6 +100,7 @@ export default function App() {
             ? sceneFromSidecar(inc.sidecar)
             : await loadSceneFile(new File([inc.glb!], 'from-c4d.glb', { type: 'model/gltf-binary' }))
           useStore.getState().beginImport(objects, 'from-c4d.glb')
+          void focusWindow() // C4D sent geometry — bring the app forward
         } catch {
           /* ignore an unreadable payload */
         }

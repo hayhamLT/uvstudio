@@ -347,6 +347,16 @@ export async function quitApp(): Promise<void> {
   }
 }
 
+/** Bring the desktop window to the front (e.g. when C4D sends new geometry). */
+export async function focusWindow(): Promise<void> {
+  if (!isDesktop()) return
+  try {
+    await tauri()!.core.invoke('focus_window')
+  } catch {
+    /* ignore */
+  }
+}
+
 /** Write the mapped GLB (+ per-screen LED sizes) into to_c4d/ for C4D to pick up. */
 export async function sendGlb(buf: ArrayBuffer, screens: LinkScreen[]): Promise<void> {
   if (isDesktop()) await deskWrite(buf, screens)

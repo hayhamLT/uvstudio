@@ -383,6 +383,16 @@ fn quit_app(app: tauri::AppHandle) {
     app.exit(0);
 }
 
+/// Bring the main window to the front (used when C4D sends new geometry).
+#[tauri::command]
+fn focus_window(app: tauri::AppHandle) {
+    if let Some(w) = app.get_webview_window("main") {
+        let _ = w.unminimize();
+        let _ = w.show();
+        let _ = w.set_focus();
+    }
+}
+
 /// Manual fallback: copy the bundled C4D plugin into a `plugins` folder the user
 /// picks (used only when auto-detection finds no Cinema 4D install).
 #[tauri::command]
@@ -431,7 +441,8 @@ fn main() {
             install_c4d_plugin_auto,
             install_c4d_plugin_latest,
             open_url,
-            quit_app
+            quit_app,
+            focus_window
         ])
         .run(tauri::generate_context!())
         .expect("error while running UV Studio");
