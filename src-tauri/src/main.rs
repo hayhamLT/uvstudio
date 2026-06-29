@@ -325,7 +325,7 @@ fn copy_plugin_into(src: &Path, plugins_dir: &Path) -> Result<PathBuf, String> {
 /// Auto-find Cinema 4D user plugin folders — `<prefs>/Maxon Cinema 4D <ver>_<id>/
 /// plugins` — which are writable without admin. Deduped across the case-insensitive
 /// Maxon/MAXON roots (and the Windows %APPDATA% equivalent). Newest-used first.
-fn find_c4d_plugin_dirs() -> Vec<PathBuf> {
+fn collect_c4d_plugin_dirs() -> Vec<(u32, SystemTime, PathBuf)> {
     let mut roots: Vec<PathBuf> = Vec::new();
     if let Some(h) = std::env::var_os("HOME").map(PathBuf::from) {
         roots.push(h.join("Library/Preferences/Maxon"));
@@ -371,7 +371,26 @@ fn find_c4d_plugin_dirs() -> Vec<PathBuf> {
     }
     // newest version first, then most-recently-used among equal versions
     found.sort_by(|a, b| b.0.cmp(&a.0).then(b.1.cmp(&a.1)));
-    found.into_iter().map(|(_, _, p)| p).collect()
+    found
+}
+
+/// Just the plugin dirs, newest version + most-recently-used first.
+fn find_c4d_plugin_dirs() -> Vec<PathBuf> {
+    collect_c4d_plugin_dirs().into_iter().map(|(_, _, p)| p).collect()
+}
+
+/// ALL prefs-config plugin dirs for the NEWEST installed version. Cinema 4D can
+/// keep several config folders per version (…_9D810372, …_p, …_x, …_w); only one
+/// is live, and we can't tell which from outside — so install into EVERY config
+/// of that version. That guarantees the plugin loads whichever config C4D opens,
+/// while still not touching older versions.
+fn latest_version_plugin_dirs() -> Vec<PathBuf> {
+    let all = collect_c4d_plugin_dirs();
+    let top = match all.first() {
+        Some(x) => x.0,
+        None => return Vec::new(),
+    };
+    all.into_iter().filter(|x| x.0 == top).map(|(_, _, p)| p).collect()
 }
 
 /// Sortable version from a prefs folder name like "Maxon Cinema 4D 2026_9D810372"
@@ -406,16 +425,25 @@ async fn install_c4d_plugin_auto(app: tauri::AppHandle) -> Result<Option<Vec<Str
     }
 }
 
-/// Install the bundled C4D plugin into ONLY the latest Cinema 4D found (newest
-/// version, most-recently-used). Used for the silent on-launch refresh and the
-/// Install button. Returns the install path, or None if no C4D was found.
+/// Install the bundled C4D plugin into EVERY config folder of the newest Cinema
+/// 4D version (so it loads whichever config C4D opens). Used for the version-
+/// driven refresh and the Install button. Returns the live (most-recently-used)
+/// install path, or None if no C4D was found.
 #[tauri::command]
 async fn install_c4d_plugin_latest(app: tauri::AppHandle) -> Result<Option<String>, String> {
     let src = app.path().resolve("c4d-plugin", BaseDirectory::Resource).map_err(|e| e.to_string())?;
-    match find_c4d_plugin_dirs().into_iter().next() {
-        Some(dir) => Ok(Some(copy_plugin_into(&src, &dir)?.to_string_lossy().to_string())),
-        None => Ok(None),
+    let dirs = latest_version_plugin_dirs();
+    if dirs.is_empty() {
+        return Ok(None);
     }
+    let mut live = None; // dirs are sorted most-recently-used first
+    for dir in &dirs {
+        let target = copy_plugin_into(&src, dir)?;
+        if live.is_none() {
+            live = Some(target.to_string_lossy().to_string());
+        }
+    }
+    Ok(live)
 }
 
 /// Whether the bundled C4D plugin is already installed in the latest Cinema 4D.
