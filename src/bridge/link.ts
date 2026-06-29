@@ -406,6 +406,16 @@ export async function openExternal(url: string): Promise<void> {
   }
 }
 
+/** Desktop only: download the platform installer for an update and open it
+ *  (mac mounts the .dmg, Windows runs the .exe). Returns the saved path, or
+ *  throws so the caller can fall back to opening the release page. */
+export async function downloadAndOpenUpdate(
+  assets: { name: string; url: string }[],
+): Promise<string> {
+  if (!isDesktop()) throw new Error('not desktop')
+  return (await tauri()!.core.invoke('download_and_open_update', { assets })) as string
+}
+
 /** Quit the desktop app (after starting an update download). */
 export async function quitApp(): Promise<void> {
   if (!isDesktop()) return

@@ -559,6 +559,67 @@ fn c4d_status() -> C4dStatus {
     }
 }
 
+/// One release asset (name + direct download URL) the updater can fetch.
+#[derive(Deserialize)]
+struct UpdateAsset {
+    name: String,
+    url: String,
+}
+
+/// Download the platform-appropriate installer for an update and open it (mac:
+/// mounts the .dmg; Windows: runs the .exe installer). The repo is public, so
+/// the asset URLs download anonymously. Returns the saved file path. The UI then
+/// quits so the new version can replace the running app.
+#[tauri::command]
+async fn download_and_open_update(
+    app: tauri::AppHandle,
+    assets: Vec<UpdateAsset>,
+) -> Result<String, String> {
+    // pick the installer for THIS OS
+    let ext = if cfg!(target_os = "macos") {
+        ".dmg"
+    } else if cfg!(target_os = "windows") {
+        ".exe"
+    } else {
+        ".AppImage"
+    };
+    let asset = assets
+        .into_iter()
+        .find(|a| a.name.to_lowercase().ends_with(ext))
+        .ok_or_else(|| format!("no {ext} installer in the release"))?;
+
+    // save into the user's Downloads folder (fall back to temp)
+    let dir = app.path().download_dir().unwrap_or_else(|_| std::env::temp_dir());
+    let _ = fs::create_dir_all(&dir);
+    let path = dir.join(&asset.name);
+
+    // download (blocking) off the async runtime
+    let url = asset.url.clone();
+    let dl = path.clone();
+    tauri::async_runtime::spawn_blocking(move || -> Result<(), String> {
+        let resp = ureq::get(&url).call().map_err(|e| e.to_string())?;
+        let mut reader = resp.into_reader();
+        let mut file = fs::File::create(&dl).map_err(|e| e.to_string())?;
+        std::io::copy(&mut reader, &mut file).map_err(|e| e.to_string())?;
+        Ok(())
+    })
+    .await
+    .map_err(|e| e.to_string())??;
+
+    // open the installer
+    #[cfg(target_os = "macos")]
+    std::process::Command::new("open").arg(&path).spawn().map_err(|e| e.to_string())?;
+    #[cfg(target_os = "windows")]
+    std::process::Command::new("cmd")
+        .args(["/C", "start", "", &path.to_string_lossy()])
+        .spawn()
+        .map_err(|e| e.to_string())?;
+    #[cfg(all(not(target_os = "macos"), not(target_os = "windows")))]
+    std::process::Command::new("xdg-open").arg(&path).spawn().map_err(|e| e.to_string())?;
+
+    Ok(path.to_string_lossy().to_string())
+}
+
 /// Open a URL in the user's default browser (used to start an update download).
 #[tauri::command]
 fn open_url(url: String) -> Result<(), String> {
@@ -678,6 +739,7 @@ fn main() {
             install_c4d_plugin_latest,
             c4d_status,
             open_url,
+            download_and_open_update,
             quit_app,
             focus_window,
             focus_c4d

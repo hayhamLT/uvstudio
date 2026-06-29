@@ -4,15 +4,22 @@ import type { UpdateInfo } from '../app/updater'
 import { currentVersion } from '../app/updater'
 
 /** A small modal shown on launch when a newer desktop build is available.
- *  Download opens the release page in the browser, then quits the app so the
- *  user can install the freshly downloaded build. */
+ *  Downloads the platform installer and opens it (mac mounts the .dmg, Windows
+ *  runs the .exe), then quits so the new version can replace the running app.
+ *  Falls back to opening the release page if the download fails. */
 export default function UpdateBanner({ info, onClose }: { info: UpdateInfo; onClose: () => void }) {
-  const [busy, setBusy] = useState(false)
-  const download = async () => {
-    setBusy(true)
-    await link.openExternal(info.url)
-    // give the browser a moment to take focus, then close so the installer can replace the app
-    setTimeout(() => void link.quitApp(), 600)
+  const [busy, setBusy] = useState('')
+  const update = async () => {
+    setBusy('Downloading…')
+    try {
+      await link.downloadAndOpenUpdate(info.assets)
+      setBusy('Opening installer…')
+    } catch {
+      // download/asset issue → open the release page so the user can grab it
+      await link.openExternal(info.url)
+    }
+    // close so the installer can replace the app
+    setTimeout(() => void link.quitApp(), 800)
   }
   return (
     <div className="fixed inset-0 z-[120] flex items-center justify-center bg-ink-950/70 backdrop-blur-sm">
@@ -20,23 +27,23 @@ export default function UpdateBanner({ info, onClose }: { info: UpdateInfo; onCl
         <h2 className="text-lg font-semibold text-fog-100">Update available</h2>
         <p className="mt-2 text-[13px] leading-relaxed text-fog-300">
           UV Studio <span className="text-fog-100">{info.version}</span> is out — you have{' '}
-          <span className="text-fog-100">{currentVersion}</span>. Downloading opens the release in your
-          browser and closes the app so you can install it. The Cinema&nbsp;4D plugin updates with it.
+          <span className="text-fog-100">{currentVersion}</span>. This downloads the installer and opens
+          it, then closes the app so you can install it. The Cinema&nbsp;4D plugin updates with it.
         </p>
         <div className="mt-5 flex justify-end gap-2">
           <button
             onClick={onClose}
-            disabled={busy}
+            disabled={!!busy}
             className="rounded-md px-3 py-1.5 text-[12px] text-fog-300 hover:bg-ink-700 hover:text-fog-100 disabled:opacity-50"
           >
             Later
           </button>
           <button
-            onClick={download}
-            disabled={busy}
+            onClick={update}
+            disabled={!!busy}
             className="rounded-md border border-line bg-brand-500/90 px-3 py-1.5 text-[12px] font-medium text-white hover:bg-brand-500 disabled:opacity-50 ring-focus"
           >
-            {busy ? 'Opening…' : 'Download & quit'}
+            {busy || 'Download & install'}
           </button>
         </div>
       </div>
