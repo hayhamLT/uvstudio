@@ -1979,6 +1979,7 @@ export const useStore = create<AppState>((set, get) => ({
         payload.screens = specs
         await linkBridge.sendUVs(payload)
         set({ status: `Sent UVs for ${uvInputs.length} object${uvInputs.length === 1 ? '' : 's'} to Cinema 4D` })
+        void linkBridge.focusC4D() // bring C4D forward so the result is visible
       } else {
         const buf = await buildMappedGlb(g.mapShells, g.layeredMode, new Map(specs.map((s) => [s.name, s])))
         if (!buf) {
@@ -1987,6 +1988,7 @@ export const useStore = create<AppState>((set, get) => ({
         }
         await linkBridge.sendGlb(buf, specs)
         set({ status: `Sent ${specs.length} screens to Cinema 4D (link folder)` })
+        void linkBridge.focusC4D() // bring C4D forward so the result is visible
       }
     } catch {
       set({ status: 'Send failed — check the link folder' })

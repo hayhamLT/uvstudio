@@ -370,6 +370,16 @@ export async function focusWindow(): Promise<void> {
   }
 }
 
+/** Bring Cinema 4D to the front after a send-back (the app drops behind). */
+export async function focusC4D(): Promise<void> {
+  if (!isDesktop()) return
+  try {
+    await tauri()!.core.invoke('focus_c4d')
+  } catch {
+    /* ignore */
+  }
+}
+
 /** Write the mapped GLB (+ per-screen LED sizes) into to_c4d/ for C4D to pick up. */
 export async function sendGlb(buf: ArrayBuffer, screens: LinkScreen[]): Promise<void> {
   if (isDesktop()) await deskWrite(buf, screens)

@@ -406,6 +406,24 @@ fn quit_app(app: tauri::AppHandle) {
     app.exit(0);
 }
 
+/// Bring Cinema 4D to the front after a send-back, so the result is visible
+/// (the app drops behind). macOS activates C4D by its stable bundle id.
+#[tauri::command]
+fn focus_c4d(app: tauri::AppHandle) {
+    #[cfg(target_os = "macos")]
+    {
+        let _ = std::process::Command::new("open").args(["-b", "net.maxon.cinema4d"]).spawn();
+        let _ = &app; // C4D becomes frontmost; our window naturally drops behind
+    }
+    #[cfg(not(target_os = "macos"))]
+    {
+        // best-effort elsewhere: just minimize our window so C4D shows
+        if let Some(w) = app.get_webview_window("main") {
+            let _ = w.minimize();
+        }
+    }
+}
+
 /// Bring the main window to the front (used when C4D sends new geometry).
 #[tauri::command]
 fn focus_window(app: tauri::AppHandle) {
@@ -471,7 +489,8 @@ fn main() {
             c4d_status,
             open_url,
             quit_app,
-            focus_window
+            focus_window,
+            focus_c4d
         ])
         .run(tauri::generate_context!())
         .expect("error while running UV Studio");
