@@ -1951,42 +1951,18 @@ export const useStore = create<AppState>((set, get) => ({
       arr.push(ms.shell)
       shellsByObj.set(ms.objName, arr)
     }
+    // Send the app's UVs EXACTLY as shown (live.uv) — no transform. The app view
+    // is correct; the round-trip is faithful (corner order verified), so C4D
+    // matches the app.
     const uvInputs: ReturnObjectInput[] = g.mapObjects
       .filter((o) => o.c4dGuid)
-      .map((o) => {
-        // Send a CLEAN per-object unwrap that fills [0,1] — not the app's
-        // media-preview layout (which packs/fits each screen into a small content
-        // region, so in C4D it looks squished/tangled). Normalize by this
-        // object's UV bounding box across its shells.
-        let mnu = Infinity, mnv = Infinity, mxu = -Infinity, mxv = -Infinity
-        for (const id of o.shellIds) {
-          const uv = live.uv.get(id)
-          if (!uv) continue
-          for (let i = 0; i < uv.length; i += 2) {
-            if (uv[i] < mnu) mnu = uv[i]
-            if (uv[i] > mxu) mxu = uv[i]
-            if (uv[i + 1] < mnv) mnv = uv[i + 1]
-            if (uv[i + 1] > mxv) mxv = uv[i + 1]
-          }
-        }
-        const du = mxu - mnu || 1, dv = mxv - mnv || 1
-        return {
-          name: o.name,
-          guid: o.c4dGuid!,
-          polyCount: o.mesh.faces.length,
-          shells: shellsByObj.get(o.name) ?? [],
-          uv: (shellId: number) => {
-            const uv = live.uv.get(shellId)
-            if (!uv || !Number.isFinite(mnu)) return uv
-            const out = new Float32Array(uv.length)
-            for (let i = 0; i < uv.length; i += 2) {
-              out[i] = (uv[i] - mnu) / du
-              out[i + 1] = (uv[i + 1] - mnv) / dv
-            }
-            return out
-          },
-        }
-      })
+      .map((o) => ({
+        name: o.name,
+        guid: o.c4dGuid!,
+        polyCount: o.mesh.faces.length,
+        shells: shellsByObj.get(o.name) ?? [],
+        uv: (shellId: number) => live.uv.get(shellId),
+      }))
 
     if (!linkBridge.linkSupported()) {
       set({ status: 'Folder bridge needs the desktop app or a Chromium browser' })
