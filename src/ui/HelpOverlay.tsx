@@ -18,12 +18,12 @@ const SHORTCUTS: [string, string][] = [
 ]
 
 const FLOW = [
-  'Bring in screens — drop / pick a model with its screen maps (a multi-object GLB/glTF plus the PSD(s) / images; a wizard links each layer to its screen by name), or Send a selection straight from Cinema 4D with the bridge plugin.',
-  'Screens auto-map on import — each one keeps its imported UVs and fits its content. Click a screen (3D or list) to work on it.',
+  'Bring in screens — Send a selection from Cinema 4D with the bridge plugin (auto-installs; see Preferences ▸ Plugin), or drop / pick a model with its screen maps (a multi-object GLB/glTF plus PSD(s) / images; a wizard links each layer to its screen by name).',
+  'Imports show their OWN UVs — auto-map is opt-in: Auto-map ALL (top-left), the bottom-bar Auto-map, or M for the active screen. Click a screen (3D or list) to work on it.',
   'Bottom bar (2D): Auto-map · rotate · flip · free-transform · unwrap projection (Auto / Planar / Cylindrical / Spherical). Top bar: Vertex / Edge / Face / Object edit modes.',
   'Each screen: the eye/solo dot cycles visible → solo → hidden; set its real LED size under RES; the 2D view shows the whole PSD with this screen’s chunk outlined.',
   'Reference geometry (non-screen objects) shows as a dim shell — the slider sets its brightness (black → grey); the eye hides it.',
-  'Export → GLB (textured), or Send to Cinema 4D — the unwrap rides back onto your original objects’ UVs losslessly (geometry untouched, nothing to set up).',
+  'Export → GLB (textured), or Send to Cinema 4D — UVs ride back onto your original objects losslessly (geometry untouched), then the app closes and C4D comes forward.',
 ]
 
 export default function HelpOverlay({ onClose }: { onClose: () => void }) {

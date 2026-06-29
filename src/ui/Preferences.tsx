@@ -33,6 +33,15 @@ export default function Preferences({ open, onClose }: { open: boolean; onClose:
     void link.c4dStatus().then(setC4d)
     setBusy('')
   }
+  // Re-route: let the user pick a specific plugins folder (non-standard install).
+  const installToFolder = async () => {
+    setBusy('install')
+    setStatus('Choose your Cinema 4D “plugins” folder…')
+    const res = await link.installC4DPluginToFolder()
+    setStatus(res ? `Installed C4D plugin → ${res.paths[0]} — restart C4D` : 'Plugin install cancelled')
+    void link.c4dStatus().then(setC4d)
+    setBusy('')
+  }
   // path is <prefs>/<Cinema 4D version>/plugins/UVStudioBridge — show the version
   const c4dName = (p: string | null) => (p ? p.split(/[/\\]/).slice(-3, -2)[0] || p : '')
   const checkUpdate = async () => {
@@ -95,26 +104,27 @@ export default function Preferences({ open, onClose }: { open: boolean; onClose:
                   </Btn>
                 </Row>
               )}
-              {link.isDesktop() &&
-                (c4d?.installed ? (
-                  <Row
-                    label="Plugin"
-                    hint={`Installed in ${c4dName(c4d.path)} ✓ — updates automatically with the app`}
-                  />
-                ) : (
-                  <Row
-                    label="Plugin"
-                    hint={
-                      c4d && !c4d.found
+              {link.isDesktop() && (
+                <Row
+                  label="Plugin"
+                  hint={
+                    c4d?.installed
+                      ? `Installed in ${c4dName(c4d.path)} ✓ — updates with the app`
+                      : c4d && !c4d.found
                         ? 'No Cinema 4D found — pick its plugins folder'
                         : 'Install the UV Studio Bridge into your latest Cinema 4D'
-                    }
-                  >
+                  }
+                >
+                  <div className="flex gap-2">
                     <Btn onClick={install} busy={busy === 'install'}>
-                      Install plugin
+                      {c4d?.installed ? 'Reinstall' : 'Install'}
                     </Btn>
-                  </Row>
-                ))}
+                    <Btn onClick={installToFolder} busy={busy === 'install'}>
+                      Choose folder…
+                    </Btn>
+                  </div>
+                </Row>
+              )}
             </>
           )}
         </Section>

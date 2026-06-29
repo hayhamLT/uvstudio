@@ -314,6 +314,18 @@ export async function installC4DPlugin(): Promise<PluginInstall | null> {
   }
 }
 
+/** Desktop only: ALWAYS open a folder picker and install the plugin into the
+ *  chosen `plugins` folder (re-route, e.g. a non-standard C4D install). */
+export async function installC4DPluginToFolder(): Promise<PluginInstall | null> {
+  if (!isDesktop()) return null
+  try {
+    const manual = (await tauri()!.core.invoke('install_c4d_plugin')) as string | null
+    return manual ? { auto: false, paths: [manual] } : null
+  } catch {
+    return null
+  }
+}
+
 /** Desktop: whether the bundled C4D plugin is already installed in the latest
  *  Cinema 4D (so the UI can hide the Install button when it's not needed). */
 export type C4DStatus = { found: boolean; installed: boolean; path: string | null }
