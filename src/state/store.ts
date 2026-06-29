@@ -1956,45 +1956,20 @@ export const useStore = create<AppState>((set, get) => ({
       arr.push({ ...ms.shell, id: ms.id })
       shellsByObj.set(ms.objName, arr)
     }
-    // Each C4D object has its OWN material/UV space, so its unwrap should FILL
-    // [0,1] in C4D — not sit in the app's media-preview content sub-region (which
-    // makes it look squished against C4D's full texture). Normalize each object by
-    // the bbox of the EXACT shells we send (so the lookup always matches), and
-    // skip normalization if the unwrap is degenerate (avoids blowing it up).
+    // Send the app's UVs EXACTLY as shown — no per-object normalize. Screens that
+    // SHARE a material (e.g. the 4 walls on Wall_Material) are packed into that
+    // material's shared UV space, each a slice; objects with their own material
+    // fill [0,1]. Normalizing each to [0,1] would overlap the shared-material
+    // screens. The per-object lookup (ms.id) is what makes this correct.
     const uvInputs: ReturnObjectInput[] = g.mapObjects
       .filter((o) => o.c4dGuid)
-      .map((o) => {
-        const objShells = shellsByObj.get(o.name) ?? []
-        let mnu = Infinity, mnv = Infinity, mxu = -Infinity, mxv = -Infinity
-        for (const sh of objShells) {
-          const uv = live.uv.get(sh.id)
-          if (!uv) continue
-          for (let i = 0; i < uv.length; i += 2) {
-            if (uv[i] < mnu) mnu = uv[i]
-            if (uv[i] > mxu) mxu = uv[i]
-            if (uv[i + 1] < mnv) mnv = uv[i + 1]
-            if (uv[i + 1] > mxv) mxv = uv[i + 1]
-          }
-        }
-        const spanU = mxu - mnu, spanV = mxv - mnv
-        const ok = Number.isFinite(mnu) && spanU > 1e-4 && spanV > 1e-4
-        return {
-          name: o.name,
-          guid: o.c4dGuid!,
-          polyCount: o.mesh.faces.length,
-          shells: objShells,
-          uv: (shellId: number) => {
-            const uv = live.uv.get(shellId)
-            if (!uv || !ok) return uv
-            const out = new Float32Array(uv.length)
-            for (let i = 0; i < uv.length; i += 2) {
-              out[i] = (uv[i] - mnu) / spanU
-              out[i + 1] = (uv[i + 1] - mnv) / spanV
-            }
-            return out
-          },
-        }
-      })
+      .map((o) => ({
+        name: o.name,
+        guid: o.c4dGuid!,
+        polyCount: o.mesh.faces.length,
+        shells: shellsByObj.get(o.name) ?? [],
+        uv: (shellId: number) => live.uv.get(shellId),
+      }))
 
     if (!linkBridge.linkSupported()) {
       set({ status: 'Folder bridge needs the desktop app or a Chromium browser' })
@@ -2012,26 +1987,6 @@ export const useStore = create<AppState>((set, get) => ({
       if (uvInputs.length) {
         const payload = buildReturnPayload(uvInputs, Date.now())
         payload.screens = specs
-        // DEBUG: raw live.uv bounds per object so we can see the app's actual UV
-        // state in the sent file (ignored by the plugin).
-        ;(payload as unknown as { debug: unknown }).debug = g.mapObjects
-          .filter((o) => o.c4dGuid)
-          .map((o) => {
-            const shs = shellsByObj.get(o.name) ?? []
-            let a = Infinity, b = -Infinity, c2 = Infinity, d = -Infinity, n = 0
-            for (const s of shs) {
-              const uv = live.uv.get(s.id)
-              if (!uv) continue
-              n += uv.length / 2
-              for (let i = 0; i < uv.length; i += 2) {
-                if (uv[i] < a) a = uv[i]
-                if (uv[i] > b) b = uv[i]
-                if (uv[i + 1] < c2) c2 = uv[i + 1]
-                if (uv[i + 1] > d) d = uv[i + 1]
-              }
-            }
-            return { name: o.name, shells: shs.length, verts: n, rawU: [a, b], rawV: [c2, d] }
-          })
         await linkBridge.sendUVs(payload)
         set({ status: `Sent UVs for ${uvInputs.length} object${uvInputs.length === 1 ? '' : 's'} to Cinema 4D` })
         void linkBridge.focusC4D() // bring C4D forward so the result is visible
