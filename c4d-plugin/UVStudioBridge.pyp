@@ -55,7 +55,7 @@ def _open_app():
         pass
 
 PLUGIN_ID = 1066001  # NOTE: register your own at https://plugincafe.maxon.net for release
-PLUGIN_VERSION = "0.2.7"  # shown in the panel; bump together with the app version
+PLUGIN_VERSION = "0.2.8"  # shown in the panel; bump together with the app version
 
 # ---- folder protocol --------------------------------------------------------
 TO_APP = "to_app"     # C4D -> UV Studio
@@ -376,6 +376,15 @@ class BridgeDialog(gui.GeDialog):
             target.InsertTag(tag)
             doc.AddUndo(c4d.UNDOTYPE_NEWOBJ, tag)
         tag.SetDirty(c4d.DIRTYFLAGS_DATA)
+
+        # Make the UVs actually drive the texture: set every texture tag on the
+        # object to UVW Mapping. Otherwise a Flat/Cubic projection ignores our
+        # UVW tag and the result looks smeared (esp. on curved screens).
+        for t in target.GetTags():
+            if t.GetType() == c4d.Ttexture:
+                doc.AddUndo(c4d.UNDOTYPE_CHANGE, t)
+                t[c4d.TEXTURETAG_PROJECTION] = c4d.TEXTURETAG_PROJECTION_UVW
+
         target.Message(c4d.MSG_UPDATE)
         return True
 
