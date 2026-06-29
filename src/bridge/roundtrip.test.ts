@@ -70,18 +70,19 @@ describe('sceneFromSidecar', () => {
       {
         name: 'Wall',
         guid: 'abc',
-        points: [0, 0, 0, 1, 0, 0, 1, 1, 0, 0, 1, 0],
+        points: [0, 0, 3, 1, 0, 3, 1, 1, 5, 0, 1, 5],
         polys: [[0, 1, 2, 3]],
       },
     ],
   }
 
-  it('builds geometry from points + polys (clean mesh unchanged, quad preserved)', () => {
+  it('builds geometry from points + polys (quad preserved, Z negated for handedness)', () => {
     const objs = sceneFromSidecar(sidecar)
     expect(objs).toHaveLength(1)
     expect(objs[0].name).toBe('Wall')
     expect(objs[0].c4dGuid).toBe('abc')
-    expect(Array.from(objs[0].mesh.positions)).toEqual([0, 0, 0, 1, 0, 0, 1, 1, 0, 0, 1, 0])
+    // C4D (left-handed) → app (right-handed): Z is negated on import; X/Y unchanged.
+    expect(Array.from(objs[0].mesh.positions)).toEqual([0, 0, -3, 1, 0, -3, 1, 1, -5, 0, 1, -5])
     expect(objs[0].mesh.faces).toEqual([[0, 1, 2, 3]]) // quad preserved, not triangulated
   })
 
