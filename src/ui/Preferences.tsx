@@ -109,7 +109,7 @@ export default function Preferences({ open, onClose }: { open: boolean; onClose:
                   label="Plugin"
                   hint={
                     c4d?.installed
-                      ? `Installed in ${c4dName(c4d.path)} ✓ — updates with the app`
+                      ? `Installed in ${c4dName(c4d.path)} ✓ — Reinstall after an app update`
                       : c4d && !c4d.found
                         ? 'No Cinema 4D found — pick its plugins folder'
                         : 'Install the UV Studio Bridge into your latest Cinema 4D'
@@ -149,7 +149,7 @@ export default function Preferences({ open, onClose }: { open: boolean; onClose:
           <div className="mt-1 flex items-center gap-2 text-[11px] text-fog-500">
             <span>Powered by</span>
             <img
-              src="/toyrobot-logo.png"
+              src="/trm_logo.webp"
               alt="Toy Robot Media"
               className="h-4 w-auto opacity-90"
               onError={(e) => {

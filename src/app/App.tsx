@@ -13,7 +13,7 @@ import LinkWizard from '../ui/LinkWizard'
 import Landing from '../ui/Landing'
 import Preferences from '../ui/Preferences'
 import UpdateBanner from '../ui/UpdateBanner'
-import { watchIncoming, restore as restoreLink, isDesktop, refreshPluginSilently, focusWindow } from '../bridge/link'
+import { watchIncoming, restore as restoreLink, isDesktop, focusWindow } from '../bridge/link'
 import { loadSceneFile } from '../mesh/loadFile'
 import { sceneFromSidecar } from '../bridge/roundtrip'
 import { checkForUpdate, type UpdateInfo } from './updater'
@@ -78,11 +78,10 @@ export default function App() {
     void restoreLink()
   }, [])
 
-  // desktop: on launch, keep the bundled C4D plugin current in the latest C4D,
-  // and check for a newer app version (prompt to download if so).
+  // desktop: on launch, just check for a newer app version (prompt if so). The
+  // C4D plugin is installed explicitly from Preferences — never silently here.
   useEffect(() => {
     if (!isDesktop()) return
-    void refreshPluginSilently()
     void checkForUpdate().then((u) => {
       if (u) setUpdate(u)
     })

@@ -18,7 +18,7 @@ const SHORTCUTS: [string, string][] = [
 ]
 
 const FLOW = [
-  'Bring in screens — Send a selection from Cinema 4D with the bridge plugin (auto-installs; see Preferences ▸ Plugin), or drop / pick a model with its screen maps (a multi-object GLB/glTF plus PSD(s) / images; a wizard links each layer to its screen by name).',
+  'Bring in screens — Send a selection from Cinema 4D with the bridge plugin (install it once from Preferences ▸ Plugin), or drop / pick a model with its screen maps (a multi-object GLB/glTF plus PSD(s) / images; a wizard links each layer to its screen by name).',
   'Imports show their OWN UVs — auto-map is opt-in: Auto-map ALL (top-left), the bottom-bar Auto-map, or M for the active screen. Click a screen (3D or list) to work on it.',
   'Bottom bar (2D): Auto-map · rotate · flip · free-transform · unwrap projection (Auto / Planar / Cylindrical / Spherical). Top bar: Vertex / Edge / Face / Object edit modes.',
   'Each screen: the eye/solo dot cycles visible → solo → hidden; set its real LED size under RES; the 2D view shows the whole PSD with this screen’s chunk outlined.',
