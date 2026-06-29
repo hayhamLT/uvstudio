@@ -532,16 +532,34 @@ fn focus_window(app: tauri::AppHandle) {
     }
 }
 
-/// Manual fallback: copy the bundled C4D plugin into a `plugins` folder the user
-/// picks (used only when auto-detection finds no Cinema 4D install).
+/// Resolve whatever folder the user picked to the actual C4D `plugins` folder, so
+/// the plugin always lands somewhere C4D scans — even if they pick the wrong level:
+///   * already a `plugins` folder            → use it
+///   * a folder that CONTAINS a `plugins` dir → use that subfolder (they picked the
+///     C4D config/install root)
+///   * otherwise                             → install where they pointed
+fn resolve_plugins_dir(picked: &Path) -> PathBuf {
+    if picked.file_name().map_or(false, |n| n.to_string_lossy().eq_ignore_ascii_case("plugins")) {
+        return picked.to_path_buf();
+    }
+    let sub = picked.join("plugins");
+    if sub.is_dir() {
+        return sub;
+    }
+    picked.to_path_buf()
+}
+
+/// Manual fallback / re-route: copy the bundled C4D plugin into a folder the user
+/// picks. Tolerant of picking the config root vs its `plugins` subfolder.
 #[tauri::command]
 async fn install_c4d_plugin(app: tauri::AppHandle) -> Result<Option<String>, String> {
     let dest = match app.dialog().file().blocking_pick_folder().and_then(|fp| fp.into_path().ok()) {
         Some(p) => p,
         None => return Ok(None),
     };
+    let plugins = resolve_plugins_dir(&dest);
     let src = app.path().resolve("c4d-plugin", BaseDirectory::Resource).map_err(|e| e.to_string())?;
-    let target = copy_plugin_into(&src, &dest)?;
+    let target = copy_plugin_into(&src, &plugins)?;
     Ok(Some(target.to_string_lossy().to_string()))
 }
 
