@@ -55,6 +55,7 @@ def _open_app():
         pass
 
 PLUGIN_ID = 1066001  # NOTE: register your own at https://plugincafe.maxon.net for release
+PLUGIN_VERSION = "0.2.4"  # shown in the panel; bump together with the app version
 
 # ---- folder protocol --------------------------------------------------------
 TO_APP = "to_app"     # C4D -> UV Studio
@@ -200,9 +201,9 @@ class BridgeDialog(gui.GeDialog):
     def CreateLayout(self):
         self.SetTitle("UV Studio Bridge")
         self.GroupBegin(0, c4d.BFH_SCALEFIT, 1, 0, "")
-        self.GroupBorderSpace(8, 8, 8, 8)
-        self.AddButton(BTN_SEND, c4d.BFH_SCALEFIT, initw=0, inith=34, name="Send selection to UV Studio")
-        self.AddStaticText(TXT_STATUS, c4d.BFH_SCALEFIT, name="Select objects, then Send.")
+        self.GroupBorderSpace(5, 5, 5, 5)
+        self.AddButton(BTN_SEND, c4d.BFH_CENTER, name="Send to UV Studio")
+        self.AddStaticText(TXT_STATUS, c4d.BFH_SCALEFIT, name="v%s · ready" % PLUGIN_VERSION)
         self.GroupEnd()
         return True
 
@@ -211,7 +212,8 @@ class BridgeDialog(gui.GeDialog):
         return True
 
     def _status(self, msg):
-        self.SetString(TXT_STATUS, msg)
+        # keep the version visible alongside the latest status
+        self.SetString(TXT_STATUS, "v%s · %s" % (PLUGIN_VERSION, msg))
 
     # --- events ---
     def Command(self, cid, msg):
@@ -345,7 +347,7 @@ class BridgeCommand(plugins.CommandData):
     def Execute(self, doc):
         if self.dlg is None:
             self.dlg = BridgeDialog()
-        return self.dlg.Open(c4d.DLG_TYPE_ASYNC, pluginid=PLUGIN_ID, defaultw=300, defaulth=88)
+        return self.dlg.Open(c4d.DLG_TYPE_ASYNC, pluginid=PLUGIN_ID, defaultw=240, defaulth=62)
 
     def RestoreLayout(self, sec_ref):
         if self.dlg is None:
