@@ -136,6 +136,18 @@ export default function Preferences({ open, onClose }: { open: boolean; onClose:
               </Btn>
             )}
           </Row>
+          <div className="mt-1 flex items-center gap-2 text-[11px] text-fog-500">
+            <span>Powered by</span>
+            <img
+              src="/toyrobot-logo.png"
+              alt="Toy Robot Media"
+              className="h-4 w-auto opacity-90"
+              onError={(e) => {
+                e.currentTarget.style.display = 'none'
+              }}
+            />
+            <span className="font-medium text-fog-300">Toy Robot Media</span>
+          </div>
         </Section>
 
         <p className="mt-5 text-[11px] leading-relaxed text-fog-500">

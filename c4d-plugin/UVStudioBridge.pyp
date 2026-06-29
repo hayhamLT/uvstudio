@@ -55,7 +55,7 @@ def _open_app():
         pass
 
 PLUGIN_ID = 1066001  # NOTE: register your own at https://plugincafe.maxon.net for release
-PLUGIN_VERSION = "0.3.9"  # shown in the panel; bump together with the app version
+PLUGIN_VERSION = "0.3.10"  # shown in the panel; bump together with the app version
 
 # ---- folder protocol --------------------------------------------------------
 TO_APP = "to_app"     # C4D -> UV Studio
@@ -199,11 +199,12 @@ class BridgeDialog(gui.GeDialog):
 
     # --- layout ---
     def CreateLayout(self):
-        self.SetTitle("UV Studio Bridge")
-        self.GroupBegin(0, c4d.BFH_SCALEFIT, 1, 0, "")
-        self.GroupBorderSpace(5, 5, 5, 5)
-        self.AddButton(BTN_SEND, c4d.BFH_CENTER, name="Send to UV Studio")
-        self.AddStaticText(TXT_STATUS, c4d.BFH_SCALEFIT, name="v%s · ready" % PLUGIN_VERSION)
+        # version lives in the title; the panel itself is just one big button
+        self.SetTitle("UV Studio Bridge  ·  v%s" % PLUGIN_VERSION)
+        self.GroupBegin(0, c4d.BFH_SCALEFIT | c4d.BFV_SCALEFIT, 1, 0, "")
+        self.GroupBorderSpace(10, 10, 10, 10)
+        self.AddButton(BTN_SEND, c4d.BFH_SCALEFIT | c4d.BFV_SCALEFIT, initw=0, inith=46,
+                       name="Send to UV Studio")
         self.GroupEnd()
         return True
 
@@ -212,8 +213,8 @@ class BridgeDialog(gui.GeDialog):
         return True
 
     def _status(self, msg):
-        # keep the version visible alongside the latest status
-        self.SetString(TXT_STATUS, "v%s · %s" % (PLUGIN_VERSION, msg))
+        # status bar removed — feedback shows in the UV Studio app + the ack
+        pass
 
     # --- events ---
     def Command(self, cid, msg):
@@ -414,7 +415,7 @@ class BridgeCommand(plugins.CommandData):
     def Execute(self, doc):
         if self.dlg is None:
             self.dlg = BridgeDialog()
-        return self.dlg.Open(c4d.DLG_TYPE_ASYNC, pluginid=PLUGIN_ID, defaultw=240, defaulth=62)
+        return self.dlg.Open(c4d.DLG_TYPE_ASYNC, pluginid=PLUGIN_ID, defaultw=260, defaulth=74)
 
     def RestoreLayout(self, sec_ref):
         if self.dlg is None:
