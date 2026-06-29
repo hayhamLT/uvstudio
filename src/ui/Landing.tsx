@@ -1,14 +1,50 @@
-import { useRef, type ChangeEvent, type PointerEvent } from 'react'
+import { useEffect, useRef, type ChangeEvent, type PointerEvent } from 'react'
 import { handleViewportDrop, importModelFile, isModelFile, openModelPicker } from './importMap'
 import { useFileDrop } from './useFileDrop'
 import { isEmbeddedHost } from './env'
 
 const embedded = isEmbeddedHost()
+const GLOW = 960 // px — diameter of the cursor glow element
 
 export default function Landing() {
   const inputRef = useRef<HTMLInputElement>(null)
   const glowRef = useRef<HTMLDivElement>(null)
+  const parallaxRef = useRef<HTMLButtonElement>(null)
   const { dragging, ref: dropRef } = useFileDrop(handleViewportDrop)
+
+  // Cursor glow + parallax, driven by a single rAF loop that LERPs toward the
+  // pointer and writes only `transform` (GPU-composited — no per-frame repaint,
+  // which is what made the radial-gradient version lag in the WebView).
+  const target = useRef({ x: 0.5, y: 0.42 })
+  const cur = useRef({ x: 0.5, y: 0.42 })
+  useEffect(() => {
+    let raf = 0
+    const tick = () => {
+      cur.current.x += (target.current.x - cur.current.x) * 0.15
+      cur.current.y += (target.current.y - cur.current.y) * 0.15
+      const root = glowRef.current?.parentElement
+      if (root) {
+        const px = cur.current.x * root.clientWidth
+        const py = cur.current.y * root.clientHeight
+        if (glowRef.current) {
+          glowRef.current.style.transform = `translate3d(${px - GLOW / 2}px, ${py - GLOW / 2}px, 0)`
+        }
+        if (parallaxRef.current) {
+          parallaxRef.current.style.transform = `translate3d(${(cur.current.x - 0.5) * 22}px, ${(cur.current.y - 0.5) * 22}px, 0)`
+        }
+      }
+      raf = requestAnimationFrame(tick)
+    }
+    raf = requestAnimationFrame(tick)
+    return () => cancelAnimationFrame(raf)
+  }, [])
+
+  // Pointer move only records the target — the rAF loop does the work.
+  const onMove = (e: PointerEvent<HTMLDivElement>) => {
+    const r = e.currentTarget.getBoundingClientRect()
+    target.current.x = (e.clientX - r.left) / r.width
+    target.current.y = (e.clientY - r.top) / r.height
+  }
 
   const onPick = async (e: ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(e.target.files ?? [])
@@ -17,39 +53,31 @@ export default function Landing() {
     e.target.value = ''
   }
 
-  // glow + parallax follow the cursor
-  const onMove = (e: PointerEvent<HTMLDivElement>) => {
-    const host = e.currentTarget
-    const r = host.getBoundingClientRect()
-    const x = (e.clientX - r.left) / r.width
-    const y = (e.clientY - r.top) / r.height
-    host.style.setProperty('--mx', `${x * 100}%`)
-    host.style.setProperty('--my', `${y * 100}%`)
-    host.style.setProperty('--px', `${(x - 0.5) * 22}px`)
-    host.style.setProperty('--py', `${(y - 0.5) * 22}px`)
-  }
-
   return (
     <div
       ref={dropRef}
       onPointerMove={onMove}
       className="group/landing relative min-h-0 flex-1 overflow-hidden"
-      style={{ ['--mx' as string]: '50%', ['--my' as string]: '42%' }}
     >
-      {/* cursor-reactive glow */}
+      {/* cursor-reactive glow — a fixed-size circle moved by transform only */}
       <div
         ref={glowRef}
-        className="pointer-events-none absolute inset-0 transition-[background] duration-200"
+        aria-hidden
+        className="pointer-events-none absolute left-0 top-0"
         style={{
+          width: GLOW,
+          height: GLOW,
+          willChange: 'transform',
           background:
-            'radial-gradient(480px circle at var(--mx) var(--my), color-mix(in srgb, var(--color-brand-500) 20%, transparent), transparent 60%)',
+            'radial-gradient(circle, color-mix(in srgb, var(--color-brand-500) 18%, transparent), transparent 55%)',
         }}
       />
 
       <button
+        ref={parallaxRef}
         onClick={() => openModelPicker(inputRef.current)}
         className="absolute inset-0 flex flex-col items-center justify-center gap-7 outline-none"
-        style={{ transform: 'translate(var(--px,0), var(--py,0))', transition: 'transform 120ms ease-out' }}
+        style={{ willChange: 'transform' }}
       >
         {/* interactive import orb */}
         <span className="relative flex h-40 w-40 items-center justify-center">
