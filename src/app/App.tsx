@@ -110,15 +110,20 @@ export default function App() {
         }
       },
       (ack) => {
+        if (ack.stage === 'received') return // heartbeat — wait for the result
+        const set = useStore.getState().setStatus
+        if (ack.error) {
+          const last = ack.error.trim().split('\n').pop() || 'error'
+          set(`Cinema 4D could not apply UVs — ${last}`)
+          return
+        }
         // C4D confirmed the returned UVs landed — close the round-trip loop.
         const plural = ack.applied === 1 ? '' : 's'
-        useStore
-          .getState()
-          .setStatus(
-            ack.missed.length
-              ? `Cinema 4D applied UVs to ${ack.applied} object${plural} · skipped ${ack.missed.length}`
-              : `Cinema 4D applied UVs to ${ack.applied} object${plural}`,
-          )
+        set(
+          ack.missed.length
+            ? `Cinema 4D applied UVs to ${ack.applied} object${plural} · skipped ${ack.missed.length}`
+            : `Cinema 4D applied UVs to ${ack.applied} object${plural}`,
+        )
       },
     )
   }, [])

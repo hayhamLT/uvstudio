@@ -55,7 +55,7 @@ def _open_app():
         pass
 
 PLUGIN_ID = 1066001  # NOTE: register your own at https://plugincafe.maxon.net for release
-PLUGIN_VERSION = "0.2.6"  # shown in the panel; bump together with the app version
+PLUGIN_VERSION = "0.2.7"  # shown in the panel; bump together with the app version
 
 # ---- folder protocol --------------------------------------------------------
 TO_APP = "to_app"     # C4D -> UV Studio
@@ -275,6 +275,18 @@ class BridgeDialog(gui.GeDialog):
         self._status("Sent %d object(s) to UV Studio." % len(out))
 
     # --- receive: to_c4d/scene.json -> write UVs onto the existing objects ---
+    def _write_ack(self, stage, applied, missed, error=None):
+        """Report progress back to the app (and to the temp folder, for debugging):
+        stage = 'received' | 'applied' | 'error'."""
+        try:
+            payload = {"v": 1, "ts": int(time.time() * 1000), "kind": "uv-ack",
+                       "stage": stage, "applied": applied, "missed": missed}
+            if error:
+                payload["error"] = error
+            _write_json_named(os.path.join(self.link_dir, TO_APP), "ack.json", payload)
+        except Exception:
+            pass
+
     def poll_incoming(self):
         if not self.link_dir:
             return
@@ -286,49 +298,57 @@ class BridgeDialog(gui.GeDialog):
         if ts is None or ts == self.last_in_ts:
             return  # nothing new
         self.last_in_ts = ts
-        if man.get("kind") == "uv-return":
-            self.apply_uvs(man)
-        else:
+        if man.get("kind") != "uv-return":
             self._status("Ignored a non-UV payload (update UV Studio?).")
+            return
+        self._write_ack("received", 0, [])  # prove the plugin saw the return
+        try:
+            self.apply_uvs(man)
+        except Exception as e:
+            import traceback
+            self._write_ack("error", 0, [], traceback.format_exc())
+            self._status("Apply error: %s" % e)
 
     def apply_uvs(self, payload):
         doc = documents.GetActiveDocument()
         doc.StartUndo()
-        applied, missed = 0, []
+        applied, missed, errors = 0, [], []
         for obj in payload.get("objects", []):
-            target = None
-            guid = obj.get("guid")
-            if guid:
-                target = _find_by_guid(doc.GetFirstObject(), guid)
-            if target is None:
-                target = _find_by_name(doc.GetFirstObject(), obj.get("name", ""))
-            if self._write_uvw(doc, target, obj):
-                applied += 1
-            else:
-                missed.append(obj.get("name", "?"))
+            name = obj.get("name", "?")
+            try:
+                target = None
+                guid = obj.get("guid")
+                if guid:
+                    target = _find_by_guid(doc.GetFirstObject(), guid)
+                if target is None:
+                    target = _find_by_name(doc.GetFirstObject(), name)
+                if self._write_uvw(doc, target, obj):
+                    applied += 1
+                else:
+                    missed.append(name)
+            except Exception as e:
+                errors.append("%s: %s" % (name, e))
         doc.EndUndo()
         c4d.EventAdd()
-        # ack back to the app so it can confirm the round-trip closed
-        try:
-            _write_json_named(
-                os.path.join(self.link_dir, TO_APP), "ack.json",
-                {"v": 1, "ts": int(time.time() * 1000), "kind": "uv-ack",
-                 "applied": applied, "missed": missed},
-            )
-        except Exception:
-            pass
-        if missed:
+        self._write_ack("applied", applied, missed, "; ".join(errors) if errors else None)
+        if errors:
+            self._status("Applied %d; errors: %s" % (applied, ("; ".join(errors))[:90]))
+        elif missed:
             self._status("UVs applied to %d; could not match: %s" % (applied, ", ".join(missed)))
         else:
             self._status("UVs applied to %d object(s)." % applied)
 
     def _write_uvw(self, doc, target, obj):
-        """Write per-polygon-corner UVs onto target's UVW tag. Geometry untouched."""
-        if target is None or not target.CheckType(c4d.Opolygon):
-            return False
+        """Write per-polygon-corner UVs onto target's UVW tag. Geometry untouched.
+        Raises on a real problem (recorded per-object) so failures are visible."""
+        if target is None:
+            raise ValueError("object not found in scene")
+        if not target.CheckType(c4d.Opolygon):
+            raise ValueError("target is not an editable polygon object")
         poly_count = target.GetPolygonCount()
-        if poly_count != obj.get("polyCount"):
-            return False  # mesh changed since send — refuse rather than mis-map
+        want = obj.get("polyCount")
+        if poly_count != want:
+            raise ValueError("polygon count %s != sent %s (re-send)" % (poly_count, want))
         rows = obj.get("uv") or []
         vflip = obj.get("vFlip", True)
 
@@ -343,17 +363,19 @@ class BridgeDialog(gui.GeDialog):
             row = rows[i] if i < len(rows) else None
             if not row or len(row) < 8:
                 continue
-
-            def corner(j):
-                u = row[j * 2]
-                v = row[j * 2 + 1]
-                return c4d.Vector(u, 1.0 - v if vflip else v, 0.0)
-
-            tag.SetSlow(i, corner(0), corner(1), corner(2), corner(3))
+            u = row
+            tag.SetSlow(
+                i,
+                c4d.Vector(u[0], 1.0 - u[1] if vflip else u[1], 0.0),
+                c4d.Vector(u[2], 1.0 - u[3] if vflip else u[3], 0.0),
+                c4d.Vector(u[4], 1.0 - u[5] if vflip else u[5], 0.0),
+                c4d.Vector(u[6], 1.0 - u[7] if vflip else u[7], 0.0),
+            )
 
         if new_tag:
             target.InsertTag(tag)
             doc.AddUndo(c4d.UNDOTYPE_NEWOBJ, tag)
+        tag.SetDirty(c4d.DIRTYFLAGS_DATA)
         target.Message(c4d.MSG_UPDATE)
         return True
 

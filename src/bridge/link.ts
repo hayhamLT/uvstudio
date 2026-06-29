@@ -33,8 +33,9 @@ const ACK = 'ack.json'
 
 export type LinkScreen = { name: string; w: number; h: number; aspect: number }
 type Manifest = { v: number; ts: number; objects: string[]; screens: LinkScreen[] }
-/** C4D → app confirmation that the returned UVs landed on the objects. */
-export type UvAck = { ts: number; applied: number; missed: string[] }
+/** C4D → app confirmation that the returned UVs landed on the objects.
+ *  stage: 'received' (heartbeat) | 'applied' | 'error'. */
+export type UvAck = { ts: number; applied: number; missed: string[]; stage?: string; error?: string }
 
 // ---- backend detection ------------------------------------------------------
 interface TauriGlobal {
