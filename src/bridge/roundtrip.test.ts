@@ -111,4 +111,51 @@ describe('sceneFromSidecar', () => {
     const shared = obj.mesh.faces[0].filter((v) => obj.mesh.faces[1].includes(v))
     expect(shared.length).toBe(2)
   })
+
+  it('carries imported UVs through to the SceneObject', () => {
+    const sc: ForwardSidecar = {
+      v: 2,
+      ts: 0,
+      kind: 'geo-forward',
+      objects: [
+        {
+          name: 'S',
+          guid: 'g',
+          points: [0, 0, 0, 1, 0, 0, 0, 1, 0],
+          polys: [[0, 1, 2]],
+          uv: [[0.1, 0.2, 0.3, 0.4, 0.5, 0.6]],
+        },
+      ],
+    }
+    const [obj] = sceneFromSidecar(sc)
+    expect(obj.uvs).toBeDefined()
+    ;[0.1, 0.2, 0.3, 0.4, 0.5, 0.6].forEach((want, i) => expect(obj.uvs![i]).toBeCloseTo(want))
+    expect(obj.mesh.faces).toEqual([[0, 1, 2]])
+  })
+
+  it('splits a shared vertex when its UV differs across polygons', () => {
+    // two triangles share the point at (1,0,0) but with different UVs there
+    const sc: ForwardSidecar = {
+      v: 2,
+      ts: 0,
+      kind: 'geo-forward',
+      objects: [
+        {
+          name: 'S',
+          guid: 'g',
+          points: [0, 0, 0, 1, 0, 0, 1, 1, 0, 2, 1, 0],
+          polys: [
+            [0, 1, 2],
+            [1, 3, 2],
+          ],
+          uv: [
+            [0, 0, 0.5, 0, 0.5, 1],
+            [0.9, 0, 1, 1, 0.5, 1],
+          ],
+        },
+      ],
+    }
+    const [obj] = sceneFromSidecar(sc)
+    expect(obj.mesh.positions.length / 3).toBe(5) // the (1,0,0) corner splits by UV
+  })
 })

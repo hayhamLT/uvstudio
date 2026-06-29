@@ -55,7 +55,7 @@ def _open_app():
         pass
 
 PLUGIN_ID = 1066001  # NOTE: register your own at https://plugincafe.maxon.net for release
-PLUGIN_VERSION = "0.2.4"  # shown in the panel; bump together with the app version
+PLUGIN_VERSION = "0.2.5"  # shown in the panel; bump together with the app version
 
 # ---- folder protocol --------------------------------------------------------
 TO_APP = "to_app"     # C4D -> UV Studio
@@ -239,13 +239,31 @@ class BridgeDialog(gui.GeDialog):
             for p in op.GetAllPoints():
                 wp = mg * p  # world space, matches how UV Studio bakes geometry
                 pts.extend([wp.x, wp.y, wp.z])
+            allpolys = op.GetAllPolygons()
             polys = []
-            for poly in op.GetAllPolygons():
+            for poly in allpolys:
                 if poly.c == poly.d:  # triangle
                     polys.append([poly.a, poly.b, poly.c])
                 else:                 # quad
                     polys.append([poly.a, poly.b, poly.c, poly.d])
-            out.append({"name": op.GetName(), "guid": _object_guid(op), "points": pts, "polys": polys})
+            # existing UVs (so the app can SHOW the object's current UVs on import).
+            # Per polygon, corners a,b,c(,d); V flipped to the app's V-up space.
+            uvtag = op.GetTag(c4d.Tuvw)
+            uv = None
+            if uvtag:
+                uv = []
+                for i, poly in enumerate(allpolys):
+                    s = uvtag.GetSlow(i)
+                    row = [s['a'].x, 1.0 - s['a'].y,
+                           s['b'].x, 1.0 - s['b'].y,
+                           s['c'].x, 1.0 - s['c'].y]
+                    if poly.c != poly.d:  # quad
+                        row += [s['d'].x, 1.0 - s['d'].y]
+                    uv.append(row)
+            obj = {"name": op.GetName(), "guid": _object_guid(op), "points": pts, "polys": polys}
+            if uv is not None:
+                obj["uv"] = uv
+            out.append(obj)
 
         payload = {"v": 2, "ts": int(time.time() * 1000), "kind": "geo-forward", "objects": out}
         try:

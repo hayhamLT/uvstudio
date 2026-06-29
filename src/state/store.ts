@@ -790,7 +790,7 @@ export const useStore = create<AppState>((set, get) => ({
   // Media made for the screen fills it exactly; a mismatch fills + stretches
   // rather than cropping or letterboxing (the whole image always shows).
   mapFill: true,
-  autoMapOnImport: prefBool('autoMapOnImport', true),
+  autoMapOnImport: prefBool('autoMapOnImport', false),
   mapObjFit: {},
   mapFitInfo: {},
   mappedObjects: [],
@@ -859,7 +859,8 @@ export const useStore = create<AppState>((set, get) => ({
     const mapObjects: MapObject[] = []
     const mapShells: MapShell[] = []
     const contextShells: MapShell[] = []
-    const importedObjects: string[] = []
+    const importedObjects: string[] = [] // screens that arrived with a texture
+    const uvObjects: string[] = [] // screens that arrived with UVs (texture or not)
     objects.forEach((o, oi) => {
       const he = buildHalfEdge(o.mesh)
       const shells = extractShells(he, new Set()).shells
@@ -869,12 +870,13 @@ export const useStore = create<AppState>((set, get) => ({
         return
       }
       const shellIds: number[] = []
-      const hasImported = !!(o.uvs && o.textureImage)
+      const hasUVs = !!o.uvs // show imported UVs even when there's no texture
+      const hasTexture = !!o.textureImage
       shells.forEach((shell, si) => {
         const id = oi * 1000 + si
         shellIds.push(id)
         mapShells.push({ id, shell, objName: o.name })
-        if (hasImported) {
+        if (hasUVs) {
           const uv = new Float32Array(shell.vertCount * 2)
           for (let v = 0; v < shell.vertCount; v++) {
             const ov = shell.toOrigVertex[v]
@@ -886,7 +888,8 @@ export const useStore = create<AppState>((set, get) => ({
         }
       })
       mapObjects.push({ name: o.name, mesh: o.mesh, he, shellIds, c4dGuid: o.c4dGuid })
-      if (hasImported) {
+      if (hasUVs) uvObjects.push(o.name)
+      if (hasTexture) {
         const tex = new THREE.CanvasTexture(o.textureImage as HTMLCanvasElement)
         tex.colorSpace = THREE.SRGBColorSpace
         tex.needsUpdate = true
@@ -896,7 +899,7 @@ export const useStore = create<AppState>((set, get) => ({
         // cover — not the whole image. Use that as the content rect so auto-map
         // fits the screen to its own slice (e.g. one wall's part of a shared
         // panorama atlas) instead of stretching the entire texture across it.
-        const uvs = o.uvs!
+        const uvs = o.uvs ?? new Float32Array(0)
         let bu0 = Infinity,
           bu1 = -Infinity,
           bv0 = Infinity,
@@ -939,7 +942,8 @@ export const useStore = create<AppState>((set, get) => ({
       }
     }
 
-    const anyImported = importedObjects.length > 0
+    const anyImported = importedObjects.length > 0 // texture import (PSD/atlas flow)
+    const anyUV = uvObjects.length > 0 // has UVs to show (incl. C4D objects w/o texture)
     if (anyImported) live.layeredMode = true
     live.dirty = true
     set({
@@ -959,7 +963,7 @@ export const useStore = create<AppState>((set, get) => ({
       mapObjFit: {},
       mapFitInfo: {},
       mapSelection: new Set(),
-      mappedObjects: anyImported ? [...importedObjects] : [],
+      mappedObjects: [...uvObjects],
       importedObjects,
       layeredMode: anyImported,
       psdLayerCount: anyImported ? importedObjects.length : 0,
@@ -971,17 +975,17 @@ export const useStore = create<AppState>((set, get) => ({
       hiddenScreens: [],
       soloScreen: null,
       selectedObject: mapObjects[0]?.name ?? null,
-      hasUV: anyImported,
+      hasUV: anyUV,
       isPacked: false,
-      status: anyImported
-        ? `Imported ${mapObjects.length} screens${contextShells.length ? ` + reference geometry` : ''}`
+      status: anyUV || anyImported
+        ? `Imported ${mapObjects.length} screens${contextShells.length ? ` + reference geometry` : ''} — showing their UVs`
         : `Scene: ${mapObjects.length} objects`,
       uvVersion: get().uvVersion + 1,
     })
 
-    // Always auto-map freshly imported screens — imported UVs may be off, or just
-    // need a cosmetic clean-up, so re-project them to clean geometry-based UVs
-    // fitted to each screen's own content. (Refresh keeps the user's work.)
+    // Imports show their OWN UVs by default — auto-map is opt-in (Preferences ▸
+    // "Auto-map on import", or the per-screen Auto-map button / M). Refresh keeps
+    // the user's work, so it never re-maps either.
     if (anyImported && !opts?.keepOverrides && get().autoMapOnImport) get().runMapping()
   },
 

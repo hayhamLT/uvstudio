@@ -32,6 +32,10 @@ export interface ForwardObject {
   points: number[]
   /** each polygon's C4D point indices — length 3 (tri) or 4 (quad) */
   polys: number[][]
+  /** OPTIONAL existing UVs from the object's UVW tag, per polygon: a flat
+   *  [u,v, u,v, …] of the polygon's corners (already V-flipped to the app's
+   *  space). Lets the app show the object's current UVs on import. */
+  uv?: number[][]
 }
 export interface ForwardSidecar {
   v: number
@@ -121,33 +125,53 @@ export function buildReturnPayload(objects: ReturnObjectInput[], ts: number): Re
  */
 export function sceneFromSidecar(sidecar: ForwardSidecar): SceneObject[] {
   return sidecar.objects.map((o) => {
-    const { positions, faces } = weldByPosition(o.points, o.polys)
-    return { name: o.name, c4dGuid: o.guid, mesh: { name: o.name, positions, faces } }
+    const { positions, faces, uvs } = weldFromCorners(o.points, o.polys, o.uv)
+    return { name: o.name, c4dGuid: o.guid, mesh: { name: o.name, positions, faces }, uvs }
   })
 }
 
-/** Merge coincident points (rounded to 1e-5) and remap face corners to the
- *  merged indices. Face count and corner order are preserved. */
-function weldByPosition(
+/**
+ * Build a welded mesh from polygon corners.
+ *  - No UVs: merge coincident points (rounded to 1e-5) → connected manifold.
+ *  - With UVs: merge by position AND uv, so UV seams stay split (a point shared
+ *    by polygons with different UVs becomes separate vertices) and the result
+ *    carries per-vertex UVs aligned to positions.
+ * Face count and corner order are always preserved (the lossless return maps by
+ * polygon index + corner order).
+ */
+function weldFromCorners(
   points: number[],
   polys: number[][],
-): { positions: Float32Array; faces: number[][] } {
+  uvPerPoly?: number[][],
+): { positions: Float32Array; faces: number[][]; uvs?: Float32Array } {
+  const hasUV = !!uvPerPoly
   const key = new Map<string, number>()
-  const out: number[] = []
-  const remap = new Int32Array(points.length / 3)
-  for (let i = 0; i < points.length / 3; i++) {
-    const x = points[i * 3],
-      y = points[i * 3 + 1],
-      z = points[i * 3 + 2]
-    const k = `${Math.round(x * 1e5)},${Math.round(y * 1e5)},${Math.round(z * 1e5)}`
-    let idx = key.get(k)
-    if (idx === undefined) {
-      idx = out.length / 3
-      out.push(x, y, z)
-      key.set(k, idx)
-    }
-    remap[i] = idx
+  const pos: number[] = []
+  const uvOut: number[] = []
+  const faces: number[][] = polys.map((poly, k) => {
+    const cornerUV = uvPerPoly?.[k]
+    return poly.map((pi, j) => {
+      const x = points[pi * 3],
+        y = points[pi * 3 + 1],
+        z = points[pi * 3 + 2]
+      const u = cornerUV ? cornerUV[j * 2] : 0
+      const v = cornerUV ? cornerUV[j * 2 + 1] : 0
+      const k2 = hasUV
+        ? `${Math.round(x * 1e5)},${Math.round(y * 1e5)},${Math.round(z * 1e5)}|${Math.round(u * 1e4)},${Math.round(v * 1e4)}`
+        : `${Math.round(x * 1e5)},${Math.round(y * 1e5)},${Math.round(z * 1e5)}`
+      let idx = key.get(k2)
+      if (idx === undefined) {
+        idx = pos.length / 3
+        pos.push(x, y, z)
+        if (hasUV) uvOut.push(u, v)
+        key.set(k2, idx)
+      }
+      return idx
+    })
+  })
+  return {
+    positions: Float32Array.from(pos),
+    faces,
+    uvs: hasUV ? Float32Array.from(uvOut) : undefined,
   }
-  const faces = polys.map((p) => p.map((vi) => remap[vi]))
-  return { positions: Float32Array.from(out), faces }
 }
