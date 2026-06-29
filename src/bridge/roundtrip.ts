@@ -174,7 +174,11 @@ function weldFromCorners(
       let idx = key.get(k2)
       if (idx === undefined) {
         idx = pos.length / 3
-        pos.push(x, y, z)
+        // C4D is left-handed; the app (Three.js) is right-handed. Negate Z so the
+        // scene isn't mirrored on import — otherwise the unwrap (and the UVs sent
+        // back) come out flipped in C4D. Face corner order is untouched, so the
+        // per-corner return mapping stays correct.
+        pos.push(x, y, -z)
         if (hasUV) uvOut.push(u, v)
         key.set(k2, idx)
       }
