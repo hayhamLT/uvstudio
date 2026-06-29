@@ -6,22 +6,24 @@ const SHORTCUTS: [string, string][] = [
   ['T', 'Free transform (scale from centre · ⇧ non-uniform · ⌥ corner)'],
   ['R / ⇧R', 'Rotate active screen CW / CCW'],
   ['F / ⇧F', 'Flip active screen H / V'],
+  ['X', 'Reset active screen orientation'],
   ['M', 'Auto-map active screen'],
   ['S', 'Scale active screen — move mouse, click to set'],
-  ['+ / −', 'Scale selection up / down'],
+  ['+ / −', 'Scale selection (or active screen) up / down'],
+  ['H', 'Toggle this help'],
   ['⌘/Ctrl Z', 'Undo · ⇧ to redo'],
   ['Drag', 'Move selection · drag bg = marquee'],
   ['⇧ Click', 'Add / remove from selection'],
-  ['` / Right-drag', 'View-only / pan · Esc clears'],
+  ['` / 0', 'Leave edit mode · Right-drag pans · Esc clears'],
 ]
 
 const FLOW = [
-  'Import — pick (or drag) your model together with its screen maps. A multi-object GLB/glTF where each screen is a named object, plus the PSD(s) / images. A wizard links each PSD layer / image to its screen by name.',
+  'Bring in screens — drop / pick a model with its screen maps (a multi-object GLB/glTF plus the PSD(s) / images; a wizard links each layer to its screen by name), or Send a selection straight from Cinema 4D with the bridge plugin.',
   'Screens auto-map on import — each one keeps its imported UVs and fits its content. Click a screen (3D or list) to work on it.',
   'Bottom bar (2D): Auto-map · rotate · flip · free-transform · unwrap projection (Auto / Planar / Cylindrical / Spherical). Top bar: Vertex / Edge / Face / Object edit modes.',
   'Each screen: the eye/solo dot cycles visible → solo → hidden; set its real LED size under RES; the 2D view shows the whole PSD with this screen’s chunk outlined.',
   'Reference geometry (non-screen objects) shows as a dim shell — the slider sets its brightness (black → grey); the eye hides it.',
-  'Export → GLB (textured), or Send to Cinema 4D to round-trip the unwrap back to your scene via the link folder.',
+  'Export → GLB (textured), or Send to Cinema 4D — the unwrap rides back onto your original objects’ UVs losslessly (geometry untouched, nothing to set up).',
 ]
 
 export default function HelpOverlay({ onClose }: { onClose: () => void }) {

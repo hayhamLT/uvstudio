@@ -1,6 +1,7 @@
 import { useEffect, useState, type ReactNode } from 'react'
 import { useStore } from '../state/store'
 import * as link from '../bridge/link'
+import { currentVersion, checkForUpdate } from '../app/updater'
 
 /** Set-once / rarely-touched settings — Cinema 4D setup and import defaults. */
 export default function Preferences({ open, onClose }: { open: boolean; onClose: () => void }) {
@@ -25,6 +26,17 @@ export default function Preferences({ open, onClose }: { open: boolean; onClose:
     setStatus('Looking for Cinema 4D…')
     const res = await link.installC4DPlugin()
     setStatus(res ? `Installed C4D plugin → ${res.paths[0]} — restart C4D` : 'Plugin install cancelled')
+    setBusy('')
+  }
+  const checkUpdate = async () => {
+    setBusy('update')
+    const u = await checkForUpdate()
+    if (u) {
+      setStatus(`Update ${u.version} available — opening download…`)
+      await link.openExternal(u.url)
+    } else {
+      setStatus(`Up to date — v${currentVersion}`)
+    }
     setBusy('')
   }
 
@@ -94,6 +106,16 @@ export default function Preferences({ open, onClose }: { open: boolean; onClose:
             checked={autoMap}
             onChange={setAutoMap}
           />
+        </Section>
+
+        <Section title="About">
+          <Row label="Version" hint={`UV Studio v${currentVersion}`}>
+            {link.isDesktop() && (
+              <Btn onClick={checkUpdate} busy={busy === 'update'}>
+                Check for updates
+              </Btn>
+            )}
+          </Row>
         </Section>
 
         <p className="mt-5 text-[11px] leading-relaxed text-fog-500">
