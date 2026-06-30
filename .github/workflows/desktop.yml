@@ -27,6 +27,10 @@ jobs:
           - platform: windows-latest
             args: ''
     runs-on: ${{ matrix.platform }}
+    # true only when the macOS signing certificate secret actually exists — used
+    # to gate the signed build so empty secrets don't make codesign fail.
+    env:
+      MAC_SIGN: ${{ secrets.APPLE_CERTIFICATE != '' }}
 
     steps:
       - uses: actions/checkout@v4
@@ -50,19 +54,34 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
-      - name: Build + release
+      # Signed macOS build — ONLY when the Apple cert secret is set. Passing empty
+      # APPLE_* vars makes tauri-action attempt (and fail) codesign, so we gate it.
+      # See docs/SIGNING.md for the certificate + secrets.
+      - name: Build + release (macOS, signed)
+        if: matrix.platform == 'macos-latest' && env.MAC_SIGN == 'true'
         uses: tauri-apps/tauri-action@v0
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          # macOS signing + notarisation. Active when these repo secrets are set;
-          # if they're empty the build still succeeds (just unsigned). See
-          # docs/SIGNING.md for how to create the certificate and each secret.
           APPLE_CERTIFICATE: ${{ secrets.APPLE_CERTIFICATE }}
           APPLE_CERTIFICATE_PASSWORD: ${{ secrets.APPLE_CERTIFICATE_PASSWORD }}
           APPLE_SIGNING_IDENTITY: ${{ secrets.APPLE_SIGNING_IDENTITY }}
           APPLE_ID: ${{ secrets.APPLE_ID }}
           APPLE_PASSWORD: ${{ secrets.APPLE_PASSWORD }}
           APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+        with:
+          tagName: ${{ github.ref_name }}
+          releaseName: 'UV Studio ${{ github.ref_name }}'
+          releaseDraft: true
+          prerelease: false
+          args: ${{ matrix.args }}
+
+      # Plain build — Windows always, and macOS when no signing cert is configured
+      # (builds succeed unsigned). No Apple env, so codesign is never attempted.
+      - name: Build + release
+        if: matrix.platform == 'windows-latest' || env.MAC_SIGN != 'true'
+        uses: tauri-apps/tauri-action@v0
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           tagName: ${{ github.ref_name }}
           releaseName: 'UV Studio ${{ github.ref_name }}'
