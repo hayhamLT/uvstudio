@@ -24,8 +24,6 @@ export default function Landing() {
       >
         {/* interactive import orb */}
         <span className="relative flex h-40 w-40 items-center justify-center">
-          {/* soft glow that lights up on hover (static — only animates on hover) */}
-          <span className="absolute inset-0 rounded-full bg-brand-500/0 blur-2xl transition-all duration-300 group-hover/orb:scale-125 group-hover/orb:bg-brand-500/25" />
           {/* pulsing rings */}
           <span className={`absolute inset-0 rounded-full border border-brand-500/30 ${dragging ? 'animate-ping' : ''}`} />
           <span
