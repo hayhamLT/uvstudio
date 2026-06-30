@@ -1,44 +1,7 @@
-import { useEffect, useRef, useState, type ChangeEvent, type ReactNode } from 'react'
+import { useRef, type ChangeEvent } from 'react'
 import { useStore } from '../state/store'
 import { importModelFile, isModelFile, openModelPicker } from './importMap'
 import { IconUpload, IconExport, IconHelp } from './icons'
-
-function Menu({ label, icon, children }: { label: string; icon: ReactNode; children: (close: () => void) => ReactNode }) {
-  const [open, setOpen] = useState(false)
-  const ref = useRef<HTMLDivElement>(null)
-  // Close on click/escape outside the menu (robust, no focus/blur races).
-  useEffect(() => {
-    if (!open) return
-    const onDown = (e: MouseEvent) => {
-      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false)
-    }
-    const onKey = (e: KeyboardEvent) => e.key === 'Escape' && setOpen(false)
-    document.addEventListener('mousedown', onDown)
-    document.addEventListener('keydown', onKey)
-    return () => {
-      document.removeEventListener('mousedown', onDown)
-      document.removeEventListener('keydown', onKey)
-    }
-  }, [open])
-  return (
-    <div className="relative" ref={ref}>
-      <button
-        onClick={() => setOpen((v) => !v)}
-        className="flex items-center gap-2 rounded-md px-2.5 py-1.5 text-sm text-fog-200 hover:bg-ink-700/70 ring-focus"
-      >
-        {icon} {label}
-        <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" className="opacity-60">
-          <path d="M6 9l6 6 6-6" />
-        </svg>
-      </button>
-      {open && (
-        <div className="absolute left-0 top-10 z-50 w-64 animate-menu-pop rounded-lg border border-line bg-ink-800 p-1 shadow-2xl">
-          {children(() => setOpen(false))}
-        </div>
-      )}
-    </div>
-  )
-}
 
 
 export default function TopBar({ onHelp, onPrefs }: { onHelp: () => void; onPrefs: () => void }) {
@@ -91,42 +54,29 @@ export default function TopBar({ onHelp, onPrefs }: { onHelp: () => void; onPref
       </button>
       <input ref={modelRef} type="file" accept=".glb,.gltf,.psd,image/*" multiple className="hidden" onChange={onModel} />
 
-      <Menu label="Export" icon={<IconExport width={16} height={16} />}>
-        {(close) => {
-          const ready = mappedCount > 0
-          const action = fromC4D ? sendToC4D : exportGltf
-          const title = fromC4D ? 'Send to Cinema 4D' : 'Export GLB'
-          const desc = !ready
+      {/* Source-aware action: a C4D scene sends back; a file import exports a GLB. */}
+      <button
+        onClick={() => { if (mappedCount) (fromC4D ? sendToC4D() : exportGltf()) }}
+        disabled={!mappedCount}
+        title={
+          !mappedCount
             ? 'Map a screen first'
             : fromC4D
-              ? 'Apply the mapped UVs back to your C4D scene'
-              : 'Download the model + UVs (.glb + LED sizes)'
-          // Source-aware: a C4D scene rounds-trips back; a file import exports a GLB.
-          const icon = fromC4D ? (
-            <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-              <path d="M22 2 11 13" />
-              <path d="M22 2 15 22l-4-9-9-4 20-7Z" />
-            </svg>
-          ) : (
-            <IconExport width={17} height={17} />
-          )
-          return (
-            <button
-              onClick={() => { if (ready) { close(); action() } }}
-              disabled={!ready}
-              className="group/exp flex w-full items-start gap-3 rounded-md px-3 py-2.5 text-left transition enabled:hover:bg-brand-500/15 disabled:opacity-45 ring-focus"
-            >
-              <span className="mt-0.5 text-brand-400 transition-transform group-enabled/exp:group-hover/exp:scale-110">
-                {icon}
-              </span>
-              <span className="flex flex-col">
-                <span className="text-sm font-medium text-fog-100">{title}</span>
-                <span className="text-[11px] leading-snug text-fog-400">{desc}</span>
-              </span>
-            </button>
-          )
-        }}
-      </Menu>
+              ? 'Send the mapped UVs back to Cinema 4D'
+              : 'Download the model + UVs as a GLB'
+        }
+        className="flex items-center gap-2 rounded-md px-2.5 py-1.5 text-sm text-fog-200 enabled:hover:bg-ink-700/70 disabled:opacity-40 ring-focus"
+      >
+        {fromC4D ? (
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M22 2 11 13" />
+            <path d="M22 2 15 22l-4-9-9-4 20-7Z" />
+          </svg>
+        ) : (
+          <IconExport width={16} height={16} />
+        )}
+        {fromC4D ? 'Send back' : 'Export'}
+      </button>
 
       <div className="mx-1 h-6 w-px bg-line" />
       <button
