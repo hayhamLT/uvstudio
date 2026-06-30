@@ -3850,7 +3850,7 @@ dependencies = [
 
 [[package]]
 name = "uvstudio"
-version = "0.3.23"
+version = "0.3.24"
 dependencies = [
  "notify",
  "serde",
