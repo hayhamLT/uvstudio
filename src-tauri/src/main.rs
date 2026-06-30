@@ -430,6 +430,13 @@ fn find_c4d_app_plugin_dirs() -> Vec<(u32, PathBuf)> {
     out
 }
 
+/// Did the plugin file actually land in this folder? We verify the real file
+/// rather than trusting copy/exit codes — the only reliable signal across the
+/// direct / elevated / fallback paths on both macOS and Windows.
+fn plugin_installed_at(plugins_dir: &Path) -> bool {
+    plugins_dir.join("UVStudioBridge").join("UVStudioBridge.pyp").is_file()
+}
+
 /// Remove our plugin from every per-user prefs config folder. Used after a
 /// successful install into the app plugins folder so the same PLUGIN_ID isn't
 /// registered twice (which makes C4D error / load the wrong copy).
@@ -535,19 +542,18 @@ async fn install_c4d_plugin_latest(
 ) -> Result<Option<String>, String> {
     let src = app.path().resolve("c4d-plugin", BaseDirectory::Resource).map_err(|e| e.to_string())?;
 
-    // 1) Preferred: the C4D application plugins folder.
+    // 1) Preferred: the C4D application plugins folder. Verify the file actually
+    //    landed (don't trust copy/exit codes) before claiming success.
     if let Some((_, plugins)) = find_c4d_app_plugin_dirs().into_iter().next() {
-        // direct write (no prompt) — works where the folder is user-writable
-        if copy_plugin_into(&src, &plugins).is_ok() {
+        let _ = copy_plugin_into(&src, &plugins); // direct write (no prompt)
+        if !plugin_installed_at(&plugins) && elevate {
+            let _ = elevated_copy_into(&src, &plugins); // admin prompt only on explicit install
+        }
+        if plugin_installed_at(&plugins) {
             remove_plugin_from_prefs_configs(); // no double-registration
             return Ok(Some(plugins.join("UVStudioBridge").to_string_lossy().to_string()));
         }
-        // not directly writable → with the user's OK, write it with an admin prompt
-        if elevate && elevated_copy_into(&src, &plugins).is_ok() {
-            remove_plugin_from_prefs_configs();
-            return Ok(Some(plugins.join("UVStudioBridge").to_string_lossy().to_string()));
-        }
-        // else fall through to the user-writable prefs configs
+        // couldn't write the app folder → fall through to the user-writable prefs configs
     }
 
     // 2) Fallback: every config folder of the newest version (writable w/o admin).
@@ -557,12 +563,15 @@ async fn install_c4d_plugin_latest(
     }
     let mut live = None; // dirs are sorted most-recently-used first
     for dir in &dirs {
-        let target = copy_plugin_into(&src, dir)?;
-        if live.is_none() {
-            live = Some(target.to_string_lossy().to_string());
+        let _ = copy_plugin_into(&src, dir);
+        if plugin_installed_at(dir) && live.is_none() {
+            live = Some(dir.join("UVStudioBridge").to_string_lossy().to_string());
         }
     }
-    Ok(live)
+    match live {
+        Some(p) => Ok(Some(p)),
+        None => Err("could not write the plugin to any Cinema 4D folder".into()),
+    }
 }
 
 /// Whether the bundled C4D plugin is already installed in the latest Cinema 4D.
@@ -751,19 +760,17 @@ async fn install_c4d_plugin(app: tauri::AppHandle) -> Result<Option<String>, Str
     };
     let plugins = resolve_plugins_dir(&dest);
     let src = app.path().resolve("c4d-plugin", BaseDirectory::Resource).map_err(|e| e.to_string())?;
-    // direct write; if the picked folder needs admin rights, elevate (prompt once)
-    if copy_plugin_into(&src, &plugins).is_ok() {
-        return Ok(Some(plugins.join("UVStudioBridge").to_string_lossy().to_string()));
-    }
+    // direct write; if the picked folder needs admin rights, elevate (prompt once).
+    // Verify the file actually landed rather than trusting the copy result.
+    let _ = copy_plugin_into(&src, &plugins);
     #[cfg(any(target_os = "macos", target_os = "windows"))]
-    {
-        elevated_copy_into(&src, &plugins)?;
-        Ok(Some(plugins.join("UVStudioBridge").to_string_lossy().to_string()))
+    if !plugin_installed_at(&plugins) {
+        let _ = elevated_copy_into(&src, &plugins);
     }
-    #[cfg(not(any(target_os = "macos", target_os = "windows")))]
-    {
-        copy_plugin_into(&src, &plugins)?; // surface the original error
+    if plugin_installed_at(&plugins) {
         Ok(Some(plugins.join("UVStudioBridge").to_string_lossy().to_string()))
+    } else {
+        Err("couldn't write the plugin to that folder — pick one you can write to".into())
     }
 }
 
