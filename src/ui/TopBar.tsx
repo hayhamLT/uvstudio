@@ -105,8 +105,8 @@ export default function TopBar({ onHelp, onPrefs }: { onHelp: () => void; onPref
       <Menu label="Export" icon={<IconExport width={16} height={16} />}>
         {(close) => (
           <>
-            <MenuItem disabled={!mappedCount} onClick={() => { close(); exportGltf() }}>GLB</MenuItem>
-            <MenuItem disabled={!mappedCount} onClick={() => { close(); sendToC4D() }}>Send to Cinema 4D</MenuItem>
+            <MenuItem disabled={!mappedCount} onClick={() => { close(); exportGltf() }}>GLB file (model + UVs)</MenuItem>
+            <MenuItem disabled={!mappedCount} onClick={() => { close(); sendToC4D() }}>Send back to Cinema 4D</MenuItem>
           </>
         )}
       </Menu>
