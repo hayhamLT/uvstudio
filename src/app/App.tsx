@@ -18,6 +18,7 @@ import {
   restore as restoreLink,
   isDesktop,
   focusWindow,
+  resizeWindow,
   refreshPluginSilently,
   c4dStatus,
 } from '../bridge/link'
@@ -53,6 +54,14 @@ export default function App() {
   const hasModel = useStore((s) => s.mapObjects.length > 0)
   const lastImportName = useStore((s) => s.lastImportName)
   const booted = useRef(false)
+
+  // Standalone: a compact launcher window on the landing page; grow once a model
+  // is loaded, shrink back when it's cleared. (No-op on web.)
+  useEffect(() => {
+    if (!isDesktop()) return
+    if (hasModel) void resizeWindow(1440, 900)
+    else void resizeWindow(520, 460)
+  }, [hasModel])
 
   // Opening a new file resets the orientation so the 3D view lands in the left
   // (secondary) pane — primary '2d' means the 2D map is main, 3D is secondary.

@@ -432,6 +432,16 @@ export async function quitApp(): Promise<void> {
   }
 }
 
+/** Resize the desktop window (logical px) and re-center. No-op on web. */
+export async function resizeWindow(width: number, height: number): Promise<void> {
+  if (!isDesktop()) return
+  try {
+    await tauri()!.core.invoke('resize_window', { width, height })
+  } catch {
+    /* ignore */
+  }
+}
+
 /** Bring the desktop window to the front (e.g. when C4D sends new geometry). */
 export async function focusWindow(): Promise<void> {
   if (!isDesktop()) return

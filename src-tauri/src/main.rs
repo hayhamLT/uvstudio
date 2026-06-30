@@ -733,6 +733,16 @@ fn focus_window(app: tauri::AppHandle) {
     }
 }
 
+/// Resize the main window (logical px) and re-center. The app calls this to keep
+/// a compact "launcher" window on the landing page and grow once a model loads.
+#[tauri::command]
+fn resize_window(app: tauri::AppHandle, width: f64, height: f64) {
+    if let Some(w) = app.get_webview_window("main") {
+        let _ = w.set_size(tauri::LogicalSize::new(width, height));
+        let _ = w.center();
+    }
+}
+
 /// Resolve whatever folder the user picked to the actual C4D `plugins` folder, so
 /// the plugin always lands somewhere C4D scans — even if they pick the wrong level:
 ///   * already a `plugins` folder            → use it
@@ -819,6 +829,7 @@ fn main() {
             download_and_open_update,
             quit_app,
             focus_window,
+            resize_window,
             focus_c4d
         ])
         .run(tauri::generate_context!())
