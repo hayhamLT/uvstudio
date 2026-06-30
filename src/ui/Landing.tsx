@@ -30,10 +30,9 @@ export default function Landing() {
             className="absolute inset-4 rounded-full border border-brand-500/20"
             style={{ animation: 'spin 18s linear infinite' }}
           />
-          <span className="absolute inset-0 rounded-full bg-brand-500/5 transition group-hover/orb:bg-brand-500/10" />
           {/* core */}
           <span
-            className={`relative flex h-24 w-24 items-center justify-center rounded-full bg-linear-to-br from-brand-400 to-brand-600 text-ink-950 shadow-xl shadow-brand-600/40 transition-transform duration-200 ${
+            className={`relative flex h-24 w-24 items-center justify-center rounded-full bg-linear-to-br from-brand-400 to-brand-600 text-ink-950 shadow-lg shadow-black/30 transition-transform duration-200 ${
               dragging ? 'scale-110' : 'group-hover/orb:scale-105'
             }`}
           >
