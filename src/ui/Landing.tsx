@@ -62,12 +62,8 @@ export default function Landing({
         </span>
       </button>
 
-      <span className="mt-4 text-[13px] font-medium tracking-tight text-fog-400">
-        {dragging ? 'Drop to import' : 'Import a model'}
-      </span>
-
       {/* secondary actions, right under the orb */}
-      <div className="mt-3 flex items-center gap-1">
+      <div className="mt-5 flex items-center gap-1">
         <button onClick={onPrefs} title="Preferences" aria-label="Preferences" className={iconBtn}>
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round">
             <circle cx="12" cy="12" r="3" />
@@ -89,7 +85,7 @@ export default function Landing({
         <img
           src="/trm_logo.webp"
           alt="Toy Robot Media"
-          className="h-5 w-auto opacity-90"
+          className="h-[22px] w-auto opacity-90"
           onError={(e) => {
             e.currentTarget.style.display = 'none'
           }}
