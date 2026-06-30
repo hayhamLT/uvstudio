@@ -193,7 +193,6 @@ export default function Preferences({ open, onClose }: { open: boolean; onClose:
                 e.currentTarget.style.display = 'none'
               }}
             />
-            <span className="font-medium text-fog-300">Toy Robot Media</span>
           </div>
         </Section>
       </div>
