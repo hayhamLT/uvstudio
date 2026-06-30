@@ -238,12 +238,12 @@ export default function Preferences({ open, onClose }: { open: boolean; onClose:
               </Btn>
             )}
           </Row>
-          <div className="mt-1 flex items-center gap-2 text-[11px] text-fog-500">
+          <div className="mt-3 flex flex-col items-center gap-1.5 text-xs text-fog-400">
             <span>Powered by</span>
             <img
               src="/trm_logo.webp"
               alt="Toy Robot Media"
-              className="h-4 w-auto opacity-90"
+              className="h-7 w-auto opacity-100"
               onError={(e) => {
                 e.currentTarget.style.display = 'none'
               }}
