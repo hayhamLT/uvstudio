@@ -142,25 +142,36 @@ export default function Preferences({ open, onClose }: { open: boolean; onClose:
                 </Row>
               )}
               {link.isDesktop() && (
-                <Row
-                  label="Plugin"
-                  hint={
-                    c4d?.installed
-                      ? `Installed in ${c4dName(c4d.path)} ✓ — kept up to date automatically`
-                      : c4d && !c4d.found
-                        ? 'No Cinema 4D found — pick its plugins folder'
-                        : 'Install the UV Studio Bridge into your latest Cinema 4D'
-                  }
-                >
-                  <div className="flex gap-2">
+                <div className="space-y-1.5">
+                  <div className="flex items-center justify-between gap-3">
+                    <div className="min-w-0">
+                      <div className="text-sm text-fog-200">Plugin</div>
+                      <div className="truncate text-[11px] text-fog-500">
+                        {c4d?.installed
+                          ? `Installed in ${c4dName(c4d.path)}${c4d.version ? ` · v${c4d.version}` : ''} ✓`
+                          : c4d && !c4d.found
+                            ? 'No Cinema 4D found — choose its plugins folder below'
+                            : 'Not installed yet'}
+                      </div>
+                    </div>
                     <Btn onClick={install} busy={busy === 'install'}>
                       {c4d?.installed ? 'Reinstall' : 'Install'}
                     </Btn>
-                    <Btn onClick={installToFolder} busy={busy === 'install'}>
-                      Choose folder…
-                    </Btn>
                   </div>
-                </Row>
+                  {/* Where it installs — visible and adjustable */}
+                  <div className="flex items-center gap-2 rounded-md border border-line/70 bg-ink-800/60 px-2.5 py-1.5">
+                    <code className="min-w-0 flex-1 truncate text-[11px] text-fog-400" title={c4d?.path ?? ''}>
+                      {c4d?.path ?? 'Pick a Cinema 4D plugins folder'}
+                    </code>
+                    <button
+                      onClick={installToFolder}
+                      disabled={busy === 'install'}
+                      className="shrink-0 rounded px-1.5 py-0.5 text-[11px] font-medium text-brand-400 hover:text-brand-300 disabled:opacity-50 ring-focus"
+                    >
+                      Change…
+                    </button>
+                  </div>
+                </div>
               )}
             </>
           )}
