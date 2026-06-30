@@ -28,7 +28,7 @@ Tested against Blender 3.6+ / 4.x.
 bl_info = {
     "name": "UV Studio Bridge",
     "author": "Toy Robot Media",
-    "version": (0, 3, 25),
+    "version": (0, 3, 26),
     "blender": (3, 6, 0),
     "location": "View3D > Sidebar (N) > UV Studio",
     "description": "Round-trip selected meshes to UV Studio (UV-only, lossless).",
