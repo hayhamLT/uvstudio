@@ -29,6 +29,10 @@
   "bundle": {
     "active": true,
     "targets": "all",
+    "macOS": {
+      "minimumSystemVersion": "10.15",
+      "entitlements": "entitlements.plist"
+    },
     "resources": {
       "../c4d-plugin/UVStudioBridge.pyp": "c4d-plugin/UVStudioBridge.pyp",
       "../c4d-plugin/README.md": "c4d-plugin/README.md",
