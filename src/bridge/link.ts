@@ -346,7 +346,10 @@ export async function installC4DPluginLatest(): Promise<
 > {
   if (!isDesktop()) return null
   try {
-    const p = (await tauri()!.core.invoke('install_c4d_plugin_latest')) as string | null
+    // explicit Install: allow an admin prompt if the app folder needs it
+    const p = (await tauri()!.core.invoke('install_c4d_plugin_latest', { elevate: true })) as
+      | string
+      | null
     return p ? { auto: true, paths: [p] } : null
   } catch (e) {
     return { error: String(e) }
@@ -387,7 +390,10 @@ export async function c4dStatus(): Promise<C4DStatus | null> {
 export async function refreshPluginSilently(): Promise<boolean> {
   if (!isDesktop()) return false
   try {
-    return !!((await tauri()!.core.invoke('install_c4d_plugin_latest')) as string | null)
+    // never prompt for admin on launch — silent best-effort only
+    return !!((await tauri()!.core.invoke('install_c4d_plugin_latest', { elevate: false })) as
+      | string
+      | null)
   } catch {
     return false
   }

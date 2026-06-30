@@ -55,7 +55,7 @@ def _open_app():
         pass
 
 PLUGIN_ID = 1066001  # NOTE: register your own at https://plugincafe.maxon.net for release
-PLUGIN_VERSION = "0.3.20"  # shown in the panel; bump together with the app version
+PLUGIN_VERSION = "0.3.21"  # shown in the panel; bump together with the app version
 
 # ---- folder protocol --------------------------------------------------------
 TO_APP = "to_app"     # C4D -> UV Studio

@@ -442,6 +442,53 @@ fn remove_plugin_from_prefs_configs() {
     }
 }
 
+/// Copy the plugin into a folder that needs admin rights, prompting the user once.
+/// We stage the files in temp (no rights needed) and then move them into place
+/// with one elevated shell command (macOS: the native admin prompt; Windows: a
+/// UAC PowerShell copy). Returns Ok only if the elevated step actually ran.
+#[cfg(target_os = "macos")]
+fn elevated_copy_into(src: &Path, app_plugins: &Path) -> Result<(), String> {
+    let staged = copy_plugin_into(src, &std::env::temp_dir())?; // <temp>/UVStudioBridge
+    // single-quote the paths for the shell; the AppleScript literal uses double quotes
+    let sh = format!(
+        "rm -rf '{dest}/UVStudioBridge' && cp -R '{stage}' '{dest}/'",
+        dest = app_plugins.display(),
+        stage = staged.display()
+    );
+    let apple = format!("do shell script \"{sh}\" with administrator privileges");
+    let status = std::process::Command::new("osascript")
+        .arg("-e")
+        .arg(&apple)
+        .status()
+        .map_err(|e| e.to_string())?;
+    if status.success() {
+        Ok(())
+    } else {
+        Err("admin permission was denied".into())
+    }
+}
+
+#[cfg(target_os = "windows")]
+fn elevated_copy_into(src: &Path, app_plugins: &Path) -> Result<(), String> {
+    let staged = copy_plugin_into(src, &std::env::temp_dir())?;
+    let dest = app_plugins.join("UVStudioBridge");
+    // UAC-elevated robocopy mirror of the staged folder into the destination
+    let ps = format!(
+        "Start-Process robocopy -ArgumentList '\"{}\" \"{}\" /MIR' -Verb RunAs -Wait",
+        staged.display(),
+        dest.display()
+    );
+    let status = std::process::Command::new("powershell")
+        .args(["-NoProfile", "-Command", &ps])
+        .status()
+        .map_err(|e| e.to_string())?;
+    if status.success() {
+        Ok(())
+    } else {
+        Err("admin permission was denied".into())
+    }
+}
+
 /// Sortable version from a prefs folder name like "Maxon Cinema 4D 2026_9D810372"
 /// → 2026. Year-numbered releases compare directly; anything else sorts as 0.
 fn c4d_version_key(name: &str) -> u32 {
@@ -475,21 +522,32 @@ async fn install_c4d_plugin_auto(app: tauri::AppHandle) -> Result<Option<Vec<Str
 }
 
 /// Install the bundled C4D plugin into the newest Cinema 4D's APPLICATION plugins
-/// folder (the canonical place, shared across configs). If that folder isn't
-/// writable (e.g. Windows Program Files without admin), fall back to the per-user
-/// prefs config folders. Returns the install path, or None if no C4D was found.
+/// folder (the canonical place, shared across configs and loaded regardless of
+/// which prefs config C4D opens). If that folder isn't directly writable and
+/// `elevate` is set (explicit Install — never the silent on-launch refresh), ask
+/// for admin rights once and write it there anyway. Only if there's no app folder
+/// at all do we fall back to the per-user prefs configs. Returns the install path,
+/// or None if no Cinema 4D was found.
 #[tauri::command]
-async fn install_c4d_plugin_latest(app: tauri::AppHandle) -> Result<Option<String>, String> {
+async fn install_c4d_plugin_latest(
+    app: tauri::AppHandle,
+    elevate: bool,
+) -> Result<Option<String>, String> {
     let src = app.path().resolve("c4d-plugin", BaseDirectory::Resource).map_err(|e| e.to_string())?;
 
-    // 1) Preferred: the C4D application plugins folder (one per version).
+    // 1) Preferred: the C4D application plugins folder.
     if let Some((_, plugins)) = find_c4d_app_plugin_dirs().into_iter().next() {
-        if let Ok(target) = copy_plugin_into(&src, &plugins) {
-            // avoid double-registration: drop any stale per-config copies
-            remove_plugin_from_prefs_configs();
-            return Ok(Some(target.to_string_lossy().to_string()));
+        // direct write (no prompt) — works where the folder is user-writable
+        if copy_plugin_into(&src, &plugins).is_ok() {
+            remove_plugin_from_prefs_configs(); // no double-registration
+            return Ok(Some(plugins.join("UVStudioBridge").to_string_lossy().to_string()));
         }
-        // not writable → fall through to the user-writable prefs folders
+        // not directly writable → with the user's OK, write it with an admin prompt
+        if elevate && elevated_copy_into(&src, &plugins).is_ok() {
+            remove_plugin_from_prefs_configs();
+            return Ok(Some(plugins.join("UVStudioBridge").to_string_lossy().to_string()));
+        }
+        // else fall through to the user-writable prefs configs
     }
 
     // 2) Fallback: every config folder of the newest version (writable w/o admin).
@@ -693,8 +751,20 @@ async fn install_c4d_plugin(app: tauri::AppHandle) -> Result<Option<String>, Str
     };
     let plugins = resolve_plugins_dir(&dest);
     let src = app.path().resolve("c4d-plugin", BaseDirectory::Resource).map_err(|e| e.to_string())?;
-    let target = copy_plugin_into(&src, &plugins)?;
-    Ok(Some(target.to_string_lossy().to_string()))
+    // direct write; if the picked folder needs admin rights, elevate (prompt once)
+    if copy_plugin_into(&src, &plugins).is_ok() {
+        return Ok(Some(plugins.join("UVStudioBridge").to_string_lossy().to_string()));
+    }
+    #[cfg(any(target_os = "macos", target_os = "windows"))]
+    {
+        elevated_copy_into(&src, &plugins)?;
+        Ok(Some(plugins.join("UVStudioBridge").to_string_lossy().to_string()))
+    }
+    #[cfg(not(any(target_os = "macos", target_os = "windows")))]
+    {
+        copy_plugin_into(&src, &plugins)?; // surface the original error
+        Ok(Some(plugins.join("UVStudioBridge").to_string_lossy().to_string()))
+    }
 }
 
 fn main() {
