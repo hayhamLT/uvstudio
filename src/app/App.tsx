@@ -222,10 +222,10 @@ export default function App() {
 
   return (
     <div className="flex h-full flex-col bg-ink-950 text-fog-200">
-      <TopBar onHelp={() => setHelp(true)} onPrefs={() => setPrefs(true)} />
+      {hasModel && <TopBar onHelp={() => setHelp(true)} onPrefs={() => setPrefs(true)} />}
       <div className="flex min-h-0 flex-1">
         {!hasModel ? (
-          <Landing />
+          <Landing onHelp={() => setHelp(true)} onPrefs={() => setPrefs(true)} />
         ) : (
           <>
         <div className="relative min-w-0 flex-1">
@@ -264,7 +264,7 @@ export default function App() {
           </>
         )}
       </div>
-      <StatusBar />
+      {hasModel && <StatusBar />}
       {help && <HelpOverlay onClose={() => setHelp(false)} />}
       <Preferences open={prefs} onClose={() => setPrefs(false)} />
       {update && <UpdateBanner info={update} onClose={() => setUpdate(null)} />}
