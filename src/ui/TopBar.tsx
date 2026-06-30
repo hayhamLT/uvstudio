@@ -11,6 +11,7 @@ export default function TopBar({ onHelp, onPrefs }: { onHelp: () => void; onPref
   const mappedCount = useStore((s) => s.mappedObjects.length)
   const runMapping = useStore((s) => s.runMapping)
   const screenCount = useStore((s) => s.mapObjects.length)
+  const hasModel = screenCount > 0 // before any import: show only Preferences + Help
   const undo = useStore((s) => s.undo)
   const redo = useStore((s) => s.redo)
   const undoCount = useStore((s) => s.undoCount)
@@ -28,6 +29,8 @@ export default function TopBar({ onHelp, onPrefs }: { onHelp: () => void; onPref
 
   return (
     <header className="relative z-50 flex h-12 items-center gap-2 border-b border-line bg-ink-900/80 px-3 backdrop-blur">
+      {hasModel && (
+        <>
       <button
         onClick={() => runMapping()}
         disabled={!screenCount}
@@ -101,6 +104,8 @@ export default function TopBar({ onHelp, onPrefs }: { onHelp: () => void; onPref
           <path d="M20 9H9a5 5 0 0 0 0 10h1" />
         </svg>
       </button>
+        </>
+      )}
 
       <div className="flex-1" />
 
