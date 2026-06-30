@@ -15,10 +15,10 @@
       {
         "label": "main",
         "title": "UV Studio",
-        "width": 520,
-        "height": 460,
-        "minWidth": 480,
-        "minHeight": 420,
+        "width": 720,
+        "height": 700,
+        "minWidth": 560,
+        "minHeight": 480,
         "center": true
       }
     ],

@@ -60,7 +60,7 @@ export default function App() {
   useEffect(() => {
     if (!isDesktop()) return
     if (hasModel) void resizeWindow(1440, 900)
-    else void resizeWindow(520, 460)
+    else void resizeWindow(720, 700) // landing: big enough to fit Preferences / Help
   }, [hasModel])
 
   // Opening a new file resets the orientation so the 3D view lands in the left

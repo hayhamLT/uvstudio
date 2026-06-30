@@ -99,7 +99,7 @@ export default function Preferences({ open, onClose }: { open: boolean; onClose:
       onClick={onClose}
     >
       <div
-        className="glass w-[540px] max-w-[92vw] animate-float-up rounded-2xl p-6 shadow-2xl"
+        className="glass max-h-[92vh] w-[540px] max-w-[92vw] animate-float-up overflow-y-auto rounded-2xl p-6 shadow-2xl"
         onClick={(e) => e.stopPropagation()}
       >
         <div className="mb-5 flex items-center justify-between">
