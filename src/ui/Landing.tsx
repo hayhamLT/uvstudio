@@ -1,6 +1,7 @@
 import { useRef, type ChangeEvent } from 'react'
 import { handleViewportDrop, importModelFile, isModelFile, openModelPicker } from './importMap'
 import { useFileDrop } from './useFileDrop'
+import { openExternal } from '../bridge/link'
 
 export default function Landing({
   onHelp,
@@ -79,18 +80,26 @@ export default function Landing({
         </button>
       </div>
 
-      {/* credit, pinned to the bottom */}
-      <div className="absolute bottom-6 flex flex-col items-center gap-1 text-[11px] text-fog-500">
+      {/* credit, pinned to the bottom — links to Toy Robot Media (opens in browser) */}
+      <a
+        href="http://www.toyrobotmedia.com/"
+        onClick={(e) => {
+          e.preventDefault()
+          void openExternal('http://www.toyrobotmedia.com/')
+        }}
+        title="Toy Robot Media"
+        className="group/credit absolute bottom-6 flex flex-col items-center gap-1 text-[11px] text-fog-500 transition hover:text-fog-300 ring-focus"
+      >
         <span>Powered by</span>
         <img
           src="/trm_logo.webp"
           alt="Toy Robot Media"
-          className="h-[22px] w-auto opacity-90"
+          className="h-[25px] w-auto opacity-90 transition group-hover/credit:opacity-100"
           onError={(e) => {
             e.currentTarget.style.display = 'none'
           }}
         />
-      </div>
+      </a>
 
       <input ref={inputRef} type="file" accept=".glb,.gltf,.psd,image/*" multiple className="hidden" onChange={onPick} />
     </div>
