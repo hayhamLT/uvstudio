@@ -41,6 +41,8 @@ export interface ForwardSidecar {
   v: number
   ts: number
   kind: 'geo-forward'
+  /** which DCC sent it — drives the coordinate conversion. Absent = c4d (legacy). */
+  app?: 'c4d' | 'blender'
   objects: ForwardObject[]
 }
 
@@ -136,9 +138,10 @@ export function buildReturnPayload(objects: ReturnObjectInput[], ts: number): Re
  * applied later in the app.
  */
 export function sceneFromSidecar(sidecar: ForwardSidecar): SceneObject[] {
+  const source: 'c4d' | 'blender' = sidecar.app === 'blender' ? 'blender' : 'c4d'
   return sidecar.objects.map((o) => {
-    const { positions, faces, uvs } = weldFromCorners(o.points, o.polys, o.uv)
-    return { name: o.name, c4dGuid: o.guid, mesh: { name: o.name, positions, faces }, uvs }
+    const { positions, faces, uvs } = weldFromCorners(o.points, o.polys, o.uv, source)
+    return { name: o.name, c4dGuid: o.guid, source, mesh: { name: o.name, positions, faces }, uvs }
   })
 }
 
@@ -156,7 +159,8 @@ export function sceneFromSidecar(sidecar: ForwardSidecar): SceneObject[] {
 function weldFromCorners(
   points: number[],
   polys: number[][],
-  uvPerPoly?: number[][],
+  uvPerPoly: number[][] | undefined,
+  source: 'c4d' | 'blender',
 ): { positions: Float32Array; faces: number[][]; uvs?: Float32Array } {
   const hasUV = !!uvPerPoly
   const key = new Map<string, number>()
@@ -174,11 +178,13 @@ function weldFromCorners(
       let idx = key.get(k2)
       if (idx === undefined) {
         idx = pos.length / 3
-        // C4D is left-handed; the app (Three.js) is right-handed. Negate Z so the
-        // scene isn't mirrored on import — otherwise the unwrap (and the UVs sent
-        // back) come out flipped in C4D. Face corner order is untouched, so the
-        // per-corner return mapping stays correct.
-        pos.push(x, y, -z)
+        // Convert the DCC's coordinates to the app's right-handed Y-up space.
+        //  * C4D (left-handed, Y-up): negate Z — a mirror, so winding is reversed
+        //    (compensated for render/auto-map by the `source === 'c4d'` paths).
+        //  * Blender (right-handed, Z-up): (x, z, -y) — a pure rotation, NO mirror,
+        //    so winding/orientation are preserved and need no compensation.
+        if (source === 'blender') pos.push(x, z, -y)
+        else pos.push(x, y, -z)
         if (hasUV) uvOut.push(u, v)
         key.set(k2, idx)
       }

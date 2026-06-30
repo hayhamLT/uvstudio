@@ -13,10 +13,12 @@ export default function Preferences({ open, onClose }: { open: boolean; onClose:
   const [saved, setSaved] = useState('')
   const [busy, setBusy] = useState('')
   const [c4d, setC4d] = useState<link.C4DStatus | null>(null)
+  const [blender, setBlender] = useState<link.BlenderStatus | null>(null)
   useEffect(() => {
     if (open) {
       void link.savedLabel().then(setSaved)
       void link.c4dStatus().then(setC4d)
+      void link.blenderStatus().then(setBlender)
       setLinkLabel(link.linkFolderLabel())
       void link.isCustomLinkFolder().then(setLinkCustom)
     }
@@ -62,6 +64,19 @@ export default function Preferences({ open, onClose }: { open: boolean; onClose:
     const res = await link.installC4DPluginToFolder()
     setStatus(res ? `Installed C4D plugin → ${res.paths[0]} — restart C4D` : 'Plugin install cancelled')
     void link.c4dStatus().then(setC4d)
+    setBusy('')
+  }
+  // Install the Blender add-on into every detected Blender version.
+  const installBlender = async () => {
+    setBusy('blender')
+    setStatus('Looking for Blender…')
+    const paths = await link.installBlenderAddon()
+    setStatus(
+      paths
+        ? `Installed Blender add-on (${paths.length} version${paths.length === 1 ? '' : 's'}) — enable it in Blender ▸ Preferences ▸ Add-ons`
+        : 'No Blender found — install & launch Blender once, then retry',
+    )
+    void link.blenderStatus().then(setBlender)
     setBusy('')
   }
   // path is <prefs>/<Cinema 4D version>/plugins/UVStudioBridge — show the version
@@ -176,6 +191,35 @@ export default function Preferences({ open, onClose }: { open: boolean; onClose:
             </>
           )}
         </Section>
+
+        {link.isDesktop() && (
+          <Section title="Blender">
+            <div className="space-y-1.5">
+              <div className="flex items-center justify-between gap-3">
+                <div className="min-w-0">
+                  <div className="text-sm text-fog-200">Add-on</div>
+                  <div className="truncate text-[11px] text-fog-500">
+                    {blender?.installed
+                      ? 'Installed ✓ — enable it in Blender ▸ Preferences ▸ Add-ons'
+                      : blender && !blender.found
+                        ? 'No Blender found — launch Blender once, then Install'
+                        : 'Not installed yet'}
+                  </div>
+                </div>
+                <Btn onClick={installBlender} busy={busy === 'blender'}>
+                  {blender?.installed ? 'Reinstall' : 'Install'}
+                </Btn>
+              </div>
+              {blender?.path && (
+                <div className="flex items-center rounded-md border border-line/70 bg-ink-800/60 px-2.5 py-1.5">
+                  <code className="min-w-0 flex-1 truncate text-[11px] text-fog-400" title={blender.path}>
+                    {blender.path}
+                  </code>
+                </div>
+              )}
+            </div>
+          </Section>
+        )}
 
         <Section title="Defaults">
           <Toggle

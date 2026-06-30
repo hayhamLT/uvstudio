@@ -8,6 +8,7 @@ export default function TopBar({ onHelp, onPrefs }: { onHelp: () => void; onPref
   const exportGltf = useStore((s) => s.exportGltf)
   const sendToC4D = useStore((s) => s.sendToC4D)
   const fromC4D = useStore((s) => s.mapObjects.some((o) => !!o.c4dGuid))
+  const fromBlender = useStore((s) => s.mapObjects.some((o) => o.source === 'blender'))
   const mappedCount = useStore((s) => s.mappedObjects.length)
   const runMapping = useStore((s) => s.runMapping)
   const screenCount = useStore((s) => s.mapObjects.length)
@@ -65,7 +66,9 @@ export default function TopBar({ onHelp, onPrefs }: { onHelp: () => void; onPref
           !mappedCount
             ? 'Map a screen first'
             : fromC4D
-              ? 'Send the mapped UVs back to Cinema 4D'
+              ? fromBlender
+                ? 'Send the mapped UVs back to Blender'
+                : 'Send the mapped UVs back to Cinema 4D'
               : 'Download the model + UVs as a GLB'
         }
         className="flex items-center gap-2 rounded-md px-2.5 py-1.5 text-sm text-fog-200 enabled:hover:bg-ink-700/70 disabled:opacity-40 ring-focus"

@@ -67,7 +67,7 @@ export default function MapSurfaces() {
   // face out / shading is right) — the unwrap and the UVs sent back are untouched.
   const flippedObjs = useMemo(() => {
     const s = new Set<string>()
-    for (const o of mapObjects) if (o.c4dGuid) s.add(o.name)
+    for (const o of mapObjects) if (o.source === 'c4d') s.add(o.name)
     return s
   }, [mapObjects])
 

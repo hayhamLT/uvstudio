@@ -496,6 +496,101 @@ fn elevated_copy_into(src: &Path, app_plugins: &Path) -> Result<(), String> {
     }
 }
 
+/// Blender per-user addon folders: `<config>/<version>/scripts/addons`. One per
+/// installed Blender version (e.g. 4.2, 3.6). Created on install if missing.
+///   * macOS:   ~/Library/Application Support/Blender/<ver>/scripts/addons
+///   * Windows: %APPDATA%/Blender Foundation/Blender/<ver>/scripts/addons
+///   * Linux:   ~/.config/blender/<ver>/scripts/addons
+fn find_blender_addon_dirs() -> Vec<PathBuf> {
+    let mut bases: Vec<PathBuf> = Vec::new();
+    if let Some(h) = std::env::var_os("HOME").map(PathBuf::from) {
+        bases.push(h.join("Library/Application Support/Blender"));
+        bases.push(h.join(".config/blender"));
+    }
+    if let Some(appdata) = std::env::var_os("APPDATA") {
+        bases.push(PathBuf::from(appdata).join("Blender Foundation").join("Blender"));
+    }
+    let mut out: Vec<(f32, PathBuf)> = Vec::new();
+    let mut seen: HashSet<PathBuf> = HashSet::new();
+    for base in bases {
+        let rd = match fs::read_dir(&base) {
+            Ok(r) => r,
+            Err(_) => continue,
+        };
+        for e in rd.flatten() {
+            let dir = e.path();
+            if !dir.is_dir() {
+                continue;
+            }
+            let name = e.file_name().to_string_lossy().to_string();
+            // version folders look like "4.2" / "3.6"
+            let ver: f32 = name.parse().unwrap_or(-1.0);
+            if ver < 0.0 {
+                continue;
+            }
+            let addons = dir.join("scripts").join("addons");
+            if seen.insert(addons.clone()) {
+                out.push((ver, addons));
+            }
+        }
+    }
+    out.sort_by(|a, b| b.0.partial_cmp(&a.0).unwrap_or(std::cmp::Ordering::Equal));
+    out.into_iter().map(|(_, p)| p).collect()
+}
+
+/// Install the bundled Blender add-on into every detected Blender version's addons
+/// folder (the user enables it once in Blender ▸ Preferences ▸ Add-ons). Returns
+/// the install paths, or None if no Blender config was found.
+#[tauri::command]
+async fn install_blender_addon(app: tauri::AppHandle) -> Result<Option<Vec<String>>, String> {
+    let src = app
+        .path()
+        .resolve("blender-plugin/uvstudio_bridge.py", BaseDirectory::Resource)
+        .map_err(|e| e.to_string())?;
+    let dirs = find_blender_addon_dirs();
+    if dirs.is_empty() {
+        return Ok(None);
+    }
+    let mut installed = Vec::new();
+    for d in dirs {
+        if fs::create_dir_all(&d).is_ok() {
+            let dest = d.join("uvstudio_bridge.py");
+            if fs::copy(&src, &dest).is_ok() {
+                installed.push(dest.to_string_lossy().to_string());
+            }
+        }
+    }
+    if installed.is_empty() {
+        Ok(None)
+    } else {
+        Ok(Some(installed))
+    }
+}
+
+/// Status of the Blender add-on: any Blender found, and whether our add-on is in
+/// the newest one.
+#[derive(Serialize)]
+struct BlenderStatus {
+    found: bool,
+    installed: bool,
+    path: Option<String>,
+}
+
+#[tauri::command]
+fn blender_status() -> BlenderStatus {
+    match find_blender_addon_dirs().into_iter().next() {
+        Some(dir) => {
+            let file = dir.join("uvstudio_bridge.py");
+            BlenderStatus {
+                found: true,
+                installed: file.is_file(),
+                path: Some(file.to_string_lossy().to_string()),
+            }
+        }
+        None => BlenderStatus { found: false, installed: false, path: None },
+    }
+}
+
 /// Sortable version from a prefs folder name like "Maxon Cinema 4D 2026_9D810372"
 /// → 2026. Year-numbered releases compare directly; anything else sorts as 0.
 fn c4d_version_key(name: &str) -> u32 {
@@ -830,6 +925,8 @@ fn main() {
             quit_app,
             focus_window,
             resize_window,
+            install_blender_addon,
+            blender_status,
             focus_c4d
         ])
         .run(tauri::generate_context!())

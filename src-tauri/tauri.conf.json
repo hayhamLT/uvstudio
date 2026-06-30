@@ -31,7 +31,8 @@
     "targets": "all",
     "resources": {
       "../c4d-plugin/UVStudioBridge.pyp": "c4d-plugin/UVStudioBridge.pyp",
-      "../c4d-plugin/README.md": "c4d-plugin/README.md"
+      "../c4d-plugin/README.md": "c4d-plugin/README.md",
+      "../blender-plugin/uvstudio_bridge.py": "blender-plugin/uvstudio_bridge.py"
     },
     "icon": [
       "icons/32x32.png",

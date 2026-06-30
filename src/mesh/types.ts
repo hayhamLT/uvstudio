@@ -32,6 +32,9 @@ export interface SceneObject {
    * DCC's points/polygons (built from the sidecar, not the welded glTF).
    */
   c4dGuid?: string
+  /** which DCC the bridge object came from — drives mirror compensation (c4d
+   *  negates Z = mirror; blender rotates = no mirror) and the round-trip label. */
+  source?: 'c4d' | 'blender'
 }
 
 /**

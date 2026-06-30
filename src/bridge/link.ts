@@ -432,6 +432,28 @@ export async function quitApp(): Promise<void> {
   }
 }
 
+/** Desktop: whether the Blender add-on is installed (in the newest Blender). */
+export type BlenderStatus = { found: boolean; installed: boolean; path: string | null }
+export async function blenderStatus(): Promise<BlenderStatus | null> {
+  if (!isDesktop()) return null
+  try {
+    return (await tauri()!.core.invoke('blender_status')) as BlenderStatus
+  } catch {
+    return null
+  }
+}
+
+/** Desktop: drop the Blender add-on into every detected Blender's addons folder.
+ *  Returns the install paths, or null if no Blender / failed. */
+export async function installBlenderAddon(): Promise<string[] | null> {
+  if (!isDesktop()) return null
+  try {
+    return (await tauri()!.core.invoke('install_blender_addon')) as string[] | null
+  } catch {
+    return null
+  }
+}
+
 /** Resize the desktop window (logical px) and re-center. No-op on web. */
 export async function resizeWindow(width: number, height: number): Promise<void> {
   if (!isDesktop()) return

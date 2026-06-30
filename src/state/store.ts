@@ -30,6 +30,8 @@ export interface MapObject {
   /** when bridge-sourced: stable DCC object id; mesh faces are 1:1 with DCC
    *  polygons, so UVs can be written back losslessly per polygon-corner */
   c4dGuid?: string
+  /** which DCC sent it (bridge): 'c4d' (mirrored) or 'blender' (rotation). */
+  source?: 'c4d' | 'blender'
 }
 export interface MapShell {
   id: number
@@ -633,10 +635,11 @@ function mapObjectUV(obj: MapObject, st: MapSnapshot, shellById: Map<number, She
   const result = flattenAndFit(obj.he, rect, {
     relaxIters: 24,
     rot: o.rot,
-    // C4D objects had Z negated on import (handedness), which mirrors the unwrap's
-    // U. Bake in the horizontal flip so auto-map comes out correct without the
-    // user flipping every screen by hand (XOR with any manual flip).
-    flipX: o.flipX !== !!obj.c4dGuid,
+    // C4D objects had Z negated on import (a mirror), which flips the unwrap's U.
+    // Bake in the horizontal flip so auto-map comes out correct without the user
+    // flipping every screen by hand (XOR with any manual flip). Blender objects
+    // arrive via a pure rotation (no mirror), so they need no compensation.
+    flipX: o.flipX !== (obj.source === 'c4d'),
     flipY: o.flipY,
     fill: fit,
     projection: proj,
@@ -953,7 +956,7 @@ export const useStore = create<AppState>((set, get) => ({
           authoredUV.set(id, uv.slice()) // remember the import UV so M can restore it
         }
       })
-      mapObjects.push({ name: o.name, mesh: o.mesh, he, shellIds, c4dGuid: o.c4dGuid })
+      mapObjects.push({ name: o.name, mesh: o.mesh, he, shellIds, c4dGuid: o.c4dGuid, source: o.source })
       if (hasUVs) uvObjects.push(o.name)
       if (hasTexture) {
         const tex = new THREE.CanvasTexture(o.textureImage as HTMLCanvasElement)
