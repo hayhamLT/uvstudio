@@ -532,6 +532,21 @@ export async function importGlb(): Promise<{ name: string; buf: ArrayBuffer } | 
   return { name: picked.name, buf: new Uint8Array(picked.bytes).buffer }
 }
 
+/** Desktop only: native multi-select dialog for a model PLUS its PSDs / images.
+ *  Returns each picked file's name + bytes (or null if cancelled / not desktop). */
+export async function importModelMedia(): Promise<{ name: string; buf: ArrayBuffer }[] | null> {
+  if (!isDesktop()) return null
+  try {
+    const picked = (await tauri()!.core.invoke('import_model_media')) as
+      | { name: string; bytes: number[] }[]
+      | null
+    if (!picked || !picked.length) return null
+    return picked.map((p) => ({ name: p.name, buf: new Uint8Array(p.bytes).buffer }))
+  } catch {
+    return null
+  }
+}
+
 /**
  * Watch to_app/ for messages from C4D:
  *   • `onIncoming` — geometry (forward sidecar, else GLB bytes)

@@ -306,6 +306,39 @@ async fn import_glb(app: tauri::AppHandle) -> Result<Option<Picked>, String> {
     Ok(Some(Picked { name, bytes }))
 }
 
+/// Native Open dialog (multi-select) → a model PLUS its PSDs / images in one go,
+/// so the link wizard can attach them. Returns each picked file's name + bytes.
+#[tauri::command]
+async fn import_model_media(app: tauri::AppHandle) -> Result<Option<Vec<Picked>>, String> {
+    let files = match app
+        .dialog()
+        .file()
+        .add_filter("Model + media", &["glb", "gltf", "psd", "png", "jpg", "jpeg", "webp", "tif", "tiff"])
+        .blocking_pick_files()
+    {
+        Some(f) => f,
+        None => return Ok(None),
+    };
+    let mut out = Vec::new();
+    for fp in files {
+        let path = match fp.into_path() {
+            Ok(p) => p,
+            Err(_) => continue,
+        };
+        let bytes = fs::read(&path).map_err(|e| e.to_string())?;
+        let name = path
+            .file_name()
+            .map(|s| s.to_string_lossy().to_string())
+            .unwrap_or_else(|| "file".into());
+        out.push(Picked { name, bytes });
+    }
+    if out.is_empty() {
+        Ok(None)
+    } else {
+        Ok(Some(out))
+    }
+}
+
 /// Copy the bundled plugin files into <plugins_dir>/UVStudioBridge/. Returns the
 /// install path. Overwrites in place so re-installing always lands the latest.
 fn copy_plugin_into(src: &Path, plugins_dir: &Path) -> Result<PathBuf, String> {
@@ -916,6 +949,7 @@ fn main() {
             bridge_ack,
             export_glb,
             import_glb,
+            import_model_media,
             install_c4d_plugin,
             install_c4d_plugin_auto,
             install_c4d_plugin_latest,

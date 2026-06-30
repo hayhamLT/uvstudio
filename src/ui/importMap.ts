@@ -80,10 +80,14 @@ export function canPickWithHandle() {
 /** Open the model picker; uses the File System Access API when available (so
  *  Refresh can re-read from disk), otherwise falls back to the given <input>. */
 export async function openModelPicker(fallbackInput?: HTMLInputElement | null) {
-  // desktop: native open dialog (no browser file-input quirks)
+  // desktop: native multi-select dialog → model + its PSDs / images in one go
   if (link.isDesktop()) {
-    const picked = await link.importGlb()
-    if (picked) await importModelFile(new File([picked.buf], picked.name, { type: 'model/gltf-binary' }), null)
+    const picked = await link.importModelMedia()
+    if (!picked || !picked.length) return
+    const files = picked.map((p) => new File([p.buf], p.name, { type: mimeForName(p.name) }))
+    const model = files.find(isModelFile)
+    if (!model) return // no model in the selection — nothing to load
+    await importModelFile(model, null, files.filter((f) => f !== model && !isModelFile(f)))
     return
   }
   if (canPickWithHandle()) {
@@ -138,6 +142,23 @@ export async function refreshModel(fallbackInput?: HTMLInputElement | null) {
 /** A 3D model file (vs. an image / PSD map). */
 export function isModelFile(f: File) {
   return /\.(glb|gltf)$/i.test(f.name)
+}
+
+/** Best-effort MIME from a file name (desktop picker returns bytes + name only). */
+function mimeForName(name: string): string {
+  const ext = name.toLowerCase().split('.').pop() || ''
+  const map: Record<string, string> = {
+    glb: 'model/gltf-binary',
+    gltf: 'model/gltf+json',
+    psd: 'image/vnd.adobe.photoshop',
+    png: 'image/png',
+    jpg: 'image/jpeg',
+    jpeg: 'image/jpeg',
+    webp: 'image/webp',
+    tif: 'image/tiff',
+    tiff: 'image/tiff',
+  }
+  return map[ext] || ''
 }
 
 /**
