@@ -54,8 +54,8 @@ def _open_app():
     except Exception:
         pass
 
-PLUGIN_ID = 1066001  # NOTE: register your own at https://plugincafe.maxon.net for release
-PLUGIN_VERSION = "0.3.21"  # shown in the panel; bump together with the app version
+PLUGIN_ID = 1069117  # registered to hayhamLT at plugincafe.maxon.net (label: UVStudioBridge)
+PLUGIN_VERSION = "0.3.22"  # shown in the panel; bump together with the app version
 
 # ---- folder protocol --------------------------------------------------------
 TO_APP = "to_app"     # C4D -> UV Studio
@@ -63,7 +63,7 @@ TO_C4D = "to_c4d"     # UV Studio -> C4D
 GLB = "scene.glb"
 MANIFEST = "scene.json"
 
-GUID_KEY = 1062500       # per-object stable id, stored in the object's container
+GUID_KEY = 1069117       # per-object stable id, stored in the object's container (our registered ID)
 
 
 # ---- helpers ----------------------------------------------------------------
