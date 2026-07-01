@@ -55,7 +55,7 @@ def _open_app():
         pass
 
 PLUGIN_ID = 1069117  # registered to hayhamLT at plugincafe.maxon.net (label: UVStudioBridge)
-PLUGIN_VERSION = "0.3.26"  # shown in the panel; bump together with the app version
+PLUGIN_VERSION = "0.3.27"  # shown in the panel; bump together with the app version
 
 # ---- folder protocol --------------------------------------------------------
 TO_APP = "to_app"     # C4D -> UV Studio
