@@ -30,7 +30,8 @@ export interface ForwardObject {
   guid: string
   /** xyz per point, world space, length = 3 * pointCount */
   points: number[]
-  /** each polygon's C4D point indices — length 3 (tri) or 4 (quad) */
+  /** each polygon's corner point indices, in loop order — length 3 (tri) or
+   *  4 (quad) from C4D; Blender may also send n-gons (5+ corners) */
   polys: number[][]
   /** OPTIONAL existing UVs from the object's UVW tag, per polygon: a flat
    *  [u,v, u,v, …] of the polygon's corners (already V-flipped to the app's
@@ -55,9 +56,12 @@ export interface ReturnObject {
   /** app stores UVs V-up (OpenGL); the plugin writes 1-v to land upright in C4D */
   vFlip: boolean
   /**
-   * One entry per ORIGINAL C4D polygon index. Each is 8 floats — corners
-   * a,b,c,d as (u,v). A triangle repeats its 3rd corner into d. A polygon the
-   * app didn't map is left null/undefined (plugin skips it).
+   * One entry per ORIGINAL polygon index: the polygon's corners as (u,v) pairs
+   * IN LOOP ORDER, padded to at least 8 floats (a,b,c,d — a triangle repeats
+   * its 3rd corner into d) so the C4D plugin can always read indices 0–7.
+   * N-gons (>4 corners, Blender only) carry ALL their corners (2·n floats);
+   * the Blender add-on applies them per loop. A polygon the app didn't map is
+   * left null/undefined (plugins keep its existing UVs).
    */
   uv: (number[] | null)[]
 }
@@ -112,9 +116,11 @@ export function buildReturnObject(o: ReturnObjectInput): ReturnObject {
       // Skip a polygon with any missing corner: leave it null so the plugin keeps
       // that polygon's existing UV rather than crashing or writing garbage.
       if (bad || corners.length < 6) return
-      // C4D SetSlow always wants a,b,c,d — repeat the last corner for a triangle.
+      // Pad to at least a,b,c,d (C4D SetSlow reads indices 0–7; a triangle
+      // repeats its 3rd corner into d) but KEEP all corners beyond 4 — n-gons
+      // (Blender) are applied per loop and need every corner's UV.
       while (corners.length < 8) corners.push(corners[corners.length - 2], corners[corners.length - 1])
-      uvByPoly[faceId] = corners.slice(0, 8)
+      uvByPoly[faceId] = corners
     })
   }
   return { name: o.name, guid: o.guid, polyCount: o.polyCount, vFlip: true, uv: uvByPoly }

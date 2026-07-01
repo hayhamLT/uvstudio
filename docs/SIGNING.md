@@ -53,3 +53,15 @@ minutes to the build.
   needs them to run under the hardened runtime; without them a notarised build
   would crash on launch.
 - Windows signing is separate (EV/OV cert) — not set up yet.
+
+## Updater signing (separate from Apple)
+
+The in-app auto-updater verifies each update against a **minisign** key before
+installing (`plugins.updater.pubkey` in `tauri.conf.json`). CI signs the update
+artifacts with the repo secrets `TAURI_SIGNING_PRIVATE_KEY` (+ `_PASSWORD`,
+empty). The private key also lives at `~/.tauri/uvstudio.key` on the dev
+machine — **back it up**; if it's lost, shipped apps will refuse future updates
+(the pubkey would have to change and users must reinstall manually).
+
+Local `tauri build` needs the key too (createUpdaterArtifacts):
+`export TAURI_SIGNING_PRIVATE_KEY="$(cat ~/.tauri/uvstudio.key)"`.

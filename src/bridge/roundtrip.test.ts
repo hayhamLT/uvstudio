@@ -59,6 +59,25 @@ describe('buildReturnObject', () => {
     const r = buildReturnObject({ ...input, uv: () => undefined })
     expect(r.uv).toEqual([null, null])
   })
+
+  it('keeps ALL corners of an n-gon (Blender), beyond a,b,c,d', () => {
+    // one pentagon: 5 corners in loop order → 10 floats, NOT sliced to 8
+    const pent: Shell = {
+      id: 0,
+      positions: new Float32Array(0),
+      triangles: new Uint32Array([0, 1, 2, 0, 2, 3, 0, 3, 4]),
+      polygons: [[0, 1, 2, 3, 4]],
+      toOrigVertex: Int32Array.from([0, 1, 2, 3, 4]),
+      vertCount: 5,
+      triCount: 3,
+      faceIds: [0],
+    }
+    const uv = Float32Array.from([0, 0, 1, 0, 1, 0.5, 0.5, 1, 0, 0.5])
+    const r = buildReturnObject({ name: 'N', guid: 'g', polyCount: 1, shells: [pent], uv: () => uv })
+    const row = r.uv[0]!
+    expect(row).toHaveLength(10) // 5 corners × (u,v), in loop order
+    ;[0, 0, 1, 0, 1, 0.5, 0.5, 1, 0, 0.5].forEach((want, i) => expect(row[i]).toBeCloseTo(want, 5))
+  })
 })
 
 describe('sceneFromSidecar', () => {
@@ -132,6 +151,28 @@ describe('sceneFromSidecar', () => {
     expect(obj.uvs).toBeDefined()
     ;[0.1, 0.2, 0.3, 0.4, 0.5, 0.6].forEach((want, i) => expect(obj.uvs![i]).toBeCloseTo(want))
     expect(obj.mesh.faces).toEqual([[0, 1, 2]])
+  })
+
+  it('preserves an n-gon face (Blender pentagon) through the import weld', () => {
+    const sc: ForwardSidecar = {
+      v: 2,
+      ts: 0,
+      kind: 'geo-forward',
+      app: 'blender',
+      objects: [
+        {
+          name: 'Pent',
+          guid: 'g',
+          // flat pentagon in Blender's XY plane (Z-up)
+          points: [0, 0, 0, 2, 0, 0, 2.6, 1.9, 0, 1, 3.1, 0, -0.6, 1.9, 0],
+          polys: [[0, 1, 2, 3, 4]],
+        },
+      ],
+    }
+    const [obj] = sceneFromSidecar(sc)
+    expect(obj.source).toBe('blender')
+    expect(obj.mesh.faces).toEqual([[0, 1, 2, 3, 4]]) // 5-corner loop intact
+    expect(obj.mesh.positions.length / 3).toBe(5)
   })
 
   it('welds by POSITION only, even when imported UVs differ at a shared point', () => {

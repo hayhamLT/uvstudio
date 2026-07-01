@@ -35,7 +35,15 @@ export type LinkScreen = { name: string; w: number; h: number; aspect: number }
 type Manifest = { v: number; ts: number; objects: string[]; screens: LinkScreen[] }
 /** C4D → app confirmation that the returned UVs landed on the objects.
  *  stage: 'received' (heartbeat) | 'applied' | 'error'. */
-export type UvAck = { ts: number; applied: number; missed: string[]; stage?: string; error?: string }
+export type UvAck = {
+  ts: number
+  applied: number
+  missed: string[]
+  stage?: string
+  error?: string
+  /** which DCC acked — 'c4d' | 'blender' (absent on old plugin versions = c4d) */
+  app?: 'c4d' | 'blender'
+}
 
 // ---- backend detection ------------------------------------------------------
 interface TauriGlobal {
@@ -410,6 +418,14 @@ export async function openExternal(url: string): Promise<void> {
   } else {
     window.open(url, '_blank')
   }
+}
+
+/** Desktop only: SIGNED one-click auto-update — downloads the signature-verified
+ *  package, installs in place and relaunches as the new version. Throws when the
+ *  updater can't run (old build, no latest.json yet) so callers can fall back. */
+export async function updaterInstall(): Promise<void> {
+  if (!isDesktop()) throw new Error('not desktop')
+  await tauri()!.core.invoke('updater_install')
 }
 
 /** Desktop only: download the platform installer for an update and open it

@@ -833,6 +833,36 @@ fn quit_app(app: tauri::AppHandle) {
     app.exit(0);
 }
 
+/// Signed auto-update, step 1: ask the updater (latest.json + minisign pubkey)
+/// whether a newer build exists for THIS platform. Returns its version.
+#[tauri::command]
+async fn updater_check(app: tauri::AppHandle) -> Result<Option<String>, String> {
+    use tauri_plugin_updater::UpdaterExt;
+    let updater = app.updater().map_err(|e| e.to_string())?;
+    match updater.check().await.map_err(|e| e.to_string())? {
+        Some(u) => Ok(Some(u.version.clone())),
+        None => Ok(None),
+    }
+}
+
+/// Signed auto-update, step 2: download the signature-verified package, install
+/// it in place, and relaunch as the new version. One click, no dmg-dragging.
+#[tauri::command]
+async fn updater_install(app: tauri::AppHandle) -> Result<(), String> {
+    use tauri_plugin_updater::UpdaterExt;
+    let updater = app.updater().map_err(|e| e.to_string())?;
+    let update = updater
+        .check()
+        .await
+        .map_err(|e| e.to_string())?
+        .ok_or("no update available")?;
+    update
+        .download_and_install(|_, _| {}, || {})
+        .await
+        .map_err(|e| e.to_string())?;
+    app.restart();
+}
+
 /// Bring Cinema 4D to the front after a send-back, so the result is visible
 /// (the app drops behind). macOS activates C4D by its stable bundle id.
 #[tauri::command]
@@ -915,6 +945,7 @@ async fn install_c4d_plugin(app: tauri::AppHandle) -> Result<Option<String>, Str
 fn main() {
     tauri::Builder::default()
         .plugin(tauri_plugin_dialog::init())
+        .plugin(tauri_plugin_updater::Builder::new().build())
         .manage(Mutex::new(Bridge::default()))
         .setup(|app| {
             // Link folder defaults to the shared temp folder the C4D plugin also
@@ -956,6 +987,8 @@ fn main() {
             c4d_status,
             open_url,
             download_and_open_update,
+            updater_check,
+            updater_install,
             quit_app,
             focus_window,
             resize_window,
@@ -965,4 +998,86 @@ fn main() {
         ])
         .run(tauri::generate_context!())
         .expect("error while running UV Studio");
+}
+
+// ---------------------------------------------------------------------------
+// Tests: plugin-install path discovery. These run on BOTH macOS and Windows in
+// CI (ci.yml), so the Windows layouts (%APPDATA%\Maxon, %APPDATA%\Blender
+// Foundation, %ProgramFiles%\Maxon Cinema 4D <ver>\plugins) are exercised on a
+// real Windows filesystem — backslashes, canonicalize behavior and all.
+// ---------------------------------------------------------------------------
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn version_key_parses_c4d_folder_names() {
+        assert_eq!(c4d_version_key("Maxon Cinema 4D 2026_9D810372"), 2026);
+        assert_eq!(c4d_version_key("Maxon Cinema 4D 2025_53F0105D_w"), 2025);
+        assert_eq!(c4d_version_key("MAXON CINEMA 4D R23_ABC"), 23);
+        assert_eq!(c4d_version_key("App Manager"), 0);
+    }
+
+    /// One combined test for everything env-dependent — env vars are process-
+    /// global, so keeping all mutations in a single #[test] avoids races.
+    #[test]
+    fn discovers_plugin_dirs_in_windows_and_mac_layouts() {
+        let root = std::env::temp_dir().join(format!("uvs-pathtest-{}", std::process::id()));
+        let _ = fs::remove_dir_all(&root);
+
+        // --- C4D per-user prefs (APPDATA is read on every OS) ---------------
+        let appdata = root.join("AppData").join("Roaming");
+        for cfg in [
+            "Maxon Cinema 4D 2026_9D810372",
+            "Maxon Cinema 4D 2026_9D810372_x",
+            "Maxon Cinema 4D 2025_53F0105D_w",
+        ] {
+            fs::create_dir_all(appdata.join("Maxon").join(cfg).join("plugins")).unwrap();
+        }
+        // --- Blender per-user addons (the Windows location) -----------------
+        let blender = appdata.join("Blender Foundation").join("Blender");
+        fs::create_dir_all(blender.join("4.2").join("scripts").join("addons")).unwrap();
+        fs::create_dir_all(blender.join("3.6").join("scripts").join("addons")).unwrap();
+
+        std::env::set_var("APPDATA", &appdata);
+        // isolate from the real machine: point HOME somewhere empty
+        let home = root.join("home");
+        fs::create_dir_all(&home).unwrap();
+        std::env::set_var("HOME", &home);
+
+        // C4D prefs: all three configs found, newest version first
+        let dirs = find_c4d_plugin_dirs();
+        assert_eq!(dirs.len(), 3, "should find every config's plugins dir: {dirs:?}");
+        assert!(dirs[0].to_string_lossy().contains("2026"));
+        assert!(dirs[2].to_string_lossy().contains("2025"));
+
+        // latest_version_plugin_dirs: ONLY the two 2026 configs
+        let latest = latest_version_plugin_dirs();
+        assert_eq!(latest.len(), 2, "both 2026 configs, not the 2025: {latest:?}");
+        assert!(latest.iter().all(|p| p.to_string_lossy().contains("2026")));
+
+        // Blender: both versions, newest first
+        let bl = find_blender_addon_dirs();
+        assert_eq!(bl.len(), 2, "{bl:?}");
+        assert!(bl[0].to_string_lossy().contains("4.2"));
+
+        // resolve_plugins_dir: picking the config ROOT resolves into plugins/
+        let cfg_root = appdata.join("Maxon").join("Maxon Cinema 4D 2026_9D810372");
+        assert_eq!(resolve_plugins_dir(&cfg_root), cfg_root.join("plugins"));
+        // picking the plugins folder itself is used as-is (case-insensitive)
+        let plugins = cfg_root.join("plugins");
+        assert_eq!(resolve_plugins_dir(&plugins), plugins);
+        // picking an unrelated folder installs where pointed
+        let elsewhere = root.join("elsewhere");
+        fs::create_dir_all(&elsewhere).unwrap();
+        assert_eq!(resolve_plugins_dir(&elsewhere), elsewhere);
+
+        // plugin_installed_at: verification helper sees the real file only
+        assert!(!plugin_installed_at(&plugins));
+        fs::create_dir_all(plugins.join("UVStudioBridge")).unwrap();
+        fs::write(plugins.join("UVStudioBridge").join("UVStudioBridge.pyp"), "x").unwrap();
+        assert!(plugin_installed_at(&plugins));
+
+        let _ = fs::remove_dir_all(&root);
+    }
 }

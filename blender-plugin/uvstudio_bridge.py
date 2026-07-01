@@ -28,7 +28,7 @@ Tested against Blender 3.6+ / 4.x.
 bl_info = {
     "name": "UV Studio Bridge",
     "author": "Toy Robot Media",
-    "version": (0, 3, 27),
+    "version": (0, 3, 28),
     "blender": (3, 6, 0),
     "location": "View3D > Sidebar (N) > UV Studio",
     "description": "Round-trip selected meshes to UV Studio (UV-only, lossless).",
@@ -239,10 +239,11 @@ def _poll():
             _Poller.last_ts = man.get("ts")
             if man.get("kind") == "uv-return":
                 applied, missed = _apply_uvs(man)
+                # ack goes to the APP's inbox (to_app/) — that's where it reads acks
                 _write_json_atomic(
-                    os.path.join(link, TO_C4D), ACK,
+                    os.path.join(link, TO_APP), ACK,
                     {"v": 1, "ts": int(time.time() * 1000), "kind": "uv-ack",
-                     "stage": "applied", "applied": applied, "missed": missed},
+                     "app": "blender", "stage": "applied", "applied": applied, "missed": missed},
                 )
                 # redraw any 3D views so the new UVs show immediately
                 for win in bpy.context.window_manager.windows:

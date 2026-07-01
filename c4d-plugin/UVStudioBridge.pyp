@@ -55,7 +55,7 @@ def _open_app():
         pass
 
 PLUGIN_ID = 1069117  # registered to hayhamLT at plugincafe.maxon.net (label: UVStudioBridge)
-PLUGIN_VERSION = "0.3.27"  # shown in the panel; bump together with the app version
+PLUGIN_VERSION = "0.3.28"  # shown in the panel; bump together with the app version
 
 # ---- folder protocol --------------------------------------------------------
 TO_APP = "to_app"     # C4D -> UV Studio
@@ -297,7 +297,7 @@ class BridgeDialog(gui.GeDialog):
         stage = 'received' | 'applied' | 'error'."""
         try:
             payload = {"v": 1, "ts": int(time.time() * 1000), "kind": "uv-ack",
-                       "stage": stage, "applied": applied, "missed": missed}
+                       "app": "c4d", "stage": stage, "applied": applied, "missed": missed}
             if error:
                 payload["error"] = error
             _write_json_named(os.path.join(self.link_dir, TO_APP), "ack.json", payload)

@@ -209,6 +209,9 @@ interface AppState {
   exportGltf: () => void
   /** Send the mapped GLB back to Cinema 4D via the local UV Studio plugin bridge. */
   sendToC4D: () => void
+  /** Handle a uv-ack from a DCC plugin: quit on clean success (post-send), stay
+   *  open and warn (with the missed names) on partial failure or error. */
+  handleUvAck: (ack: linkBridge.UvAck) => void
   setEditMode: (m: 'none' | 'object' | 'vertex' | 'edge' | 'face' | 'transform') => void
   setMapSelection: (s: Set<string>) => void
   clearMapSelection: () => void
@@ -326,6 +329,24 @@ export interface ScreenSpec {
   w: number // render width  (px)
   h: number // render height (px)
   aspect: number
+}
+
+// After a Send, the app quits only once the DCC acks a clean apply (or after a
+// fallback timeout if the DCC is closed — it applies on its next launch). A
+// partial failure/error keeps the app open so the warning is actually seen.
+let sendQuitTimer: ReturnType<typeof setTimeout> | null = null
+function armSendQuit() {
+  if (sendQuitTimer) clearTimeout(sendQuitTimer)
+  sendQuitTimer = setTimeout(() => {
+    sendQuitTimer = null
+    void linkBridge.quitApp()
+  }, 6000)
+}
+function disarmSendQuit(): boolean {
+  const armed = sendQuitTimer !== null
+  if (sendQuitTimer) clearTimeout(sendQuitTimer)
+  sendQuitTimer = null
+  return armed
 }
 
 /** The LED render size for each mapped screen: the manual RES override if set,
@@ -1994,8 +2015,11 @@ export const useStore = create<AppState>((set, get) => ({
         const payload = buildReturnPayload(uvInputs, Date.now())
         payload.screens = specs
         await linkBridge.sendUVs(payload)
-        set({ status: `Sent UVs for ${uvInputs.length} object${uvInputs.length === 1 ? '' : 's'} to Cinema 4D` })
-        void linkBridge.quitApp() // close UV Studio after sending; C4D comes forward
+        set({ status: `Sent UVs for ${uvInputs.length} object${uvInputs.length === 1 ? '' : 's'} — waiting for confirmation…` })
+        // Don't quit yet — wait for the plugin's ack so a partial failure is SEEN
+        // (handleUvAck quits on success, stays open + warns on missed/error).
+        // Fallback: if no ack lands (DCC closed — it applies on next launch), quit.
+        armSendQuit()
       } else {
         const buf = await buildMappedGlb(g.mapShells, g.layeredMode, new Map(specs.map((s) => [s.name, s])))
         if (!buf) {
@@ -2009,6 +2033,32 @@ export const useStore = create<AppState>((set, get) => ({
     } catch {
       set({ status: 'Send failed — check the link folder' })
     }
+  },
+
+  handleUvAck: (ack) => {
+    if (ack.stage === 'received') return // heartbeat — the result ack follows
+    const wasSending = disarmSendQuit()
+    const dcc = ack.app === 'blender' ? 'Blender' : 'Cinema 4D'
+    if (ack.error) {
+      const last = ack.error.trim().split('\n').pop() || 'error'
+      set({ status: `${dcc} apply FAILED: ${last}` })
+      void linkBridge.focusWindow() // stay open — the user must see this
+      return
+    }
+    const plural = ack.applied === 1 ? '' : 's'
+    if (ack.missed?.length) {
+      const names =
+        ack.missed.slice(0, 3).join(', ') +
+        (ack.missed.length > 3 ? ` +${ack.missed.length - 3} more` : '')
+      set({
+        status: `⚠ ${dcc} applied UVs to ${ack.applied} object${plural} — couldn't find: ${names}`,
+      })
+      void linkBridge.focusWindow() // partial failure → stay open and show it
+      return
+    }
+    set({ status: `${dcc} applied UVs to ${ack.applied} object${plural} ✓` })
+    // clean success right after a Send → hand off to the DCC and close
+    if (wasSending) setTimeout(() => void linkBridge.quitApp(), 1200)
   },
 
   loadMesh: (mesh) => {

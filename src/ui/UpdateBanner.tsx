@@ -4,12 +4,20 @@ import type { UpdateInfo } from '../app/updater'
 import { currentVersion } from '../app/updater'
 
 /** A small modal shown on launch when a newer desktop build is available.
- *  Downloads the platform installer and opens it (mac mounts the .dmg, Windows
- *  runs the .exe), then quits so the new version can replace the running app.
- *  Falls back to opening the release page if the download fails. */
+ *  Preferred path: the SIGNED auto-updater — verify, install in place, relaunch
+ *  (no dmg-dragging). Fallbacks: download + open the installer, then the release
+ *  page in the browser. */
 export default function UpdateBanner({ info, onClose }: { info: UpdateInfo; onClose: () => void }) {
   const [busy, setBusy] = useState('')
   const update = async () => {
+    setBusy('Updating…')
+    try {
+      // one-click: verified download + in-place install + relaunch
+      await link.updaterInstall()
+      return // unreachable on success — the app relaunches
+    } catch {
+      /* updater unavailable (older build / missing latest.json) → manual path */
+    }
     setBusy('Downloading…')
     try {
       await link.downloadAndOpenUpdate(info.assets)
@@ -27,8 +35,8 @@ export default function UpdateBanner({ info, onClose }: { info: UpdateInfo; onCl
         <h2 className="text-lg font-semibold text-fog-100">Update available</h2>
         <p className="mt-2 text-[13px] leading-relaxed text-fog-300">
           UV Studio <span className="text-fog-100">{info.version}</span> is out — you have{' '}
-          <span className="text-fog-100">{currentVersion}</span>. This downloads the installer and opens
-          it, then closes the app so you can install it. The Cinema&nbsp;4D plugin updates with it.
+          <span className="text-fog-100">{currentVersion}</span>. One click installs it and relaunches
+          the app. The Cinema&nbsp;4D / Blender plugins update with it.
         </p>
         <div className="mt-5 flex justify-end gap-2">
           <button
@@ -43,7 +51,7 @@ export default function UpdateBanner({ info, onClose }: { info: UpdateInfo; onCl
             disabled={!!busy}
             className="rounded-md border border-line bg-brand-500/90 px-3 py-1.5 text-[12px] font-medium text-white hover:bg-brand-500 disabled:opacity-50 ring-focus"
           >
-            {busy || 'Download & install'}
+            {busy || 'Update & relaunch'}
           </button>
         </div>
       </div>

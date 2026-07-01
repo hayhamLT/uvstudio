@@ -135,22 +135,9 @@ export default function App() {
           /* ignore an unreadable payload */
         }
       },
-      (ack) => {
-        if (ack.stage === 'received') return // heartbeat — wait for the result
-        const set = useStore.getState().setStatus
-        if (ack.error) {
-          const last = ack.error.trim().split('\n').pop() || 'error'
-          set(`Cinema 4D could not apply UVs — ${last}`)
-          return
-        }
-        // C4D confirmed the returned UVs landed — close the round-trip loop.
-        const plural = ack.applied === 1 ? '' : 's'
-        set(
-          ack.missed.length
-            ? `Cinema 4D applied UVs to ${ack.applied} object${plural} · skipped ${ack.missed.length}`
-            : `Cinema 4D applied UVs to ${ack.applied} object${plural}`,
-        )
-      },
+      // uv-ack from C4D/Blender — the store quits on clean success (post-send)
+      // and stays open with a visible warning on partial failure or error.
+      (ack) => useStore.getState().handleUvAck(ack),
     )
   }, [])
 
