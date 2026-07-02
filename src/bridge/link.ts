@@ -55,6 +55,15 @@ function tauri(): TauriGlobal | null {
   return w.__TAURI__ ?? null
 }
 export function isDesktop(): boolean {
+  // DEV-ONLY doc tooling: ?shot=prefs-desktop lets scripts/capture-docs.mjs
+  // screenshot the desktop-only Preferences sections (Plugin/Blender install)
+  // from a browser. Dead-code-eliminated in production (import.meta.env.DEV).
+  if (
+    import.meta.env.DEV &&
+    typeof location !== 'undefined' &&
+    new URLSearchParams(location.search).get('shot') === 'prefs-desktop'
+  )
+    return true
   return tauri() !== null
 }
 function hasFsAccess(): boolean {

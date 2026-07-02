@@ -42,6 +42,14 @@ export default defineConfig({
     watch: { ignored: ['**/.claude/**'] },
   },
   plugins: [react(), tailwindcss(), emitVersionJson()],
+  // Multi-page build: `/` is the static marketing site (index.html, plain HTML —
+  // no bundling needed), `/app/` is the actual React tool. Kept as two Rollup
+  // entries so both get hashed/optimized output under one `dist/`.
+  build: {
+    rollupOptions: {
+      input: { main: 'index.html', app: 'app/index.html' },
+    },
+  },
   worker: {
     format: 'es',
   },

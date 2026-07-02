@@ -1,13 +1,343 @@
 <!doctype html>
 <html lang="en" class="dark">
-  <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0" />
-    <title>UV Studio — modern UV unwrapping</title>
-    <meta name="description" content="A modern, browser-based UV unwrapping studio." />
-  </head>
-  <body>
-    <div id="root"></div>
-    <script type="module" src="/src/main.tsx"></script>
-  </body>
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>UV Studio — map artwork onto LED screens, instantly</title>
+<meta name="description" content="A modern, maximally-automatic tool for mapping artwork onto screens in venue and event 3D models — with one-click round-trips to Cinema 4D and Blender. Free for Mac and Windows." />
+<link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 24 24%22><rect width=%2224%22 height=%2224%22 rx=%225%22 fill=%22%232da9f7%22/><path d=%22M12 3 21 8v8l-9 5-9-5V8l9-5Z%22 fill=%22none%22 stroke=%22%2307090d%22 stroke-width=%221.8%22/></svg>" />
+<style>
+  :root{
+    --ink-950:#07090d; --ink-900:#0b0e14; --ink-850:#11151d; --ink-800:#161b25;
+    --ink-700:#1e2531; --ink-600:#2a3340; --line:#232c39;
+    --fog-500:#6b7889; --fog-400:#8a97a8; --fog-300:#aab4c2; --fog-200:#cdd5e0; --fog-100:#e8edf4;
+    --brand-400:#5cc8ff; --brand-500:#2da9f7; --brand-600:#1183d6;
+    --good:#46d39a; --warn:#f5c451; --bad:#ff5277;
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0; overflow-x:hidden;}
+  body{
+    background:var(--ink-950); color:var(--fog-200);
+    font-family:'Inter var',ui-sans-serif,system-ui,-apple-system,'Segoe UI',Roboto,sans-serif;
+    -webkit-font-smoothing:antialiased; line-height:1.6;
+  }
+  a{color:var(--brand-400); text-decoration:none;}
+  a:hover{text-decoration:underline;}
+  img{max-width:100%; display:block;}
+  h1,h2,h3{color:var(--fog-100); font-weight:650; letter-spacing:-0.01em; margin:0;}
+  .wrap{max-width:1120px; margin:0 auto; padding:0 24px;}
+
+  /* ---- nav ---- */
+  .topbar{
+    position:sticky; top:0; z-index:40; display:flex; align-items:center; gap:14px;
+    padding:16px 24px; background:color-mix(in srgb, var(--ink-900) 82%, transparent);
+    backdrop-filter:blur(14px) saturate(140%); border-bottom:1px solid transparent;
+    transition:border-color 0.2s, background 0.2s;
+  }
+  .topbar.scrolled{border-bottom-color:var(--line);}
+  .topbar .logo{display:flex; align-items:center; gap:9px; font-weight:700; color:var(--fog-100); font-size:15px;}
+  .topbar .logo .cube{
+    width:26px; height:26px; border-radius:8px; background:linear-gradient(160deg,var(--brand-400),var(--brand-600));
+    display:flex; align-items:center; justify-content:center; color:var(--ink-950); font-size:14px;
+  }
+  .topbar nav{margin-left:auto; display:flex; align-items:center; gap:22px; font-size:13.5px;}
+  .topbar nav a{color:var(--fog-300);}
+  .topbar nav a:hover{color:var(--fog-100); text-decoration:none;}
+  .btn{
+    display:inline-flex; align-items:center; gap:8px; padding:10px 18px; border-radius:10px;
+    font-size:13.5px; font-weight:650; border:1px solid var(--line); white-space:nowrap;
+  }
+  .btn:hover{text-decoration:none;}
+  .btn.primary{background:var(--brand-500); color:var(--ink-950); border-color:transparent;}
+  .btn.primary:hover{background:var(--brand-400);}
+  .btn.ghost{background:var(--ink-800); color:var(--fog-200);}
+  .btn.ghost:hover{background:var(--ink-700); color:var(--fog-100);}
+  .btn.lg{padding:13px 24px; font-size:14.5px; border-radius:12px;}
+
+  /* ---- hero ---- */
+  .hero{position:relative; padding:96px 0 64px; text-align:center; overflow:hidden;}
+  .hero::before{
+    content:''; position:absolute; top:-200px; left:50%; transform:translateX(-50%);
+    width:900px; height:500px; background:radial-gradient(ellipse at center, color-mix(in srgb, var(--brand-500) 22%, transparent), transparent 70%);
+    pointer-events:none;
+  }
+  .hero .kicker{
+    display:inline-flex; align-items:center; gap:7px; padding:5px 13px; border-radius:999px;
+    background:var(--ink-800); border:1px solid var(--line); font-size:12px; font-weight:600; color:var(--fog-300);
+    margin-bottom:22px;
+  }
+  .hero .kicker .dot{width:6px; height:6px; border-radius:999px; background:var(--good);}
+  .hero h1{font-size:52px; line-height:1.08; max-width:760px; margin:0 auto 20px; position:relative;}
+  .hero h1 span{background:linear-gradient(120deg,var(--brand-400),var(--brand-500)); -webkit-background-clip:text; background-clip:text; color:transparent;}
+  .hero p.lede{color:var(--fog-400); font-size:17px; max-width:600px; margin:0 auto 34px; position:relative;}
+  .hero .ctas{display:flex; gap:12px; justify-content:center; flex-wrap:wrap; position:relative; margin-bottom:14px;}
+  .hero .sub{color:var(--fog-500); font-size:12.5px; position:relative;}
+  .hero .sub a{color:var(--fog-400);}
+
+  .shot{
+    margin:56px auto 0; max-width:980px; border-radius:16px; border:1px solid var(--line);
+    box-shadow:0 40px 100px -30px rgb(0 0 0 / 0.7); overflow:hidden; position:relative;
+  }
+  .shot img{width:100%;}
+
+  /* ---- sections ---- */
+  section{padding:88px 0;}
+  section.alt{background:var(--ink-900); border-top:1px solid var(--line); border-bottom:1px solid var(--line);}
+  .section-head{text-align:center; max-width:600px; margin:0 auto 52px;}
+  .section-head .eyebrow{font-size:11.5px; font-weight:700; letter-spacing:0.08em; text-transform:uppercase; color:var(--brand-400); margin-bottom:12px; display:block;}
+  .section-head h2{font-size:32px; margin-bottom:14px;}
+  .section-head p{color:var(--fog-400); font-size:15px;}
+
+  .features{display:grid; grid-template-columns:repeat(3,1fr); gap:20px;}
+  .feature{
+    background:var(--ink-900); border:1px solid var(--line); border-radius:16px; padding:26px;
+    transition:border-color 0.2s, transform 0.2s;
+  }
+  .feature:hover{border-color:color-mix(in srgb, var(--brand-500) 40%, var(--line)); transform:translateY(-2px);}
+  .feature .icon{
+    width:38px; height:38px; border-radius:11px; background:color-mix(in srgb, var(--brand-500) 15%, transparent);
+    display:flex; align-items:center; justify-content:center; color:var(--brand-400); margin-bottom:16px;
+  }
+  .feature h3{font-size:15.5px; margin-bottom:8px;}
+  .feature p{color:var(--fog-400); font-size:13.5px; margin:0;}
+
+  .gallery{display:grid; grid-template-columns:1.3fr 1fr; gap:18px;}
+  .gallery figure{margin:0; border-radius:14px; overflow:hidden; border:1px solid var(--line); background:var(--ink-900);}
+  .gallery .stack{display:flex; flex-direction:column; gap:18px;}
+  .gallery figcaption{padding:12px 16px; font-size:12.5px; color:var(--fog-500);}
+
+  /* ---- download ---- */
+  .download-card{
+    max-width:820px; margin:0 auto; background:linear-gradient(160deg, var(--ink-900), var(--ink-850));
+    border:1px solid var(--line); border-radius:22px; padding:44px 40px; text-align:center;
+    position:relative; overflow:hidden;
+  }
+  .platforms{display:grid; grid-template-columns:1fr 1fr; gap:16px; margin-top:30px;}
+  .platform{
+    background:var(--ink-800); border:1px solid var(--line); border-radius:14px; padding:22px;
+    display:flex; flex-direction:column; align-items:center; gap:10px;
+  }
+  .platform .os-icon{width:32px; height:32px; color:var(--fog-200);}
+  .platform .os-name{font-weight:650; color:var(--fog-100); font-size:15px;}
+  .platform .os-ver{font-size:11.5px; color:var(--fog-500); min-height:15px;}
+  .platform .btn{width:100%; justify-content:center; margin-top:4px;}
+  .web-cta{margin-top:26px; font-size:13.5px; color:var(--fog-400);}
+
+  /* ---- bridges strip ---- */
+  .bridges{display:grid; grid-template-columns:1fr 1fr; gap:20px;}
+  .bridge-card{background:var(--ink-900); border:1px solid var(--line); border-radius:16px; padding:28px;}
+  .bridge-card h3{display:flex; align-items:center; gap:10px; font-size:16px; margin-bottom:10px;}
+  .bridge-card p{color:var(--fog-400); font-size:13.5px; margin:0;}
+  .bridge-badge{
+    width:30px; height:30px; border-radius:9px; display:flex; align-items:center; justify-content:center;
+    background:var(--ink-800); font-size:13px; font-weight:700; color:var(--brand-400);
+  }
+
+  footer{border-top:1px solid var(--line); padding:36px 24px; text-align:center; color:var(--fog-500); font-size:12.5px;}
+  footer nav{display:flex; gap:18px; justify-content:center; margin-bottom:16px; flex-wrap:wrap;}
+  footer nav a{color:var(--fog-400);}
+
+  @media (max-width: 860px){
+    .hero h1{font-size:36px;}
+    .features{grid-template-columns:1fr;}
+    .gallery{grid-template-columns:1fr;}
+    .platforms{grid-template-columns:1fr;}
+    .bridges{grid-template-columns:1fr;}
+  }
+</style>
+</head>
+<body>
+
+<div class="topbar" id="topbar">
+  <div class="logo"><span class="cube">▢</span> UV Studio</div>
+  <nav>
+    <a href="#features">Features</a>
+    <a href="#download">Download</a>
+    <a href="/help/">Docs</a>
+    <a class="btn primary" href="/app/">Launch app ↗</a>
+  </nav>
+</div>
+
+<div class="hero wrap">
+  <span class="kicker"><span class="dot"></span> Free · Mac &amp; Windows · Web</span>
+  <h1>Map artwork onto <span>every screen</span> in your venue, automatically.</h1>
+  <p class="lede">A modern, maximally-automatic tool for LED walls, floors, pillars, and ribbon boards — with lossless one-click round-trips to Cinema 4D and Blender.</p>
+  <div class="ctas">
+    <a class="btn primary lg" href="#download">Download the app</a>
+    <a class="btn ghost lg" href="/app/">Try it in your browser ↗</a>
+  </div>
+  <div class="sub">No install needed for the browser build · <a href="/help/">read the docs</a></div>
+
+  <div class="shot">
+    <img src="/help/img/venue3d.png" alt="UV Studio — a venue mapped in 3D, screens lit with real content">
+  </div>
+</div>
+
+<section id="features" class="wrap">
+  <div class="section-head">
+    <span class="eyebrow">Why UV Studio</span>
+    <h2>Built for one job, done exceptionally well</h2>
+    <p>Not a general UV editor — a focused tool for getting artwork onto screens fast, without touching geometry.</p>
+  </div>
+  <div class="features">
+    <div class="feature">
+      <div class="icon">
+        <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>
+      </div>
+      <h3>Auto-map, one click</h3>
+      <p>Fit every screen to its content instantly — or map one at a time. Imports keep their own UVs until you ask for more.</p>
+    </div>
+    <div class="feature">
+      <div class="icon">
+        <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M22 2 11 13"/><path d="M22 2 15 22l-4-9-9-4 20-7Z"/></svg>
+      </div>
+      <h3>Lossless round-trips</h3>
+      <p>Send to Cinema 4D or Blender and back — only UV coordinates travel. Your geometry and materials are never touched.</p>
+    </div>
+    <div class="feature">
+      <div class="icon">
+        <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4h16v16H4z"/><path d="M4 15l4-4 4 4 4-6 4 4"/></svg>
+      </div>
+      <h3>PSD-aware</h3>
+      <p>Drop a layered PSD and every layer becomes linkable artwork — a thumbnail picker matches layers to screens by name.</p>
+    </div>
+    <div class="feature">
+      <div class="icon">
+        <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M4 12h16M12 4v16"/></svg>
+      </div>
+      <h3>Real-time distortion feedback</h3>
+      <p>Checker and stretch-map views show exactly where a projection is distorting, before you send anything back.</p>
+    </div>
+    <div class="feature">
+      <div class="icon">
+        <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3 21 8v8l-9 5-9-5V8l9-5Z"/><path d="M3.5 8 12 13l8.5-5M12 13v8"/></svg>
+      </div>
+      <h3>Reference geometry</h3>
+      <p>Everything that isn't a screen still imports — dimmed, for spatial context — instead of forcing a stripped-down scene.</p>
+    </div>
+    <div class="feature">
+      <div class="icon">
+        <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20V10M18 20V4M6 20v-6"/></svg>
+      </div>
+      <h3>Free transform</h3>
+      <p>Grab handles to scale, rotate, and reposition a screen's artwork directly — no manual UV editing required.</p>
+    </div>
+  </div>
+</section>
+
+<section class="alt">
+  <div class="wrap">
+    <div class="section-head">
+      <span class="eyebrow">A closer look</span>
+      <h2>Modern, close-up tools</h2>
+      <p>Every control is one click away — see the full walkthrough in the docs.</p>
+    </div>
+    <div class="gallery">
+      <figure>
+        <img src="/help/img/wizard.png" alt="Link media to screens wizard with thumbnail picker">
+        <figcaption>Link artwork to screens by thumbnail, not filename.</figcaption>
+      </figure>
+      <div class="stack">
+        <figure>
+          <img src="/help/img/view-checker.png" alt="Checker view mode showing UV distortion">
+          <figcaption>Checker &amp; distortion views catch stretching before you send it back.</figcaption>
+        </figure>
+        <figure>
+          <img src="/help/img/screen-row.png" alt="A screen row with thumbnail and resolution override">
+          <figcaption>Per-screen resolution, thumbnails, and quick actions.</figcaption>
+        </figure>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="wrap">
+  <div class="section-head">
+    <span class="eyebrow">Round-trips</span>
+    <h2>Works inside the tools you already use</h2>
+    <p>Zero-config bridges — install once, then Send / Send back from either app.</p>
+  </div>
+  <div class="bridges">
+    <div class="bridge-card">
+      <h3><span class="bridge-badge">C4</span> Cinema 4D</h3>
+      <p>Extensions ▸ UV Studio Bridge ▸ Send. Map here, then Send back — UVs land on the original UVW tags, losslessly.</p>
+    </div>
+    <div class="bridge-card">
+      <h3><span class="bridge-badge">Bl</span> Blender</h3>
+      <p>View3D ▸ Sidebar ▸ UV Studio ▸ Send. Map, then Send back — UVs land on each object's active UV layer.</p>
+    </div>
+  </div>
+</section>
+
+<section id="download" class="alt">
+  <div class="wrap">
+    <div class="download-card">
+      <h2 style="font-size:28px; margin-bottom:10px;">Get UV Studio</h2>
+      <p style="color:var(--fog-400); font-size:14.5px; margin:0;">Free. Signed and notarized on macOS.</p>
+      <div class="platforms">
+        <div class="platform">
+          <svg class="os-icon" viewBox="0 0 24 24" fill="currentColor"><path d="M16.365 1.43c0 1.14-.415 2.19-1.24 3.15-.995 1.14-2.196 1.8-3.5 1.7-.045-1.1.42-2.24 1.25-3.16.87-.96 2.35-1.68 3.49-1.69zM20.5 17.32c-.55 1.27-.82 1.83-1.53 2.95-.99 1.56-2.39 3.5-4.13 3.52-1.54.02-1.94-1.01-4.03-1-2.09.01-2.53 1.02-4.07.99-1.74-.02-3.06-1.77-4.05-3.33-2.78-4.35-3.07-9.46-1.35-12.18 1.22-1.93 3.15-3.06 4.96-3.06 1.85 0 3.01 1.02 4.55 1.02 1.49 0 2.39-1.02 4.53-1.02 1.61 0 3.32.88 4.54 2.4-3.99 2.19-3.34 7.9.58 9.71z"/></svg>
+          <div class="os-name">macOS</div>
+          <div class="os-ver" id="mac-ver">Checking latest version…</div>
+          <a class="btn primary" id="mac-dl" href="https://github.com/hayhamLT/uvstudio/releases/latest">Download for Mac</a>
+        </div>
+        <div class="platform">
+          <svg class="os-icon" viewBox="0 0 24 24" fill="currentColor"><path d="M3 5.5 10.5 4.4V11.5H3V5.5zM11.5 4.25 21 3V11.4H11.5V4.25zM3 12.5H10.5V19.6L3 18.5V12.5zM11.5 12.5H21V21L11.5 19.75V12.5z"/></svg>
+          <div class="os-name">Windows</div>
+          <div class="os-ver" id="win-ver">Checking latest version…</div>
+          <a class="btn primary" id="win-dl" href="https://github.com/hayhamLT/uvstudio/releases/latest">Download for Windows</a>
+        </div>
+      </div>
+      <div class="web-cta">Prefer no install? <a href="/app/">Use UV Studio in your browser →</a></div>
+    </div>
+  </div>
+</section>
+
+<footer>
+  <nav>
+    <a href="/app/">Launch app</a>
+    <a href="/help/">Documentation</a>
+    <a href="https://github.com/hayhamLT/uvstudio">GitHub</a>
+    <a href="https://github.com/hayhamLT/uvstudio/releases/latest">Releases</a>
+  </nav>
+  UV Studio — a focused, modern reimagining of headus UVLayout for screen content.
+  Built by <a href="http://www.toyrobotmedia.com/" target="_blank" rel="noopener">Toy Robot Media</a>.
+</footer>
+
+<script>
+  document.addEventListener('scroll', () => {
+    document.getElementById('topbar').classList.toggle('scrolled', window.scrollY > 8);
+  }, { passive: true });
+
+  // Pull the latest release from GitHub and point the download buttons at the
+  // real installer assets (falls back to the releases page on any failure —
+  // rate limit, offline, CORS — so the buttons always work either way).
+  (async () => {
+    try {
+      const res = await fetch('https://api.github.com/repos/hayhamLT/uvstudio/releases/latest');
+      if (!res.ok) return;
+      const rel = await res.json();
+      const assets = rel.assets || [];
+      const ver = (rel.tag_name || '').replace(/^v/, '');
+      const find = (re) => assets.find(a => re.test(a.name));
+
+      const dmg = find(/\.dmg$/i);
+      if (dmg) {
+        document.getElementById('mac-dl').href = dmg.browser_download_url;
+        document.getElementById('mac-ver').textContent = ver ? `Version ${ver}` : '';
+      }
+      const exe = find(/setup\.exe$/i) || find(/\.exe$/i) || find(/\.msi$/i);
+      if (exe) {
+        document.getElementById('win-dl').href = exe.browser_download_url;
+        document.getElementById('win-ver').textContent = ver ? `Version ${ver}` : '';
+      }
+      if (!dmg) document.getElementById('mac-ver').textContent = '';
+      if (!exe) document.getElementById('win-ver').textContent = '';
+    } catch {
+      document.getElementById('mac-ver').textContent = '';
+      document.getElementById('win-ver').textContent = '';
+    }
+  })();
+</script>
+</body>
 </html>

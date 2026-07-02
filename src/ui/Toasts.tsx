@@ -110,12 +110,12 @@ function ToastCard({ toast }: { toast: Toast }) {
   )
 }
 
-/** Transient notification stack — top-right, newest at the bottom. */
+/** Transient notification stack — bottom-right, newest closest to the edge. */
 export default function Toasts() {
   const toasts = useStore((s) => s.toasts)
   if (!toasts.length) return null
   return (
-    <div className="pointer-events-none fixed right-3 top-14 z-[130] flex w-[330px] max-w-[calc(100vw-24px)] flex-col gap-2">
+    <div className="pointer-events-none fixed bottom-3 right-3 z-[130] flex w-[330px] max-w-[calc(100vw-24px)] flex-col gap-2">
       {toasts.map((t) => (
         <ToastCard key={t.id} toast={t} />
       ))}

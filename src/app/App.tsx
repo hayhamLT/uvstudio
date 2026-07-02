@@ -55,12 +55,13 @@ export default function App() {
   const lastImportName = useStore((s) => s.lastImportName)
   const booted = useRef(false)
 
-  // Standalone: a compact launcher window on the landing page; grow once a model
-  // is loaded, shrink back when it's cleared. (No-op on web.)
+  // Standalone: a small launcher window on the landing page; grow once a model
+  // is loaded, shrink back when it's cleared. (No-op on web.) Preferences and
+  // Help are scrollable modals, so the launcher doesn't need to fit them whole.
   useEffect(() => {
     if (!isDesktop()) return
     if (hasModel) void resizeWindow(1440, 900)
-    else void resizeWindow(720, 700) // landing: big enough to fit Preferences / Help
+    else void resizeWindow(360, 360) // landing: compact
   }, [hasModel])
 
   // Opening a new file resets the orientation so the 3D view lands in the left
@@ -94,15 +95,16 @@ export default function App() {
     void restoreLink()
   }, [])
 
-  // DEV-ONLY docs tooling: `?shot=wizard|zyn[&view=3d][&save=1]` auto-loads the
-  // sample scene (public/zyn-test.glb + the three ZYN PSDs) so docs screenshots
-  // are reproducible. `save=1` POSTs the rendered viewports to the vite shot
-  // sink (docs/img/). Stripped from production builds. See docs/GUIDE.md.
+  // DEV-ONLY docs tooling: `?shot=import|wizard|zyn[&view=3d]` auto-loads the
+  // sample scene (public/zyn-test.glb + the three ZYN PSDs) so scripts/capture-
+  // docs.mjs (`npm run docs:shots`) gets reproducible states to screenshot.
+  // `prefs-desktop` is handled entirely by the isDesktop() override in
+  // src/bridge/link.ts. Stripped from production builds. See docs/GUIDE.md.
   useEffect(() => {
     if (!import.meta.env.DEV) return
     const params = new URLSearchParams(window.location.search)
     const shot = params.get('shot')
-    if (!shot || shot === 'landing') return
+    if (!shot || shot === 'landing' || shot === 'prefs-desktop') return
     void (async () => {
       const im = await import('../ui/importMap')
       const ff = async (u: string, n: string, t: string) =>
@@ -137,6 +139,9 @@ export default function App() {
         setPrimary('3d')
         window.dispatchEvent(new Event('resize'))
       }
+      // the confirmLink above pushed a "Linked media…" toast — clear it so it
+      // doesn't bleed into screenshots that aren't specifically about toasts
+      useStore.getState().toasts.forEach((t) => useStore.getState().dismissToast(t.id))
       await new Promise((r) => setTimeout(r, 1200)) // settle frames before capture
       document.title = 'SHOT-READY' // signal for scripts/capture-docs.mjs
     })()

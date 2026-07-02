@@ -188,7 +188,7 @@ The action button in the top bar is **source-aware**:
 
 ## 8. Notifications
 
-UV Studio talks to you through **toasts** in the top-right — media linked,
+UV Studio talks to you through **toasts** in the bottom-right — media linked,
 mapping done, export saved, and the result of a Send. Success messages fade on
 their own; warnings and errors linger (and pause if you hover them) so you don't
 miss a screen that didn't map.

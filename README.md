@@ -10,16 +10,21 @@ round-trips to **Cinema 4D** and **Blender**.
 </p>
 
 > 📖 **New here? Read the [User Guide](docs/GUIDE.md)** — a full, screenshot-led
-> walkthrough of every feature. Or try it live at
+> walkthrough of every feature. Or see it live at
 > **[uv.preshow.link](https://uv.preshow.link)**.
 
 ## Get UV Studio
 
-- **Download (Mac / Windows):** grab the latest installer from
+- **[uv.preshow.link](https://uv.preshow.link)** — the product site: download
+  the signed macOS / Windows installer, or launch the browser build straight
+  from there. (This repo's site is a small multi-page build: `/` is that
+  marketing page, **[`/app/`](https://uv.preshow.link/app/)** is the actual
+  tool, and **[`/help/`](https://uv.preshow.link/help/)** is the in-depth docs.)
+- **Download directly:** grab the latest installer from
   **[Releases](https://github.com/hayhamLT/uvstudio/releases/latest)** —
   `.dmg` for macOS, `.exe` / `.msi` for Windows.
-- **Use it online:** **[uv.preshow.link](https://uv.preshow.link)** (Chromium
-  browsers — Chrome / Edge — for full file access).
+- **Use it online, no install:** **[uv.preshow.link/app](https://uv.preshow.link/app/)**
+  (Chromium browsers — Chrome / Edge — for full file access).
 
 The app auto-checks for updates on launch.
 
@@ -57,17 +62,21 @@ Only UV coordinates ever travel back — your geometry never round-trips.
 
 ```bash
 npm install
-npm run dev          # web app — local dev server (Vite) at http://localhost:5173
+npm run dev          # local dev server (Vite) — the tool is at http://localhost:5173/app/
 npm test             # unit tests
 npm run typecheck    # tsc
 
 npm run tauri:dev    # desktop app (needs Rust — https://rustup.rs)
 npm run tauri:build  # → installers in src-tauri/target/release/bundle/
+npm run docs:shots   # regenerate docs/img/*.png (needs a running dev server)
 ```
 
-> `localhost:5173` is just the local dev server while `npm run dev` is running —
-> it's not the shipped app. For the web build use a Chromium browser (the import
-> pickers + link folder need the File System Access API).
+> This is a small multi-page build: `/` is the static marketing site
+> (`index.html`, plain HTML — no framework needed), `/app/` is the React tool
+> (`app/index.html`), `/help/` is the static docs site (`public/help/`). All
+> three ship from one `dist/`. `localhost:5173` is just the local dev server —
+> it's not the shipped app. For the web build use a Chromium browser (the
+> import pickers + link folder need the File System Access API).
 
 Releases are cut by tagging: `git tag vX.Y.Z && git push origin vX.Y.Z` →
 `desktop.yml` builds + publishes the Mac/Windows installers. macOS signing /

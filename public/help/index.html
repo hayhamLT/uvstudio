@@ -1,0 +1,427 @@
+<!doctype html>
+<html lang="en" class="dark">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>UV Studio — Help &amp; Documentation</title>
+<meta name="description" content="Full documentation for UV Studio — quick start, every tool explained with close-up screenshots, Cinema 4D / Blender bridges, shortcuts, and FAQ." />
+<link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 24 24%22><rect width=%2224%22 height=%2224%22 rx=%225%22 fill=%22%232da9f7%22/><path d=%22M12 3 21 8v8l-9 5-9-5V8l9-5Z%22 fill=%22none%22 stroke=%22%2307090d%22 stroke-width=%221.8%22/></svg>" />
+<style>
+  :root{
+    --ink-950:#07090d; --ink-900:#0b0e14; --ink-850:#11151d; --ink-800:#161b25;
+    --ink-700:#1e2531; --ink-600:#2a3340; --line:#232c39;
+    --fog-500:#6b7889; --fog-400:#8a97a8; --fog-300:#aab4c2; --fog-200:#cdd5e0; --fog-100:#e8edf4;
+    --brand-400:#5cc8ff; --brand-500:#2da9f7; --brand-600:#1183d6;
+    --good:#46d39a; --warn:#f5c451; --bad:#ff5277;
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;}
+  body{
+    background:var(--ink-950); color:var(--fog-200);
+    font-family:'Inter var',ui-sans-serif,system-ui,-apple-system,'Segoe UI',Roboto,sans-serif;
+    -webkit-font-smoothing:antialiased; line-height:1.6;
+  }
+  a{color:var(--brand-400); text-decoration:none;}
+  a:hover{color:var(--brand-400); text-decoration:underline;}
+  code{
+    font-family:ui-monospace,'SF Mono','JetBrains Mono','Cascadia Code',monospace;
+    background:var(--ink-800); border:1px solid var(--line); border-radius:5px;
+    padding:0.1em 0.4em; font-size:0.9em; color:var(--fog-200);
+  }
+  kbd{
+    display:inline-flex; align-items:center; justify-content:center; min-width:1.6em;
+    font-family:ui-monospace,'SF Mono',monospace; font-size:0.82em; padding:0.15em 0.5em;
+    border:1px solid var(--line); border-radius:6px; background:var(--ink-800); color:var(--fog-100);
+  }
+  img{max-width:100%; display:block; border-radius:10px; border:1px solid var(--line);}
+  h1,h2,h3{color:var(--fog-100); font-weight:650; letter-spacing:-0.01em;}
+  h2{scroll-margin-top:24px;}
+
+  /* ---- top bar ---- */
+  .topbar{
+    position:sticky; top:0; z-index:40; display:flex; align-items:center; gap:14px;
+    padding:14px 20px; background:color-mix(in srgb, var(--ink-900) 88%, transparent);
+    backdrop-filter:blur(14px) saturate(140%); border-bottom:1px solid var(--line);
+  }
+  .topbar .logo{display:flex; align-items:center; gap:9px; font-weight:700; color:var(--fog-100); font-size:15px;}
+  .topbar .logo .cube{
+    width:26px; height:26px; border-radius:8px; background:linear-gradient(160deg,var(--brand-400),var(--brand-600));
+    display:flex; align-items:center; justify-content:center; color:var(--ink-950); font-size:14px;
+  }
+  .topbar nav{margin-left:auto; display:flex; gap:18px; font-size:13.5px;}
+  .topbar nav a{color:var(--fog-300);}
+  .topbar nav a:hover{color:var(--fog-100); text-decoration:none;}
+
+  /* ---- layout: sticky side TOC + content ---- */
+  .shell{display:flex; max-width:1180px; margin:0 auto; align-items:flex-start;}
+  .toc{
+    position:sticky; top:64px; width:230px; flex-shrink:0; padding:32px 12px 32px 20px;
+    max-height:calc(100vh - 64px); overflow-y:auto;
+  }
+  .toc-title{font-size:10.5px; font-weight:700; letter-spacing:0.08em; text-transform:uppercase; color:var(--fog-500); margin:0 0 10px 10px;}
+  .toc a{
+    display:block; padding:6px 10px; border-radius:7px; font-size:13.5px; color:var(--fog-400);
+    border-left:2px solid transparent;
+  }
+  .toc a:hover{color:var(--fog-100); background:var(--ink-800); text-decoration:none;}
+  .toc a.hi{color:var(--brand-400);}
+
+  main{flex:1; min-width:0; padding:36px 24px 100px;}
+
+  /* ---- hero ---- */
+  .hero{padding:14px 0 40px; border-bottom:1px solid var(--line); margin-bottom:40px;}
+  .hero h1{font-size:32px; margin:0 0 10px;}
+  .hero p{color:var(--fog-400); font-size:15.5px; max-width:640px; margin:0 0 20px;}
+  .hero .cta{display:flex; gap:10px; flex-wrap:wrap;}
+  .btn{
+    display:inline-flex; align-items:center; gap:7px; padding:9px 16px; border-radius:9px;
+    font-size:13.5px; font-weight:600; border:1px solid var(--line);
+  }
+  .btn:hover{text-decoration:none;}
+  .btn.primary{background:var(--brand-500); color:var(--ink-950); border-color:transparent;}
+  .btn.primary:hover{background:var(--brand-400);}
+  .btn.ghost{background:var(--ink-800); color:var(--fog-200);}
+  .btn.ghost:hover{background:var(--ink-700); color:var(--fog-100);}
+
+  /* ---- sections ---- */
+  section{margin-bottom:64px;}
+  section h2{font-size:22px; margin:0 0 6px; display:flex; align-items:center; gap:10px;}
+  .step-num{
+    display:inline-flex; align-items:center; justify-content:center; width:26px; height:26px;
+    border-radius:999px; background:color-mix(in srgb, var(--brand-500) 20%, transparent);
+    color:var(--brand-400); font-size:12.5px; font-weight:700; flex-shrink:0;
+  }
+  .lede{color:var(--fog-400); font-size:14.5px; margin:0 0 22px; max-width:720px;}
+  .grid2{display:grid; grid-template-columns:1fr 1fr; gap:22px; align-items:start;}
+  .card{background:var(--ink-900); border:1px solid var(--line); border-radius:14px; padding:18px 20px;}
+  .card h3{font-size:14.5px; margin:0 0 6px;}
+  .card p{color:var(--fog-400); font-size:13.5px; margin:0;}
+  figure{margin:0 0 18px;}
+  figcaption{font-size:12.5px; color:var(--fog-500); margin-top:8px; text-align:center;}
+  .note{
+    display:flex; gap:10px; background:color-mix(in srgb, var(--brand-500) 8%, var(--ink-900));
+    border:1px solid color-mix(in srgb, var(--brand-500) 25%, var(--line)); border-radius:11px;
+    padding:13px 16px; font-size:13.5px; color:var(--fog-300); margin:18px 0;
+  }
+  .note b{color:var(--fog-100);}
+  .dot-legend{display:flex; align-items:flex-start; gap:10px; margin-top:6px;}
+  .dot-legend .dot{width:9px; height:9px; border-radius:3px; margin-top:5px; flex-shrink:0;}
+  .steps{list-style:none; margin:0; padding:0; counter-reset:step;}
+  .steps li{
+    counter-increment:step; position:relative; padding-left:38px; margin-bottom:14px; font-size:14px; color:var(--fog-300);
+  }
+  .steps li::before{
+    content:counter(step); position:absolute; left:0; top:0; width:24px; height:24px; border-radius:999px;
+    background:var(--ink-800); border:1px solid var(--line); color:var(--brand-400); font-size:12px; font-weight:700;
+    display:flex; align-items:center; justify-content:center;
+  }
+  table{width:100%; border-collapse:collapse; font-size:13.5px;}
+  th,td{text-align:left; padding:8px 10px; border-bottom:1px solid var(--line);}
+  th{color:var(--fog-500); font-size:11px; text-transform:uppercase; letter-spacing:0.05em; font-weight:700;}
+  td{color:var(--fog-300);}
+  .kbdrow td:first-child{width:150px;}
+  .faq dt{font-weight:650; color:var(--fog-100); font-size:14.5px; margin:20px 0 5px;}
+  .faq dd{margin:0; color:var(--fog-400); font-size:13.5px;}
+  .pillrow{display:flex; gap:8px; flex-wrap:wrap; margin-bottom:6px;}
+  .pill{font-size:11px; font-weight:600; padding:2px 9px; border-radius:999px; background:var(--ink-800); color:var(--fog-300); border:1px solid var(--line);}
+  .pill.good{color:var(--good); border-color:color-mix(in srgb, var(--good) 35%, var(--line));}
+  .pill.warn{color:var(--warn); border-color:color-mix(in srgb, var(--warn) 35%, var(--line));}
+  .pill.bad{color:var(--bad); border-color:color-mix(in srgb, var(--bad) 35%, var(--line));}
+  footer{border-top:1px solid var(--line); padding:28px 24px; text-align:center; color:var(--fog-500); font-size:12.5px;}
+
+  @media (max-width: 900px){
+    .toc{display:none;}
+    main{padding:28px 18px 80px;}
+    .grid2{grid-template-columns:1fr;}
+  }
+</style>
+</head>
+<body>
+
+<div class="topbar">
+  <div class="logo"><span class="cube">▢</span> UV Studio</div>
+  <nav>
+    <a href="/">Open the app ↗</a>
+    <a href="https://github.com/hayhamLT/uvstudio" target="_blank" rel="noopener">GitHub</a>
+    <a href="https://github.com/hayhamLT/uvstudio/releases/latest" target="_blank" rel="noopener">Download</a>
+  </nav>
+</div>
+
+<div class="shell">
+  <aside class="toc">
+    <div class="toc-title">Contents</div>
+    <a href="#quick-start">Quick start</a>
+    <a href="#import">Bringing screens in</a>
+    <a href="#wizard">Linking artwork</a>
+    <a href="#workspace">The workspace</a>
+    <a href="#view-modes">3D view modes</a>
+    <a href="#panel">The Screens panel</a>
+    <a href="#reference">Reference geometry</a>
+    <a href="#mapping">Mapping &amp; the transform bar</a>
+    <a href="#free-transform">Free transform</a>
+    <a href="#send-export">Send back / Export</a>
+    <a href="#toasts">Notifications</a>
+    <a href="#c4d">Cinema 4D bridge</a>
+    <a href="#blender">Blender bridge</a>
+    <a href="#shortcuts">Keyboard shortcuts</a>
+    <a href="#faq">FAQ</a>
+  </aside>
+
+  <main>
+    <div class="hero">
+      <h1>UV Studio — Help &amp; Documentation</h1>
+      <p>UV Studio maps your artwork onto the <b style="color:var(--fog-200)">screens</b> in a venue or event model — LED walls, floors, pillars, ribbon boards — and sends the result straight back to Cinema 4D or Blender, or out as a GLB. This page walks through every tool with close-up screenshots.</p>
+      <div class="cta">
+        <a class="btn primary" href="/">Open UV Studio ↗</a>
+        <a class="btn ghost" href="https://github.com/hayhamLT/uvstudio/releases/latest" target="_blank" rel="noopener">Download for Mac / Windows</a>
+      </div>
+    </div>
+
+    <section id="quick-start">
+      <h2>Quick start</h2>
+      <p class="lede">The entire workflow in four steps. Everything below goes deeper on each one.</p>
+      <ol class="steps">
+        <li>Click the orb, import a <code>.glb</code>/<code>.gltf</code> together with its PSDs/images — or Send a selection from Cinema 4D / Blender.</li>
+        <li>Confirm which objects are <b style="color:var(--fog-200)">screens</b> in the import dialog, then link each screen to its artwork in the wizard.</li>
+        <li><b style="color:var(--fog-200)">Auto-map ALL</b> to fit every screen to its content — adjust rotation/flip/projection per screen if needed.</li>
+        <li><b style="color:var(--fog-200)">Send back</b> to Cinema 4D / Blender, or <b style="color:var(--fog-200)">Export</b> a textured GLB.</li>
+      </ol>
+      <figure style="margin-top:22px;">
+        <img src="img/landing.png" alt="UV Studio launcher" style="max-width:420px; margin:0 auto;">
+        <figcaption>The launcher — click the orb to begin.</figcaption>
+      </figure>
+    </section>
+
+    <section id="import">
+      <h2><span class="step-num">1</span>Bringing screens in</h2>
+      <p class="lede">Two ways to get geometry into UV Studio.</p>
+      <div class="grid2">
+        <div class="card">
+          <h3>A. Import a model</h3>
+          <p>Pick a GLB/glTF, optionally with its PSDs/images selected in the same dialog. UV Studio <b style="color:var(--fog-200)">auto-detects</b> likely screens by name and pre-checks them (green <span class="pill good">screen</span> tag; <span class="pill good">textured</span> means it already carries a texture). Unchecked objects still import, as dimmable reference geometry.</p>
+        </div>
+        <div class="card">
+          <h3>B. Send from Cinema 4D / Blender</h3>
+          <p>Select your objects in the DCC and hit <b style="color:var(--fog-200)">Send</b> — they open here automatically over the bridge (see below). No manual export.</p>
+        </div>
+      </div>
+      <figure style="margin-top:22px;">
+        <img src="img/import-dialog.png" alt="Choose screens dialog">
+        <figcaption>The import dialog — checked objects become mappable screens; the rest arrive as dimmable reference geometry.</figcaption>
+      </figure>
+    </section>
+
+    <section id="wizard">
+      <h2><span class="step-num">2</span>Linking artwork to screens</h2>
+      <p class="lede">The heart of the app: telling each screen which image or PSD layer plays on it.</p>
+      <figure>
+        <img src="img/wizard.png" alt="Link media to screens wizard, expanded">
+        <figcaption>Click a screen's row to expand a thumbnail list of every imported image and PSD layer.</figcaption>
+      </figure>
+      <p style="font-size:14px; color:var(--fog-300);">Name matches link automatically. Click any row to change it — pick by <i>look</i>, not filename. <b style="color:var(--fog-200)">"keep imported"</b> leaves the screen on whatever it came in with. Links are one-to-one: picking a layer already used elsewhere moves it.</p>
+
+      <div class="note">
+        <b>What the colored dots mean</b> — a question people ask a lot.
+        <div class="dot-legend">
+          <span class="dot" style="background:var(--bad);"></span>
+          <span>The dot in front of a screen's <b style="color:var(--fog-200)">name</b> is its <b style="color:var(--fog-200)">identity color</b>, derived from the name. It stays consistent everywhere — panel, wizard, 3D outlines — so you can always match a row to an object.</span>
+        </div>
+        <div class="dot-legend">
+          <span class="dot" style="background:#c65cff;"></span>
+          <span>A dot at the <b style="color:var(--fog-200)">end of a media option</b> means that layer is already linked to a <i>different</i> screen — the color tells you which (hover for the name). Picking it steals it.</span>
+        </div>
+      </div>
+    </section>
+
+    <section id="workspace">
+      <h2>The workspace</h2>
+      <p class="lede">Once loaded: a 2D map, a floating 3D view, and the Screens panel.</p>
+      <figure>
+        <img src="img/workspace.png" alt="UV Studio workspace — 2D map, floating 3D view, screens panel">
+        <figcaption>2D map (outlined screen slices + pixel ruler) with the 3D view floating on top, and the Screens panel on the right.</figcaption>
+      </figure>
+      <figure>
+        <img src="img/venue3d.png" alt="3D venue with mapped screens promoted to the main pane">
+        <figcaption>Press <kbd>Tab</kbd> — or use the swap icon — to make the 3D view primary instead.</figcaption>
+      </figure>
+      <p style="font-size:14px; color:var(--fog-300);">The small icons on the floating window let you <b style="color:var(--fog-200)">swap</b> which view is primary, <b style="color:var(--fog-200)">dock</b> it into a split, or leave it <b style="color:var(--fog-200)">floating</b> as a movable window.</p>
+    </section>
+
+    <section id="view-modes">
+      <h2>3D view modes</h2>
+      <p class="lede">Three ways to look at the mapped venue — press <kbd>1</kbd> / <kbd>2</kbd> / <kbd>3</kbd> over the 3D view, or click the toolbar.</p>
+      <div class="grid2">
+        <figure>
+          <img src="img/view-checker.png" alt="Checker mode — a UV-space checker pattern reveals stretching">
+          <figcaption><b style="color:var(--fog-200)">Checker</b> — a grid pattern in UV space. Even squares = clean unwrap; stretched or skewed squares show where the projection is distorting.</figcaption>
+        </figure>
+        <figure>
+          <img src="img/view-distortion.png" alt="Distortion feedback mode — color-coded stretch map">
+          <figcaption><b style="color:var(--fog-200)">Distortion</b> feedback — a color-coded stretch map over the wireframe, for a faster read on problem areas than checker alone.</figcaption>
+        </figure>
+      </div>
+      <p style="font-size:14px; color:var(--fog-300); margin-top:10px;"><b style="color:var(--fog-200)">Shaded</b> (the default, <kbd>1</kbd>) shows the real linked content — see the workspace/venue screenshots above.</p>
+    </section>
+
+    <section id="panel">
+      <h2>The Screens panel</h2>
+      <p class="lede">Your screen list and control center, on the right.</p>
+      <figure style="max-width:420px;">
+        <img src="img/screen-row.png" alt="A selected screen row: thumbnail, status, resolution, actions">
+        <figcaption>A selected row: cropped-to-content thumbnail, identity dot, status, add/replace + visibility actions, and the RES override.</figcaption>
+      </figure>
+      <table>
+        <tr><th>Element</th><th>What it does</th></tr>
+        <tr><td>Thumbnail</td><td>Cropped to exactly the slice of artwork this screen samples — not the whole PSD.</td></tr>
+        <tr><td>Status</td><td><span class="pill good">Mapped</span> once fitted, otherwise <i>Not mapped</i> / <i>No image</i>.</td></tr>
+        <tr><td>RES</td><td>Detected render resolution — overtype with the screen's real LED pixel size if they differ.</td></tr>
+        <tr><td>Actions</td><td>Add/replace image, and a visibility control that cycles <b>visible → solo → hidden</b>.</td></tr>
+      </table>
+    </section>
+
+    <section id="reference">
+      <h2>Reference geometry</h2>
+      <p class="lede">Everything imported that isn't a screen — the room, trusses, décor — for spatial context.</p>
+      <figure style="max-width:520px;">
+        <img src="img/reference-geometry.png" alt="Reference geometry section: object count, visibility eye, brightness slider">
+        <figcaption>The slider sets brightness (black → 50% grey); the eye hides the group entirely. Dim it down to make the screens pop, bring it up when you need spatial reference.</figcaption>
+      </figure>
+    </section>
+
+    <section id="mapping">
+      <h2>Mapping &amp; the transform bar</h2>
+      <p class="lede">Imported screens keep their own UVs by default — mapping is opt-in and one click.</p>
+      <figure style="max-width:560px;">
+        <img src="img/automap-toast.png" alt="Auto-map ALL button, and the confirmation toast it produces">
+        <figcaption><b style="color:var(--fog-200)">Auto-map ALL</b> (top-left) fits every screen to its linked content — rows pulse green as they land, and a toast confirms the count.</figcaption>
+      </figure>
+      <figure style="max-width:480px;">
+        <img src="img/transform-bar.png" alt="Per-screen transform bar: auto-map, rotate, flip, free transform, projection">
+        <figcaption>With a screen selected, the bar at the bottom of the 2D view: per-screen Auto-map (<kbd>M</kbd>), rotate CW/CCW (<kbd>R</kbd>/<kbd>⇧R</kbd>), flip H/V (<kbd>F</kbd>/<kbd>⇧F</kbd>), free transform (<kbd>T</kbd>), and the unwrap projection.</figcaption>
+      </figure>
+      <p style="font-size:14px; color:var(--fog-300);"><b style="color:var(--fog-200)">Projection</b> — <code>Auto</code> keeps the imported UVs; <code>Planar</code>, <code>Cylindrical</code>, and <code>Spherical</code> re-project for curved or wrapped screens (cylinders get an automatic seam split). On a narrow view the bar scrolls sideways instead of overflowing.</p>
+    </section>
+
+    <section id="free-transform">
+      <h2>Free transform</h2>
+      <p class="lede">Grab handles to scale, rotate, and move a screen's artwork directly — press <kbd>T</kbd> with a screen selected.</p>
+      <figure style="max-width:640px;">
+        <img src="img/free-transform.png" alt="Free transform gizmo handles on a selected screen">
+        <figcaption>Corner and edge handles appear on the selected screen's outline in the 2D view. Hold <kbd>⇧</kbd> for non-uniform scale, <kbd>⌥</kbd> to scale from a corner.</figcaption>
+      </figure>
+    </section>
+
+    <section id="send-export">
+      <h2>Send back / Export</h2>
+      <p class="lede">The top-bar action button is <b style="color:var(--fog-200)">source-aware</b> — it changes label and behavior based on where the scene came from.</p>
+      <div class="grid2">
+        <figure>
+          <img src="img/export-button.png" alt="Export button — for a file-imported model">
+          <figcaption>Imported from a <b style="color:var(--fog-200)">file</b> → <b style="color:var(--fog-200)">Export</b> a textured GLB + a JSON sidecar with each screen's render size.</figcaption>
+        </figure>
+        <figure>
+          <img src="img/sendback-button.png" alt="Send back button — for a Cinema 4D / Blender sourced scene">
+          <figcaption>Sent from <b style="color:var(--fog-200)">Cinema 4D / Blender</b> → <b style="color:var(--fog-200)">Send back</b>. Only UV coordinates travel — geometry and materials are never touched.</figcaption>
+        </figure>
+      </div>
+    </section>
+
+    <section id="toasts">
+      <h2>Notifications</h2>
+      <p class="lede">UV Studio talks to you through toasts in the bottom-right.</p>
+      <figure style="max-width:460px;">
+        <img src="img/toasts.png" alt="Three toast kinds: success, warning, error">
+        <figcaption>Success fades on its own; warnings and errors linger (and pause on hover) so a partial send failure never slips by.</figcaption>
+      </figure>
+    </section>
+
+    <section id="c4d">
+      <h2>Cinema 4D bridge</h2>
+      <p class="lede">Zero-config — both ends share a folder automatically.</p>
+      <figure style="max-width:560px;">
+        <img src="img/preferences-c4d.png" alt="Preferences — Cinema 4D section: link folder and plugin install">
+        <figcaption>Preferences ▸ Cinema 4D.</figcaption>
+      </figure>
+      <ol class="steps">
+        <li>Preferences ▸ Cinema 4D ▸ <b style="color:var(--fog-200)">Install</b>, then restart Cinema 4D.</li>
+        <li>In C4D: Extensions ▸ <b style="color:var(--fog-200)">UV Studio Bridge</b> ▸ Send, with your objects selected.</li>
+        <li>Map in UV Studio, then <b style="color:var(--fog-200)">Send back</b> — UVs land on the original UVW tags, losslessly.</li>
+      </ol>
+    </section>
+
+    <section id="blender">
+      <h2>Blender bridge</h2>
+      <p class="lede">Same protocol, same zero-config folder.</p>
+      <figure style="max-width:560px;">
+        <img src="img/preferences-blender.png" alt="Preferences — Blender section: add-on install">
+        <figcaption>Preferences ▸ Blender.</figcaption>
+      </figure>
+      <ol class="steps">
+        <li>Preferences ▸ Blender ▸ <b style="color:var(--fog-200)">Install</b>, then enable the add-on once in Blender ▸ Preferences ▸ Add-ons.</li>
+        <li>In Blender: View3D ▸ Sidebar (<kbd>N</kbd>) ▸ <b style="color:var(--fog-200)">UV Studio</b> ▸ Send, with your meshes selected.</li>
+        <li>Map, then <b style="color:var(--fog-200)">Send back</b> — UVs land on each object's active UV layer.</li>
+      </ol>
+    </section>
+
+    <section id="shortcuts">
+      <h2>Keyboard shortcuts</h2>
+      <table>
+        <tr><th>Key</th><th>Action</th></tr>
+        <tr class="kbdrow"><td><kbd>Tab</kbd></td><td>Swap the 2D / 3D views</td></tr>
+        <tr class="kbdrow"><td><kbd>1</kbd> <kbd>2</kbd> <kbd>3</kbd></td><td>Over 3D: Shaded / Distortion / Checker</td></tr>
+        <tr class="kbdrow"><td><kbd>B</kbd></td><td>Toggle backface culling (3D)</td></tr>
+        <tr class="kbdrow"><td><kbd>1</kbd> <kbd>2</kbd> <kbd>3</kbd> <kbd>4</kbd></td><td>In 2D: Vertex / Edge / Face / Object edit mode</td></tr>
+        <tr class="kbdrow"><td><kbd>`</kbd> <kbd>0</kbd></td><td>Leave edit mode</td></tr>
+        <tr class="kbdrow"><td><kbd>M</kbd></td><td>Auto-map the active screen</td></tr>
+        <tr class="kbdrow"><td><kbd>T</kbd></td><td>Free transform (<kbd>⇧</kbd> non-uniform · <kbd>⌥</kbd> from corner)</td></tr>
+        <tr class="kbdrow"><td><kbd>R</kbd> <kbd>⇧R</kbd></td><td>Rotate CW / CCW</td></tr>
+        <tr class="kbdrow"><td><kbd>F</kbd> <kbd>⇧F</kbd></td><td>Flip horizontal / vertical</td></tr>
+        <tr class="kbdrow"><td><kbd>S</kbd></td><td>Interactive scale — move the mouse, click to set</td></tr>
+        <tr class="kbdrow"><td><kbd>+</kbd> <kbd>−</kbd></td><td>Scale up / down</td></tr>
+        <tr class="kbdrow"><td><kbd>X</kbd></td><td>Reset orientation</td></tr>
+        <tr class="kbdrow"><td><kbd>⌘/Ctrl</kbd> <kbd>Z</kbd></td><td>Undo (<kbd>⇧</kbd> to redo)</td></tr>
+        <tr class="kbdrow"><td>Right-drag</td><td>Pan the view · <kbd>Esc</kbd> clears selection</td></tr>
+        <tr class="kbdrow"><td><kbd>H</kbd></td><td>Toggle in-app Help</td></tr>
+      </table>
+    </section>
+
+    <section id="faq" class="faq">
+      <h2>FAQ</h2>
+      <dl>
+        <dt>A screen imported but shows "No image."</dt>
+        <dd>It has no linked media yet. Select it and use Add image, drop a file on the 2D view, or re-open the link step.</dd>
+        <dt>Auto-map said "0 mapped."</dt>
+        <dd>There was nothing to fit — link artwork to the screens first, then Auto-map.</dd>
+        <dt>My LED wall is a different pixel size than detected.</dt>
+        <dd>Overtype the RES field on that screen with the true size; export/send carries it through.</dd>
+        <dt>Does anything change my geometry?</dt>
+        <dd>No. Round-trips send back UVs only — geometry and materials are never touched.</dd>
+        <dt>The whole room came in, not just the screens.</dt>
+        <dd>That's intended — unchecked objects arrive as dimmable reference geometry. Dim or hide them from the panel's Reference section.</dd>
+      </dl>
+    </section>
+  </main>
+</div>
+
+<footer>
+  UV Studio — a focused, modern reimagining of headus UVLayout for screen content.
+  Built by <a href="http://www.toyrobotmedia.com/" target="_blank" rel="noopener">Toy Robot Media</a>.
+  · <a href="https://github.com/hayhamLT/uvstudio">Source on GitHub</a>
+</footer>
+
+<script>
+  // lightweight scroll-spy: highlight the current section's TOC link
+  const links = [...document.querySelectorAll('.toc a')];
+  const targets = links.map(a => document.querySelector(a.getAttribute('href')));
+  const onScroll = () => {
+    let idx = 0;
+    for (let i = 0; i < targets.length; i++) {
+      if (targets[i] && targets[i].getBoundingClientRect().top < 120) idx = i;
+    }
+    links.forEach((a, i) => a.classList.toggle('hi', i === idx));
+  };
+  document.addEventListener('scroll', onScroll, { passive: true });
+  onScroll();
+</script>
+</body>
+</html>

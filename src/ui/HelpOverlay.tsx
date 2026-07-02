@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { openExternal } from '../bridge/link'
 
 type Tab = 'workflow' | 'shortcuts' | 'bridges'
 
@@ -163,12 +164,24 @@ export default function HelpOverlay({ onClose }: { onClose: () => void }) {
       >
         <div className="mb-4 flex items-center justify-between">
           <h2 className="text-lg font-semibold text-fog-100">Help</h2>
-          <button
-            onClick={onClose}
-            className="rounded-md px-2 py-1 text-sm text-fog-400 hover:bg-ink-700 hover:text-fog-100"
-          >
-            Esc
-          </button>
+          <div className="flex items-center gap-3">
+            <a
+              href="https://uv.preshow.link/help/"
+              onClick={(e) => {
+                e.preventDefault()
+                void openExternal('https://uv.preshow.link/help/')
+              }}
+              className="text-xs font-medium text-brand-400 hover:text-brand-300 ring-focus"
+            >
+              Full documentation ↗
+            </a>
+            <button
+              onClick={onClose}
+              className="rounded-md px-2 py-1 text-sm text-fog-400 hover:bg-ink-700 hover:text-fog-100"
+            >
+              Esc
+            </button>
+          </div>
         </div>
 
         {/* tabs */}

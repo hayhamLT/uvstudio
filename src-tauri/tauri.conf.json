@@ -5,7 +5,7 @@
   "identifier": "link.preshow.uvstudio",
   "build": {
     "frontendDist": "../dist",
-    "devUrl": "http://localhost:5173",
+    "devUrl": "http://localhost:5173/app/",
     "beforeDevCommand": "npm run dev",
     "beforeBuildCommand": "npm run build"
   },
@@ -15,10 +15,11 @@
       {
         "label": "main",
         "title": "UV Studio",
-        "width": 720,
-        "height": 700,
-        "minWidth": 560,
-        "minHeight": 480,
+        "url": "app/index.html",
+        "width": 360,
+        "height": 360,
+        "minWidth": 340,
+        "minHeight": 340,
         "center": true
       }
     ],

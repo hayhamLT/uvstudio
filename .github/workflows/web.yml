@@ -1,6 +1,11 @@
 # Build the static web bundle and (a) upload it as an artifact for embedding in
 # preshow.link, (b) deploy the live site to GitHub Pages at uv.preshow.link.
 #
+# dist/ is a small multi-page site (see vite.config.ts): dist/index.html is the
+# MARKETING page, dist/app/index.html is the interactive TOOL, dist/help/ is the
+# docs. If you're embedding this bundle elsewhere (preshow.link), embed
+# `app/index.html` — not the root — to get the tool itself.
+#
 # The `build` job always produces the embeddable `dist/` artifact (what you pull
 # into preshow.link). The `deploy` job publishes to GitHub Pages and is OPT-IN —
 # it only runs when the repo variable DEPLOY_PAGES == 'true'.
