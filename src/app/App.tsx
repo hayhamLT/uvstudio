@@ -5,7 +5,6 @@ import Viewport3D from '../viewport3d/Viewport3D'
 import Viewport2D from '../viewport2d/Viewport2D'
 import TopBar from '../ui/TopBar'
 import MapPanel from '../ui/MapPanel'
-import StatusBar from '../ui/StatusBar'
 import HelpOverlay from '../ui/HelpOverlay'
 import FloatingWindow from '../ui/FloatingWindow'
 import ImportDialog from '../ui/ImportDialog'
@@ -252,7 +251,6 @@ export default function App() {
           </>
         )}
       </div>
-      {hasModel && <StatusBar />}
       {help && <HelpOverlay onClose={() => setHelp(false)} />}
       <Preferences open={prefs} onClose={() => setPrefs(false)} />
       {update && <UpdateBanner info={update} onClose={() => setUpdate(null)} />}
