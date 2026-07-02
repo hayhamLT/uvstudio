@@ -35,7 +35,12 @@ export default defineConfig({
   define: { __APP_VERSION__: JSON.stringify(pkgVersion) },
   // honor a PORT from the environment (preview harnesses); default 5173 locally.
   // via globalThis so tsc needs no @types/node for the bare `process` global.
-  server: { port: Number((globalThis as { process?: { env?: Record<string, string | undefined> } }).process?.env?.PORT) || 5173 },
+  // ignore .claude/ — permission-settings writes there mid-session and every
+  // change would full-reload the dev app (wiping its state).
+  server: {
+    port: Number((globalThis as { process?: { env?: Record<string, string | undefined> } }).process?.env?.PORT) || 5173,
+    watch: { ignored: ['**/.claude/**'] },
+  },
   plugins: [react(), tailwindcss(), emitVersionJson()],
   worker: {
     format: 'es',

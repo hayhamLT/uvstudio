@@ -14,7 +14,8 @@
     "tauri": "tauri",
     "tauri:dev": "tauri dev",
     "tauri:build": "tauri build",
-    "make-icon": "node scripts/make-icon.mjs"
+    "make-icon": "node scripts/make-icon.mjs",
+    "docs:shots": "node scripts/capture-docs.mjs"
   },
   "dependencies": {
     "@react-three/drei": "^9.114.0",

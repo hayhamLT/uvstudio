@@ -16,6 +16,11 @@ import {
   allEdgeSegments,
 } from './geometry'
 
+// DEV-ONLY docs tooling: during a ?shot capture run, render continuously and keep
+// the drawing buffer so `canvas.toDataURL()` returns real pixels (see App.tsx).
+const SHOT_MODE =
+  import.meta.env.DEV && typeof location !== 'undefined' && new URLSearchParams(location.search).has('shot')
+
 function SurfaceAndSeams() {
   const mesh = useStore((s) => s.mesh)
   const he = useStore((s) => s.he)
@@ -166,10 +171,10 @@ export default function Viewport3D() {
       }}
     >
       <Canvas
-        frameloop="demand"
+        frameloop={SHOT_MODE ? 'always' : 'demand'}
         dpr={[1, 1.5]}
         camera={{ position: [2.4, 1.8, 2.8], fov: 42, near: 0.01, far: 100 }}
-        gl={{ antialias: true, powerPreference: 'high-performance' }}
+        gl={{ antialias: true, powerPreference: 'high-performance', preserveDrawingBuffer: SHOT_MODE }}
       >
         <ActiveFrameloop />
         <color attach="background" args={['#0b0e14']} />

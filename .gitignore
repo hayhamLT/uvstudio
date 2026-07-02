@@ -13,7 +13,11 @@ coverage
 src-tauri/target
 src-tauri/gen
 
-# scratch / test assets (not used by the app)
+# scratch / test assets (not used by the app) — local-only sample scene used by
+# `npm run docs:shots` to regenerate docs/img screenshots
 public/_t_*
 public/zyn-test.glb
+public/FLOOR_SCREEN.psd
+public/PILLAR_SCREEN.psd
+public/WALL_SCREEN.psd
 __pycache__/

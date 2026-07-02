@@ -12,6 +12,11 @@ import { handleViewportDrop } from '../ui/importMap'
 import UVEditLayer from './UVEditLayer'
 import FreeTransform from './FreeTransform'
 
+// DEV-ONLY docs tooling: during a ?shot capture run, render continuously and keep
+// the drawing buffer so `canvas.toDataURL()` returns real pixels (see App.tsx).
+const SHOT_MODE =
+  import.meta.env.DEV && typeof location !== 'undefined' && new URLSearchParams(location.search).has('shot')
+
 function boundaryEdges(tris: Uint32Array): number[] {
   const count = new Map<number, number>()
   const order: [number, number][] = []
@@ -463,10 +468,10 @@ export default function MapView2D() {
     >
       <Canvas
         orthographic
-        frameloop="demand"
+        frameloop={SHOT_MODE ? 'always' : 'demand'}
         dpr={[1, 1.5]}
         camera={{ position: [aspect / 2, 0.5, 10], near: 0.001, far: 100, zoom: 400 }}
-        gl={{ antialias: true, powerPreference: 'high-performance' }}
+        gl={{ antialias: true, powerPreference: 'high-performance', preserveDrawingBuffer: SHOT_MODE }}
       >
         <ActiveFrameloop />
         <color attach="background" args={['#090c11']} />

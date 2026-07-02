@@ -6,13 +6,12 @@ reimagining of headus UVLayout, tailored for screen content, with one-click
 round-trips to **Cinema 4D** and **Blender**.
 
 <p align="center">
-  <img src="docs/img/landing.png" alt="UV Studio launcher" width="820">
+  <img src="docs/img/venue3d.png" alt="UV Studio — a venue mapped in 3D" width="860">
 </p>
 
-> **See it running:** the quickest look is the online build —
-> **[uv.preshow.link](https://uv.preshow.link)**. Send a scene from Cinema 4D /
-> Blender (or drop a GLB + PSDs) and every screen fills the right-hand panel with
-> a live thumbnail of its linked artwork, ready to auto-map.
+> 📖 **New here? Read the [User Guide](docs/GUIDE.md)** — a full, screenshot-led
+> walkthrough of every feature. Or try it live at
+> **[uv.preshow.link](https://uv.preshow.link)**.
 
 ## Get UV Studio
 

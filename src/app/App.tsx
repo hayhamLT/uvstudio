@@ -94,6 +94,54 @@ export default function App() {
     void restoreLink()
   }, [])
 
+  // DEV-ONLY docs tooling: `?shot=wizard|zyn[&view=3d][&save=1]` auto-loads the
+  // sample scene (public/zyn-test.glb + the three ZYN PSDs) so docs screenshots
+  // are reproducible. `save=1` POSTs the rendered viewports to the vite shot
+  // sink (docs/img/). Stripped from production builds. See docs/GUIDE.md.
+  useEffect(() => {
+    if (!import.meta.env.DEV) return
+    const params = new URLSearchParams(window.location.search)
+    const shot = params.get('shot')
+    if (!shot || shot === 'landing') return
+    void (async () => {
+      const im = await import('../ui/importMap')
+      const ff = async (u: string, n: string, t: string) =>
+        new File([await (await fetch(u)).arrayBuffer()], n, { type: t })
+      const model = await ff('/zyn-test.glb', 'ZYN.glb', 'model/gltf-binary')
+      const psds = await Promise.all([
+        ff('/FLOOR_SCREEN.psd', 'FLOOR_SCREEN.psd', 'image/vnd.adobe.photoshop'),
+        ff('/PILLAR_SCREEN.psd', 'PILLAR_SCREEN.psd', 'image/vnd.adobe.photoshop'),
+        ff('/WALL_SCREEN.psd', 'WALL_SCREEN.psd', 'image/vnd.adobe.photoshop'),
+      ])
+      await im.importModelFile(model, null, psds)
+      if (shot === 'import') {
+        document.title = 'SHOT-READY' // hold at the Choose-screens dialog
+        return
+      }
+      const s = useStore.getState()
+      s.confirmImport((s.pendingImport?.objects ?? []).filter((o) => /SCREEN/i.test(o.name)).map((o) => o.name))
+      // PSD parsing is async — wait for the wizard to actually open
+      for (let i = 0; i < 100 && !useStore.getState().pendingLink; i++)
+        await new Promise((r) => setTimeout(r, 150))
+      if (shot === 'wizard') {
+        document.title = 'SHOT-READY' // capture-harness signal
+        return // hold at the link wizard
+      }
+      const st = useStore.getState()
+      if (st.pendingLink) await st.confirmLink(st.pendingLink.links)
+      await new Promise((r) => setTimeout(r, 500))
+      useStore.getState().runMapping()
+      useStore.getState().selectObject('FLOOR_SCREEN')
+      // promote the 3D view to the big pane AFTER import (import resets primary)
+      if (params.get('view') === '3d') {
+        setPrimary('3d')
+        window.dispatchEvent(new Event('resize'))
+      }
+      await new Promise((r) => setTimeout(r, 1200)) // settle frames before capture
+      document.title = 'SHOT-READY' // signal for scripts/capture-docs.mjs
+    })()
+  }, [])
+
   // desktop: on launch, check for a newer app version (prompt if so), and keep an
   // ALREADY-installed C4D plugin current — only re-write it when its version
   // differs from the app (never an unprompted first install, never a no-op write).
