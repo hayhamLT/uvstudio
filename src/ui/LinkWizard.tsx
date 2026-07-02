@@ -9,8 +9,8 @@ const hash = (name: string) => {
 }
 
 /** Small media preview: the item's thumbnail on a dark checker, or a letter tile. */
-function Thumb({ item, size = 'sm' }: { item: MediaItem | null; size?: 'sm' | 'lg' }) {
-  const cls = size === 'sm' ? 'h-8 w-11' : 'h-14 w-full'
+function Thumb({ item }: { item: MediaItem | null }) {
+  const cls = 'h-8 w-11'
   if (!item)
     return (
       <div className={clsx(cls, 'flex shrink-0 items-center justify-center rounded border border-dashed border-line bg-ink-950/60 text-[9px] text-fog-500')}>
@@ -30,9 +30,9 @@ function Thumb({ item, size = 'sm' }: { item: MediaItem | null; size?: 'sm' | 'l
 
 /**
  * Import-link wizard: each screen row shows what's linked to it (thumbnail +
- * label). Clicking a row's picker expands a thumbnail grid of all imported
- * media to choose from. Name matches are pre-linked; screens left unlinked
- * keep their imported texture/UVs.
+ * label). Clicking a row's picker expands a plain list of the imported media —
+ * each option a small thumbnail + name. Name matches are pre-linked; screens
+ * left unlinked keep their imported texture/UVs.
  */
 export default function LinkWizard() {
   const pending = useStore((s) => s.pendingLink)
@@ -148,20 +148,20 @@ export default function LinkWizard() {
                   </svg>
                 </div>
 
-                {/* expanded: thumbnail grid of every media item + keep-imported */}
+                {/* expanded: a plain list of options, each with a thumbnail */}
                 {isOpen && (
-                  <div className="animate-float-up mx-1 mb-1 mt-1 grid grid-cols-4 gap-1.5 rounded-lg border border-line bg-ink-900/70 p-2">
+                  <div className="animate-float-up mx-1 mb-1 mt-1 max-h-60 space-y-0.5 overflow-y-auto rounded-lg border border-line bg-ink-900/70 p-1.5">
                     <button
                       onClick={() => setLink(obj, null)}
                       className={clsx(
-                        'btn-press flex flex-col gap-1 rounded-md border p-1.5 text-left',
+                        'btn-press flex w-full items-center gap-2 rounded-md border px-1.5 py-1 text-left',
                         linked == null
                           ? 'border-brand-500/50 bg-brand-500/10'
-                          : 'border-line hover:border-fog-500/40 hover:bg-ink-700/50',
+                          : 'border-transparent hover:bg-ink-700/50',
                       )}
                     >
-                      <Thumb item={null} size="lg" />
-                      <span className="truncate text-[10px] text-fog-300">keep imported</span>
+                      <Thumb item={null} />
+                      <span className="min-w-0 flex-1 truncate text-xs text-fog-300">keep imported</span>
                     </button>
                     {items.map((it) => {
                       const owner = ownerOf(it.id)
@@ -170,24 +170,24 @@ export default function LinkWizard() {
                         <button
                           key={it.id}
                           onClick={() => setLink(obj, it.id)}
-                          title={
-                            it.group
-                              ? `${it.group} › ${it.label}${owner && !mine ? ` — linked to ${owner}` : ''}`
-                              : `${it.label}${owner && !mine ? ` — linked to ${owner}` : ''}`
-                          }
+                          title={it.group ? `${it.group} › ${it.label}` : it.label}
                           className={clsx(
-                            'btn-press relative flex flex-col gap-1 rounded-md border p-1.5 text-left',
+                            'btn-press flex w-full items-center gap-2 rounded-md border px-1.5 py-1 text-left',
                             mine
                               ? 'border-brand-500/50 bg-brand-500/10'
-                              : 'border-line hover:border-fog-500/40 hover:bg-ink-700/50',
+                              : 'border-transparent hover:bg-ink-700/50',
                             owner && !mine && 'opacity-55',
                           )}
                         >
-                          <Thumb item={it} size="lg" />
-                          <span className="truncate text-[10px] text-fog-200">{it.label}</span>
+                          <Thumb item={it} />
+                          <span className="min-w-0 flex-1 truncate text-xs text-fog-200">
+                            {it.label}
+                            {it.group && <span className="text-fog-500"> · {it.group}</span>}
+                          </span>
                           {owner && !mine && (
                             <span
-                              className="absolute right-1 top-1 h-1.5 w-1.5 rounded-full"
+                              className="h-1.5 w-1.5 shrink-0 rounded-full"
+                              title={`linked to ${owner}`}
                               style={{ background: `hsl(${hash(owner)} 55% 58%)` }}
                             />
                           )}
