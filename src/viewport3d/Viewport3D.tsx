@@ -285,8 +285,6 @@ function CameraRig() {
 function View3dToolbar() {
   const view3d = useStore((s) => s.view3d)
   const setView3d = useStore((s) => s.setView3d)
-  const cullBackface = useStore((s) => s.cullBackface)
-  const setCullBackface = useStore((s) => s.setCullBackface)
   const modes: { id: 'shaded' | 'distortion' | 'checker'; label: string; hot: string; icon: JSX.Element }[] = [
     { id: 'shaded', label: 'Shaded (content)', hot: '1', icon: <circle cx="12" cy="12" r="7.5" fill="currentColor" stroke="none" /> },
     {
@@ -332,21 +330,6 @@ function View3dToolbar() {
           </svg>
         </button>
       ))}
-      <div className="mx-0.5 h-5 w-px bg-line" />
-      <button
-        onClick={() => setCullBackface(!cullBackface)}
-        title={cullBackface ? 'Backface culling: on (show front only)' : 'Backface culling: off (double-sided)'}
-        className={
-          'flex h-8 w-8 items-center justify-center rounded-md transition ' +
-          (cullBackface ? 'bg-brand-500/20 text-brand-400' : 'text-fog-400 hover:bg-ink-700 hover:text-fog-100')
-        }
-      >
-        <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round">
-          <path d="M12 3 21 8v8l-9 5-9-5V8l9-5Z" />
-          <path d="M3.5 8 12 13l8.5-5" />
-          {!cullBackface && <path d="M12 13v8" />}
-        </svg>
-      </button>
     </div>
   )
 }

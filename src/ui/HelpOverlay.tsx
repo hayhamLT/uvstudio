@@ -32,6 +32,7 @@ const SHORTCUT_GROUPS: { title: string; items: [string, string][] }[] = [
       ['Tab', 'Swap 2D / 3D full-screen'],
       ['Click', 'Make a screen active (3D / list)'],
       ['1 / 2 / 3', 'over 3D: Shaded / Distortion / Checker'],
+      ['B', 'Toggle backface culling (3D)'],
     ],
   },
   {

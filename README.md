@@ -5,6 +5,15 @@ event 3D models — LED walls, floors, pillars, ribbon boards. A focused
 reimagining of headus UVLayout, tailored for screen content, with one-click
 round-trips to **Cinema 4D** and **Blender**.
 
+<p align="center">
+  <img src="docs/img/landing.png" alt="UV Studio launcher" width="820">
+</p>
+
+> **See it running:** the quickest look is the online build —
+> **[uv.preshow.link](https://uv.preshow.link)**. Send a scene from Cinema 4D /
+> Blender (or drop a GLB + PSDs) and every screen fills the right-hand panel with
+> a live thumbnail of its linked artwork, ready to auto-map.
+
 ## Get UV Studio
 
 - **Download (Mac / Windows):** grab the latest installer from

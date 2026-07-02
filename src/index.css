@@ -70,6 +70,14 @@ body {
   background: var(--color-ink-500);
 }
 
+/* Hide scrollbars but keep scrolling (compact toolbars that overflow on narrow panes) */
+.no-scrollbar {
+  scrollbar-width: none;
+}
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+
 /* Glassy panel surface used across the chrome */
 .glass {
   background: color-mix(in srgb, var(--color-ink-850) 86%, transparent);

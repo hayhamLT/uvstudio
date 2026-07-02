@@ -333,7 +333,7 @@ function TBtn({
       title={title}
       onClick={onClick}
       className={
-        'flex h-7 w-7 items-center justify-center rounded-md transition ' +
+        'btn-press flex h-7 w-7 shrink-0 items-center justify-center rounded-md transition ' +
         (active ? 'bg-brand-500/20 text-brand-400' : 'text-fog-400 hover:bg-ink-700 hover:text-fog-100')
       }
     >
@@ -345,7 +345,7 @@ function TBtn({
 }
 
 function Divider() {
-  return <span className="mx-0.5 h-5 w-px bg-line" />
+  return <span className="mx-0.5 h-5 w-px shrink-0 bg-line" />
 }
 
 /** Per-screen transform tools for the selected screen, docked at the bottom of
@@ -362,11 +362,11 @@ function ScreenTransformBar() {
   const setEditMode = useStore((s) => s.setEditMode)
   if (!name || !isScreen) return null
   return (
-    <div className="absolute bottom-3 left-1/2 flex max-w-[calc(100%-1.5rem)] -translate-x-1/2 items-center gap-0.5 rounded-lg border border-line bg-ink-850/90 p-1 shadow-xl backdrop-blur">
+    <div className="no-scrollbar absolute bottom-3 left-1/2 flex max-w-[calc(100%-1rem)] -translate-x-1/2 items-center gap-0.5 overflow-x-auto rounded-lg border border-line bg-ink-850/90 p-1 shadow-xl backdrop-blur">
       <button
         onClick={() => runMappingFor(name)}
         title="Auto-map this screen (M)"
-        className="whitespace-nowrap rounded-md bg-ink-700/70 px-2 py-1 text-[11px] font-medium text-fog-100 hover:bg-ink-600"
+        className="btn-press shrink-0 whitespace-nowrap rounded-md bg-ink-700/70 px-2 py-1 text-[11px] font-medium text-fog-100 hover:bg-ink-600"
       >
         Auto-map
       </button>
@@ -403,7 +403,7 @@ function ScreenTransformBar() {
           setObjectProjection(name, e.target.value as 'auto' | 'planar' | 'cylindrical' | 'spherical')
         }
         title="Unwrap projection (Auto keeps imported UVs)"
-        className="rounded-md border border-line bg-ink-800 px-1.5 py-1 text-[11px] text-fog-200 ring-focus"
+        className="shrink-0 rounded-md border border-line bg-ink-800 px-1.5 py-1 text-[11px] text-fog-200 ring-focus"
       >
         <option value="auto">Auto</option>
         <option value="planar">Planar</option>

@@ -400,6 +400,13 @@ function useKeyboardShortcuts(setHelp: Dispatch<SetStateAction<boolean>>) {
         case 'm':
           if (active) s.runMappingFor(active)
           break
+        case 'b': {
+          // toggle backface culling in the 3D view (no toolbar button — hotkey only)
+          const next = !s.cullBackface
+          s.setCullBackface(next)
+          s.pushToast('info', next ? 'Backface culling on — front faces only' : 'Backface culling off — double-sided')
+          break
+        }
         case '=':
         case '+':
           if (s.mapSelection.size) s.scaleSelection(1.05)
