@@ -4,8 +4,11 @@
 
 ```bash
 npm install
-npm run dev          # web app → http://localhost:5173
+npm run dev          # dev server → the tool is at http://localhost:5173/app/
 ```
+
+`/` is the static marketing site and `/help/` is the docs site — both plain
+HTML, no dev server needed to edit (see `index.html` / `public/help/`).
 
 Use a real Chromium browser — the import pickers and the C4D link folder need the
 File System Access API (an embedded webview blocks file dialogs).

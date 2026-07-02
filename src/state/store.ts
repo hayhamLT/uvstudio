@@ -52,7 +52,7 @@ export interface MediaItem {
   thumb?: string // small dataURL preview (wizard tiles)
 }
 
-/** A transient notification card (stacked top-right, auto-dismissed). */
+/** A transient notification card (stacked bottom-right, auto-dismissed). */
 export interface Toast {
   id: number
   kind: 'good' | 'warn' | 'bad' | 'info'
