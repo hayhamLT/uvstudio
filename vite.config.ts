@@ -33,6 +33,8 @@ function emitVersionJson() {
 
 export default defineConfig({
   define: { __APP_VERSION__: JSON.stringify(pkgVersion) },
+  // honor a PORT from the environment (preview harnesses); default 5173 locally
+  server: { port: Number(process.env.PORT) || 5173 },
   plugins: [react(), tailwindcss(), emitVersionJson()],
   worker: {
     format: 'es',
