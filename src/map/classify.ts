@@ -13,24 +13,35 @@ import { planeDeviation } from './fit'
 //      so the user is never left with an empty selection.
 // ---------------------------------------------------------------------------
 
-/** Names that strongly imply a screen surface in event/venue scenes. */
-const SCREEN_NAME_RE = /screen|led|display|ribbon|board|jumbotron|video.?wall|monitor/i
+/** Built-in words that strongly imply a screen surface in event/venue scenes.
+ *  Single source of truth — the import dialog shows these as the baseline that
+ *  user keywords extend. */
+export const BUILTIN_SCREEN_KEYWORDS = [
+  'screen',
+  'led',
+  'display',
+  'ribbon',
+  'board',
+  'jumbotron',
+  'video wall',
+  'monitor',
+] as const
 
 /** A panel this flat (relative to its size) is treated as a candidate screen. */
 const FLAT_TOL = 0.04
 
-/** Escape a user-typed word for safe use inside a RegExp. */
-function escapeRegExp(s: string): string {
-  return s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+/** Escape a user-typed word for safe use inside a RegExp, but let a written
+ *  space match any single separator so "video wall" also hits "VideoWall". */
+function keywordToPattern(s: string): string {
+  return s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&').replace(/ /g, '.?')
 }
 
 /** Build the detector: the built-in words, OR'd with any user-added ones
- *  (Preferences ▸ Screen detection) — additive, so existing scenes never
- *  regress when someone adds their own naming convention. */
+ *  (comma-separated) — additive, so existing scenes never regress when someone
+ *  adds their own naming convention. */
 function screenNameRe(extraKeywords: string[] = []): RegExp {
-  const extra = extraKeywords.map((k) => k.trim()).filter(Boolean).map(escapeRegExp)
-  if (!extra.length) return SCREEN_NAME_RE
-  return new RegExp(`${SCREEN_NAME_RE.source}|${extra.join('|')}`, 'i')
+  const words = [...BUILTIN_SCREEN_KEYWORDS, ...extraKeywords.map((k) => k.trim()).filter(Boolean)]
+  return new RegExp(words.map(keywordToPattern).join('|'), 'i')
 }
 
 export function isNamedScreen(name: string, extraKeywords: string[] = []): boolean {

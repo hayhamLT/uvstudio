@@ -46,14 +46,17 @@ UV Studio then asks which objects are **screens**:
   `led`, `display`, `ribbon`, `board`, `jumbotron`, `video wall`, or `monitor`
   — and pre-checks them; see the green **screen** tags. A **textured** tag
   means that object already carries a texture in the file.
+- **Different naming convention?** Add your own words in the dialog's
+  **Auto-detect screens named like** field (comma-separated) — detection
+  re-runs live as you type, and your keywords are remembered for next time.
+  (The same setting also lives in Preferences ▸ Screen detection.)
 - **Checked objects become mappable screens.** Everything left unchecked is
   still imported, as dimmable **reference geometry** (the room, trusses, décor)
   so you keep your spatial context.
-- Naming convention not covered above? Add your own words in **Preferences ▸
-  Screen detection ▸ Extra keywords** (comma-separated) — they're additive, so
-  the built-ins still work too.
-- Use **Select all / Deselect all**, or tick individual rows. The `… v` on the
-  right is each object's vertex count, handy for spotting the heavy meshes.
+- **Busy scene?** Use the **Filter** box to search by name. Tick individual
+  rows, or **Select all / Clear all**. The `… v` on the right is each object's
+  vertex count, handy for spotting heavy meshes. Editing keywords never
+  discards a box you ticked or cleared by hand.
 
 Click **Import** and you're in.
 
