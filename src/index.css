@@ -100,6 +100,61 @@ body {
   animation: float-up 0.18s ease-out forwards;
 }
 
+/* Modal / dialog entrance — quick settle, no bounce */
+@keyframes modal-in {
+  from { opacity: 0; transform: translateY(8px) scale(0.97); }
+  to { opacity: 1; transform: none; }
+}
+.animate-modal-in {
+  animation: modal-in 0.16s cubic-bezier(0.2, 0.9, 0.3, 1);
+}
+
+/* Toast cards slide in from the right, slide out the same way */
+@keyframes toast-in {
+  from { opacity: 0; transform: translateX(18px); }
+  to { opacity: 1; transform: none; }
+}
+.animate-toast-in {
+  animation: toast-in 0.18s cubic-bezier(0.2, 0.9, 0.3, 1);
+}
+@keyframes toast-out {
+  to { opacity: 0; transform: translateX(18px); }
+}
+.animate-toast-out {
+  animation: toast-out 0.16s ease-in forwards;
+}
+
+/* One green ripple when a screen row flips to "mapped" */
+@keyframes map-pulse {
+  0% { box-shadow: 0 0 0 0 color-mix(in srgb, var(--color-good) 45%, transparent); }
+  100% { box-shadow: 0 0 0 10px transparent; }
+}
+.animate-map-pulse {
+  animation: map-pulse 0.7s ease-out 2;
+}
+
+/* Tactile press on buttons */
+.btn-press {
+  transition: transform 0.08s ease;
+}
+.btn-press:active {
+  transform: scale(0.96);
+}
+
+/* Subtle hover lift on interactive rows */
+.row-lift {
+  transition:
+    transform 0.12s ease,
+    box-shadow 0.12s ease,
+    background-color 0.12s ease,
+    border-color 0.12s ease,
+    opacity 0.12s ease;
+}
+.row-lift:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 3px 12px -6px rgb(0 0 0 / 0.6);
+}
+
 /* Menus must never be gated behind opacity (a paused/throttled animation would
    leave them invisible). Animate transform only — opacity stays 1. */
 @keyframes menu-pop {

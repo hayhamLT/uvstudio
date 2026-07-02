@@ -49,6 +49,14 @@ export interface MediaItem {
   file: File
   layerName?: string // set when this is one layer of a multi-layer PSD
   group?: string // the source PSD file name, for grouping in the UI
+  thumb?: string // small dataURL preview (wizard tiles)
+}
+
+/** A transient notification card (stacked top-right, auto-dismissed). */
+export interface Toast {
+  id: number
+  kind: 'good' | 'warn' | 'bad' | 'info'
+  msg: string
 }
 
 export interface Display {
@@ -203,7 +211,7 @@ interface AppState {
   setMapFill: (fill: boolean) => void
   setAutoMapOnImport: (v: boolean) => void
   setObjectFit: (objName: string, fit: 'fill' | 'aspect' | 'default') => void
-  runMapping: () => void
+  runMapping: (opts?: { announce?: boolean }) => void
   runMappingFor: (objName: string, opts?: { noUndo?: boolean }) => void
   selectObject: (name: string | null) => void
   exportGltf: () => void
@@ -228,6 +236,11 @@ interface AppState {
   selectShell: (id: number, additive: boolean) => void
   clearSelection: () => void
   setStatus: (s: string) => void
+
+  // transient notification cards (Toasts component renders + auto-dismisses)
+  toasts: Toast[]
+  pushToast: (kind: Toast['kind'], msg: string) => void
+  dismissToast: (id: number) => void
 }
 
 const DEFAULT_DISPLAY: Display = {
@@ -242,6 +255,7 @@ const DEFAULT_DISPLAY: Display = {
 // --- unwrap worker singleton ---
 let worker: Worker | null = null
 let jobCounter = 0
+let toastCounter = 0
 
 function ensureWorker(get: () => AppState, set: (p: Partial<AppState>) => void): Worker {
   if (worker) return worker
@@ -788,6 +802,33 @@ function computePacked(
 }
 
 /** Explode media files into linkable items: one per image, one per PSD layer. */
+/** Downscale any drawable source into a small dataURL for wizard preview tiles. */
+function thumbUrl(src: CanvasImageSource, sw: number, sh: number): string | undefined {
+  try {
+    if (!sw || !sh) return undefined
+    const MAX = 144 // longest edge, px — small enough to keep dozens in memory
+    const s = Math.min(1, MAX / Math.max(sw, sh))
+    const cv = document.createElement('canvas')
+    cv.width = Math.max(1, Math.round(sw * s))
+    cv.height = Math.max(1, Math.round(sh * s))
+    cv.getContext('2d')!.drawImage(src, 0, 0, cv.width, cv.height)
+    return cv.toDataURL('image/png')
+  } catch {
+    return undefined
+  }
+}
+
+async function imageThumb(file: File): Promise<string | undefined> {
+  try {
+    const bmp = await createImageBitmap(file)
+    const t = thumbUrl(bmp, bmp.width, bmp.height)
+    bmp.close()
+    return t
+  } catch {
+    return undefined
+  }
+}
+
 async function parseMediaItems(files: File[], startId: number): Promise<MediaItem[]> {
   const items: MediaItem[] = []
   let idc = startId
@@ -797,15 +838,33 @@ async function parseMediaItems(files: File[], startId: number): Promise<MediaIte
         const psd = await loadPsdFile(f)
         if (psd.layers.length > 1) {
           for (const l of psd.layers)
-            items.push({ id: idc++, label: l.name, file: f, layerName: l.name, group: f.name })
+            items.push({
+              id: idc++,
+              label: l.name,
+              file: f,
+              layerName: l.name,
+              group: f.name,
+              thumb: thumbUrl(l.canvas, l.width, l.height),
+            })
         } else {
-          items.push({ id: idc++, label: f.name.replace(/\.[^.]+$/, ''), file: f })
+          const flat = psd.composite ?? flattenPsdLayers(psd)
+          items.push({
+            id: idc++,
+            label: f.name.replace(/\.[^.]+$/, ''),
+            file: f,
+            thumb: thumbUrl(flat, flat.width, flat.height),
+          })
         }
       } catch {
         /* skip unreadable PSD */
       }
     } else {
-      items.push({ id: idc++, label: f.name.replace(/\.[^.]+$/, ''), file: f })
+      items.push({
+        id: idc++,
+        label: f.name.replace(/\.[^.]+$/, ''),
+        file: f,
+        thumb: await imageThumb(f),
+      })
     }
   }
   return items
@@ -862,6 +921,7 @@ export const useStore = create<AppState>((set, get) => ({
   uvVersion: 0,
   selectedShells: new Set(),
   status: 'Load a model to begin',
+  toasts: [],
 
   mode: 'map',
   mapObjects: [],
@@ -1557,11 +1617,11 @@ export const useStore = create<AppState>((set, get) => ({
       // screens' existing UVs; the user maps on demand (Auto-map / M).
       if (get().autoMapOnImport) get().runMapping()
       const n = `${applied} screen${applied === 1 ? '' : 's'}`
-      set({
-        status: get().autoMapOnImport
-          ? `Linked media to ${n}`
-          : `Linked media to ${n} — Auto-map to fit`,
-      })
+      const msg = get().autoMapOnImport
+        ? `Linked media to ${n}`
+        : `Linked media to ${n} — Auto-map to fit`
+      set({ status: msg })
+      get().pushToast('good', msg)
     }
   },
 
@@ -1877,7 +1937,7 @@ export const useStore = create<AppState>((set, get) => ({
   setMapSelection: (s) => set({ mapSelection: s }),
   clearMapSelection: () => set({ mapSelection: new Set() }),
 
-  runMapping: () => {
+  runMapping: (opts) => {
     get().pushUndo()
     const g = get()
     const st = snapshot(g)
@@ -1927,6 +1987,14 @@ export const useStore = create<AppState>((set, get) => ({
         g.layeredMode ? 'per-screen layers' : 'the atlas'
       }`,
     })
+    // toast only on an explicit user action (the Auto-map button) — runMapping is
+    // also called internally (region change, remove content, …) and must stay quiet
+    if (opts?.announce) {
+      if (mapped.length)
+        get().pushToast('good', `Mapped ${mapped.length}/${g.mapObjects.length} screen${g.mapObjects.length === 1 ? '' : 's'}`)
+      else
+        get().pushToast('info', 'Nothing to map yet — add images or PSD layers to the screens first')
+    }
   },
 
   selectObject: (name) =>
@@ -1945,6 +2013,7 @@ export const useStore = create<AppState>((set, get) => ({
     const buf = await buildMappedGlb(g.mapShells, g.layeredMode, new Map(specs.map((s) => [s.name, s])))
     if (!buf) {
       set({ status: 'Nothing to export — map first' })
+      get().pushToast('warn', 'Nothing to export — map a screen first')
       return
     }
     const download = (data: BlobPart, name: string, type: string) => {
@@ -1959,11 +2028,13 @@ export const useStore = create<AppState>((set, get) => ({
     if (linkBridge.isDesktop()) {
       const saved = await linkBridge.saveGlb('screen_map.glb', buf, screenManifest(specs))
       set({ status: saved ? `Exported to ${saved}` : 'Export cancelled' })
+      if (saved) get().pushToast('good', `Exported to ${saved}`)
       return
     }
     download(buf, 'screen_map.glb', 'model/gltf-binary')
     download(screenManifest(specs), 'screen_map.json', 'application/json')
     set({ status: `Exported ${specs.length} screens — screen_map.glb + .json (LED sizes)` })
+    get().pushToast('good', `Exported ${specs.length} screen${specs.length === 1 ? '' : 's'} — screen_map.glb + .json`)
   },
 
   sendToC4D: async () => {
@@ -2032,6 +2103,7 @@ export const useStore = create<AppState>((set, get) => ({
       }
     } catch {
       set({ status: 'Send failed — check the link folder' })
+      get().pushToast('bad', 'Send failed — check the link folder in Preferences')
     }
   },
 
@@ -2042,6 +2114,7 @@ export const useStore = create<AppState>((set, get) => ({
     if (ack.error) {
       const last = ack.error.trim().split('\n').pop() || 'error'
       set({ status: `${dcc} apply FAILED: ${last}` })
+      get().pushToast('bad', `${dcc} apply failed: ${last}`)
       void linkBridge.focusWindow() // stay open — the user must see this
       return
     }
@@ -2053,10 +2126,12 @@ export const useStore = create<AppState>((set, get) => ({
       set({
         status: `⚠ ${dcc} applied UVs to ${ack.applied} object${plural} — couldn't find: ${names}`,
       })
+      get().pushToast('warn', `${dcc} applied ${ack.applied} object${plural} — couldn't find: ${names}`)
       void linkBridge.focusWindow() // partial failure → stay open and show it
       return
     }
     set({ status: `${dcc} applied UVs to ${ack.applied} object${plural} ✓` })
+    get().pushToast('good', `${dcc} applied UVs to ${ack.applied} object${plural}`)
     // clean success right after a Send → hand off to the DCC and close
     if (wasSending) setTimeout(() => void linkBridge.quitApp(), 1200)
   },
@@ -2158,6 +2233,11 @@ export const useStore = create<AppState>((set, get) => ({
   },
   clearSelection: () => set({ selectedShells: new Set() }),
   setStatus: (s) => set({ status: s }),
+
+  pushToast: (kind, msg) =>
+    // keep at most 4 on screen — older ones roll off the top of the stack
+    set({ toasts: [...get().toasts.slice(-3), { id: ++toastCounter, kind, msg }] }),
+  dismissToast: (id) => set({ toasts: get().toasts.filter((t) => t.id !== id) }),
 }))
 
 // Dev-only handles for debugging / scripted verification from the console.

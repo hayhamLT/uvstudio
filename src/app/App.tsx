@@ -13,6 +13,7 @@ import LinkWizard from '../ui/LinkWizard'
 import Landing from '../ui/Landing'
 import Preferences from '../ui/Preferences'
 import UpdateBanner from '../ui/UpdateBanner'
+import Toasts from '../ui/Toasts'
 import {
   watchIncoming,
   restore as restoreLink,
@@ -257,6 +258,7 @@ export default function App() {
       {update && <UpdateBanner info={update} onClose={() => setUpdate(null)} />}
       <ImportDialog />
       <LinkWizard />
+      <Toasts />
     </div>
   )
 }

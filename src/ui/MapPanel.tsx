@@ -1,4 +1,4 @@
-import { useEffect, useRef, type ChangeEvent, type MouseEvent, type ReactNode } from 'react'
+import { useEffect, useRef, useState, type ChangeEvent, type MouseEvent, type ReactNode } from 'react'
 import clsx from 'clsx'
 import { useStore } from '../state/store'
 import { live } from '../state/live'
@@ -39,7 +39,7 @@ function RowBtn({
         onClick(e)
       }}
       className={clsx(
-        'flex h-6 w-6 items-center justify-center rounded ring-focus transition disabled:opacity-25',
+        'btn-press flex h-6 w-6 items-center justify-center rounded ring-focus transition disabled:opacity-25',
         active
           ? 'bg-brand-500/25 text-brand-300'
           : danger
@@ -192,18 +192,32 @@ function ScreenRow({ name }: { name: string }) {
   const status = mapped ? 'Mapped' : hasContent ? 'Not mapped' : 'No image'
   const statusColor = mapped ? 'text-good' : hasContent ? 'text-fog-400' : 'text-fog-500'
 
+  // one green ripple the moment this row flips to "mapped"
+  const [justMapped, setJustMapped] = useState(false)
+  const wasMapped = useRef(mapped)
+  useEffect(() => {
+    const was = wasMapped.current
+    wasMapped.current = mapped
+    if (mapped && !was) {
+      setJustMapped(true)
+      const t = setTimeout(() => setJustMapped(false), 1500)
+      return () => clearTimeout(t)
+    }
+  }, [mapped])
+
   return (
     <div
       ref={dropRef}
       onClick={() => selectObject(name)}
       className={clsx(
-        'group/row relative cursor-pointer rounded-lg border px-2 py-2 transition',
+        'group/row row-lift relative cursor-pointer rounded-lg border px-2.5 py-2',
         dragging
           ? 'border-brand-400 bg-brand-500/15'
           : isSel
             ? 'border-brand-500/40 bg-brand-500/10'
             : 'border-transparent hover:bg-ink-700/40',
         hidden && !isSel && 'opacity-45',
+        justMapped && 'animate-map-pulse',
       )}
     >
       {dragging && (
@@ -391,11 +405,14 @@ export default function MapPanel() {
   return (
     <aside className="flex h-full w-80 flex-col overflow-y-auto border-l border-line bg-ink-900/60">
       {/* screens */}
-      <div className="px-2.5 py-2">
+      <div className="flex items-baseline justify-between px-3 pb-2 pt-3">
         <span className="text-[10px] font-semibold uppercase tracking-widest text-fog-400/70">Screens</span>
+        {mapObjects.length > 0 && (
+          <span className="text-[10px] tabular-nums text-fog-500">{mapObjects.length}</span>
+        )}
       </div>
 
-      <div className="flex flex-col gap-0.5 px-2 pb-4">
+      <div className="flex flex-col gap-1 px-2 pb-4">
         {mapObjects.length === 0 ? (
           <div className="mx-1 flex flex-col items-center gap-3 rounded-lg border border-dashed border-line px-4 py-8 text-center">
             <svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" className="text-fog-500" strokeLinejoin="round">
@@ -405,7 +422,7 @@ export default function MapPanel() {
             <div className="text-xs text-fog-400">No model loaded yet.</div>
             <button
               onClick={() => openModelPicker(modelRef.current)}
-              className="rounded-md bg-brand-500/90 px-3 py-1.5 text-xs font-medium text-ink-950 hover:bg-brand-400 ring-focus"
+              className="btn-press rounded-md bg-brand-500/90 px-3 py-1.5 text-xs font-medium text-ink-950 hover:bg-brand-400 ring-focus"
             >
               Import GLB
             </button>
@@ -420,7 +437,7 @@ export default function MapPanel() {
                 <div className="text-xs text-fog-400">No content yet.</div>
                 <button
                   onClick={() => imagesRef.current?.click()}
-                  className="rounded-md bg-brand-500/90 px-3 py-1.5 text-xs font-medium text-ink-950 hover:bg-brand-400 ring-focus"
+                  className="btn-press rounded-md bg-brand-500/90 px-3 py-1.5 text-xs font-medium text-ink-950 hover:bg-brand-400 ring-focus"
                 >
                   Add images
                 </button>

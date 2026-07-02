@@ -1,7 +1,52 @@
-import { useRef, type ChangeEvent } from 'react'
+import { useRef, useState, type ChangeEvent } from 'react'
 import { useStore } from '../state/store'
 import { importModelFile, isModelFile, openModelPicker } from './importMap'
 import { IconUpload, IconExport, IconHelp } from './icons'
+
+const HINT_KEY = 'uvstudio.hint.automap'
+
+/** One-time coach mark under the Auto-map button: shown when screens have
+ *  content but nothing is mapped yet (the DCC-send flow), until dismissed. */
+function AutoMapHint() {
+  const mappedCount = useStore((s) => s.mappedObjects.length)
+  const layeredMode = useStore((s) => s.layeredMode)
+  const atlas = useStore((s) => s.atlas)
+  const [dismissed, setDismissed] = useState(() => {
+    try {
+      return localStorage.getItem(HINT_KEY) === '1'
+    } catch {
+      return true
+    }
+  })
+  const show = !dismissed && mappedCount === 0 && (layeredMode || !!atlas)
+  if (!show) return null
+  const dismiss = () => {
+    setDismissed(true)
+    try {
+      localStorage.setItem(HINT_KEY, '1')
+    } catch {
+      /* ignore */
+    }
+  }
+  return (
+    <div className="animate-float-up absolute left-3 top-[54px] z-40 w-64">
+      {/* arrow up, pointing at the Auto-map button */}
+      <div className="ml-6 h-0 w-0 border-x-8 border-b-8 border-x-transparent border-b-brand-500/30" />
+      <div className="glass rounded-lg border border-brand-500/30 p-3 shadow-xl">
+        <div className="text-[12.5px] leading-snug text-fog-100">
+          <span className="font-semibold text-brand-300">Start here</span> — Auto-map fits every
+          screen to its linked content in one click.
+        </div>
+        <button
+          onClick={dismiss}
+          className="btn-press mt-2 rounded-md bg-ink-700/70 px-2.5 py-1 text-[11px] text-fog-200 hover:bg-ink-600 ring-focus"
+        >
+          Got it
+        </button>
+      </div>
+    </div>
+  )
+}
 
 
 export default function TopBar({ onHelp, onPrefs }: { onHelp: () => void; onPrefs: () => void }) {
@@ -33,10 +78,10 @@ export default function TopBar({ onHelp, onPrefs }: { onHelp: () => void; onPref
       {hasModel && (
         <>
       <button
-        onClick={() => runMapping()}
+        onClick={() => runMapping({ announce: true })}
         disabled={!screenCount}
         title="Auto-map every screen to fit its content"
-        className="flex items-center gap-1.5 rounded-md bg-brand-500/90 px-3 py-1.5 text-sm font-semibold text-ink-950 hover:bg-brand-400 disabled:cursor-default disabled:opacity-35 ring-focus"
+        className="btn-press flex items-center gap-1.5 rounded-md bg-brand-500/90 px-3 py-1.5 text-sm font-semibold text-ink-950 hover:bg-brand-400 disabled:cursor-default disabled:opacity-35 ring-focus"
       >
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
           <rect x="3" y="3" width="7" height="7" rx="1" />
@@ -52,7 +97,7 @@ export default function TopBar({ onHelp, onPrefs }: { onHelp: () => void; onPref
       <button
         onClick={() => openModelPicker(modelRef.current)}
         title="Import a model with its screen maps — opens the link wizard"
-        className="flex items-center gap-2 rounded-md px-2.5 py-1.5 text-sm text-fog-200 hover:bg-ink-700/70 ring-focus"
+        className="btn-press flex items-center gap-2 rounded-md px-2.5 py-1.5 text-sm text-fog-200 hover:bg-ink-700/70 ring-focus"
       >
         <IconUpload width={16} height={16} /> Import
       </button>
@@ -71,7 +116,7 @@ export default function TopBar({ onHelp, onPrefs }: { onHelp: () => void; onPref
                 : 'Send the mapped UVs back to Cinema 4D'
               : 'Download the model + UVs as a GLB'
         }
-        className="flex items-center gap-2 rounded-md px-2.5 py-1.5 text-sm text-fog-200 enabled:hover:bg-ink-700/70 disabled:opacity-40 ring-focus"
+        className="btn-press flex items-center gap-2 rounded-md px-2.5 py-1.5 text-sm text-fog-200 enabled:hover:bg-ink-700/70 disabled:opacity-40 ring-focus"
       >
         {fromC4D ? (
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
@@ -107,6 +152,7 @@ export default function TopBar({ onHelp, onPrefs }: { onHelp: () => void; onPref
           <path d="M20 9H9a5 5 0 0 0 0 10h1" />
         </svg>
       </button>
+      <AutoMapHint />
         </>
       )}
 
