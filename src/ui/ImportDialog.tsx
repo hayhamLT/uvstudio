@@ -9,10 +9,18 @@ export default function ImportDialog() {
   const pending = useStore((s) => s.pendingImport)
   const confirmImport = useStore((s) => s.confirmImport)
   const cancelImport = useStore((s) => s.cancelImport)
+  // user-added words (Preferences ▸ Screen detection) that extend the built-in
+  // screen/led/display/… name matcher — e.g. a studio's own naming convention
+  const keywords = useStore((s) => s.screenKeywords)
+  const extraKeywords = keywords
+    .split(',')
+    .map((k) => k.trim())
+    .filter(Boolean)
   const [sel, setSel] = useState<Set<string>>(new Set())
 
   useEffect(() => {
-    if (pending) setSel(classifyScreens(pending.objects))
+    if (pending) setSel(classifyScreens(pending.objects, extraKeywords))
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [pending])
 
   // auto-detection is meaningful only when it didn't just select everything
@@ -89,7 +97,7 @@ export default function ImportDialog() {
                     )}
                   </span>
                   <span className="min-w-0 flex-1 truncate text-sm">{o.name}</span>
-                  {isNamedScreen(o.name) && (
+                  {isNamedScreen(o.name, extraKeywords) && (
                     <span className="rounded bg-brand-500/15 px-1.5 py-0.5 text-[10px] font-medium text-brand-300">screen</span>
                   )}
                   {o.textureImage && (

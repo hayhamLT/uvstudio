@@ -110,6 +110,10 @@ interface AppState {
   mapFill: boolean
   /** preference: auto-map screens right after import (persisted) */
   autoMapOnImport: boolean
+  /** preference: extra comma-separated words (beyond the built-in screen/led/
+   *  display/…) that mark an object as an auto-detected screen (persisted) */
+  screenKeywords: string
+  setScreenKeywords: (v: string) => void
   /** per-object fit override; falls back to the global mapFill */
   mapObjFit: Record<string, 'fill' | 'aspect'>
   /** per-object stretch when filling: % the region differs from the screen aspect */
@@ -332,6 +336,16 @@ const prefBool = (k: string, d: boolean) => {
   try {
     const v = localStorage.getItem('uvstudio.' + k)
     return v === null ? d : v === '1'
+  } catch {
+    return d
+  }
+}
+
+// persisted string preferences (localStorage, namespaced)
+const prefStr = (k: string, d: string) => {
+  try {
+    const v = localStorage.getItem('uvstudio.' + k)
+    return v === null ? d : v
   } catch {
     return d
   }
@@ -941,6 +955,7 @@ export const useStore = create<AppState>((set, get) => ({
   // rather than cropping or letterboxing (the whole image always shows).
   mapFill: true,
   autoMapOnImport: prefBool('autoMapOnImport', false),
+  screenKeywords: prefStr('screenKeywords', ''),
   mapObjFit: {},
   mapFitInfo: {},
   mappedObjects: [],
@@ -1840,6 +1855,15 @@ export const useStore = create<AppState>((set, get) => ({
       /* ignore */
     }
     set({ autoMapOnImport: v })
+  },
+
+  setScreenKeywords: (v) => {
+    try {
+      localStorage.setItem('uvstudio.screenKeywords', v)
+    } catch {
+      /* ignore */
+    }
+    set({ screenKeywords: v })
   },
 
   setObjectFit: (objName, fit) => {

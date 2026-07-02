@@ -7,6 +7,8 @@ import { currentVersion, checkForUpdate } from '../app/updater'
 export default function Preferences({ open, onClose }: { open: boolean; onClose: () => void }) {
   const autoMap = useStore((s) => s.autoMapOnImport)
   const setAutoMap = useStore((s) => s.setAutoMapOnImport)
+  const screenKeywords = useStore((s) => s.screenKeywords)
+  const setScreenKeywords = useStore((s) => s.setScreenKeywords)
   const setStatus = useStore((s) => s.setStatus)
   const [linkLabel, setLinkLabel] = useState(link.isConnected() ? link.linkFolderLabel() : '')
   const [linkCustom, setLinkCustom] = useState(false)
@@ -228,6 +230,25 @@ export default function Preferences({ open, onClose }: { open: boolean; onClose:
             checked={autoMap}
             onChange={setAutoMap}
           />
+        </Section>
+
+        <Section title="Screen detection">
+          <Row
+            label="Extra keywords"
+            hint="Adds to the built-in screen, led, display, ribbon, board, jumbotron, video wall, monitor"
+          >
+            <input
+              type="text"
+              value={screenKeywords}
+              onChange={(e) => setScreenKeywords(e.target.value)}
+              placeholder="e.g. panel, canvas, vidwall"
+              className="w-44 rounded-md border border-line bg-ink-800 px-2.5 py-1.5 text-xs text-fog-200 placeholder:text-fog-500 ring-focus"
+            />
+          </Row>
+          <p className="text-[11px] text-fog-500">
+            Comma-separated. An object whose name contains any of these words is
+            auto-detected as a screen in the import dialog.
+          </p>
         </Section>
 
         <Section title="About">
