@@ -16,3 +16,4 @@ src-tauri/gen
 # scratch / test assets (not used by the app)
 public/_t_*
 public/zyn-test.glb
+__pycache__/
