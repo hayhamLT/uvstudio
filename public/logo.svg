@@ -1,0 +1,23 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
+  <defs>
+    <linearGradient id="uvbg" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#5cc8ff"/>
+      <stop offset="1" stop-color="#1183d6"/>
+    </linearGradient>
+  </defs>
+  <rect width="512" height="512" rx="115" fill="url(#uvbg)"/>
+  <!-- UV checker: solid cells on the checker diagonal, faint cells fill the 3×3 grid -->
+  <g fill="#ffffff">
+    <rect x="128" y="128" width="82" height="82" rx="7"/>
+    <rect x="300" y="128" width="82" height="82" rx="7"/>
+    <rect x="214" y="214" width="82" height="82" rx="7"/>
+    <rect x="128" y="300" width="82" height="82" rx="7"/>
+    <rect x="300" y="300" width="82" height="82" rx="7"/>
+  </g>
+  <g fill="#ffffff" opacity="0.26">
+    <rect x="214" y="128" width="82" height="82" rx="7"/>
+    <rect x="128" y="214" width="82" height="82" rx="7"/>
+    <rect x="300" y="214" width="82" height="82" rx="7"/>
+    <rect x="214" y="300" width="82" height="82" rx="7"/>
+  </g>
+</svg>

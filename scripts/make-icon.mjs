@@ -3,10 +3,10 @@
 //   node scripts/make-icon.mjs
 //
 // Produces src-tauri/icons/{32x32,128x128,128x128@2x,icon}.png + icon.ico +
-// icon.icns + app-icon.png (1024 source). Pure Node: rasterises a simple
-// isometric-cube logo on the brand gradient, encodes PNG via zlib, and wraps
-// PNGs into ICO/ICNS containers. Re-run any time, or replace later with
-// `npm run tauri icon app-icon.png` for the official set.
+// icon.icns + app-icon.png (1024 source). Pure Node: rasterises the UV-checker
+// logo on the brand gradient (matches public/logo.svg), encodes PNG via zlib,
+// and wraps PNGs into ICO/ICNS containers. Re-run any time, or replace later
+// with `npm run tauri icon app-icon.png` for the official set.
 
 import zlib from 'node:zlib'
 import fs from 'node:fs'
@@ -47,40 +47,37 @@ function render(size) {
     for (let x = 0; x < W; x++) if (inRound(x, y)) set(x, y, col, 1)
   }
 
-  // isometric cube (3 white-ish faces)
-  const cx = W / 2
-  const cy = W / 2
-  const h = W * 0.22
-  const poly = (pts, color) => {
-    let minY = Infinity
-    let maxY = -Infinity
-    for (const [, py] of pts) {
-      minY = Math.min(minY, py)
-      maxY = Math.max(maxY, py)
-    }
-    for (let y = Math.floor(minY); y <= Math.ceil(maxY); y++) {
-      const xs = []
-      for (let i = 0; i < pts.length; i++) {
-        const a = pts[i]
-        const b = pts[(i + 1) % pts.length]
-        if (a[1] === b[1]) continue
-        if (y >= Math.min(a[1], b[1]) && y < Math.max(a[1], b[1])) {
-          xs.push(a[0] + ((y - a[1]) / (b[1] - a[1])) * (b[0] - a[0]))
-        }
-      }
-      xs.sort((p, q) => p - q)
-      for (let k = 0; k + 1 < xs.length; k += 2) {
-        for (let x = Math.floor(xs[k]); x < Math.ceil(xs[k + 1]); x++) set(x, y, color, 1)
+  // UV checker: a 3×3 grid — 5 solid white cells on the checker diagonal, the
+  // other 4 faint. Matches public/logo.svg (favicon + in-app orb).
+  const white = hex('#ffffff')
+  const cell = W * (82 / 512)
+  const rr = cell * 0.09
+  const fillCell = (nx, ny, alpha) => {
+    const px = W * nx
+    const py = W * ny
+    for (let y = Math.floor(py); y < Math.ceil(py + cell); y++) {
+      for (let x = Math.floor(px); x < Math.ceil(px + cell); x++) {
+        const dx = Math.max(rr - (x - px), x - px - (cell - rr), 0)
+        const dy = Math.max(rr - (y - py), y - py - (cell - rr), 0)
+        if (dx * dx + dy * dy <= rr * rr) set(x, y, white, alpha)
       }
     }
   }
-  const pTop = [cx, cy - h]
-  const pRight = [cx + h, cy - h * 0.5]
-  const pFront = [cx, cy]
-  const pLeft = [cx - h, cy - h * 0.5]
-  poly([pTop, pRight, pFront, pLeft], hex('#ffffff')) // top
-  poly([pLeft, pFront, [cx, cy + h], [cx - h, cy + h * 0.5]], hex('#dbe6f4')) // left
-  poly([pFront, pRight, [cx + h, cy + h * 0.5], [cx, cy + h]], hex('#bccde2')) // right
+  const g0 = 128 / 512
+  const g1 = 214 / 512
+  const g2 = 300 / 512
+  // solid (col+row even)
+  fillCell(g0, g0, 1)
+  fillCell(g2, g0, 1)
+  fillCell(g1, g1, 1)
+  fillCell(g0, g2, 1)
+  fillCell(g2, g2, 1)
+  // faint (col+row odd)
+  const F = 0.26
+  fillCell(g1, g0, F)
+  fillCell(g0, g1, F)
+  fillCell(g2, g1, F)
+  fillCell(g1, g2, F)
 
   // box-downscale SS×SS → final RGBA8
   const out = Buffer.alloc(size * size * 4)

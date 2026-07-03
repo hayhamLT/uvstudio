@@ -117,9 +117,15 @@ with the **Screens panel** on the right.
   ruler (e.g. `2048px × 1408px`). This is where you nudge a screen's placement.
 - **3D view** — your venue in space, screens lit with their content, reference
   geometry dimmed around them. Orbit to check coverage from the audience's seats.
-- **Swap / dock / float** — the small icons on the floating window's title bar
-  let you swap which view is primary, dock the second view into a split, or pop
-  it out as a movable window. Press **Tab** to swap the two views instantly.
+- **Swap / dock / float** — the three icons on the secondary view's title bar:
+  - **Swap** (⇄) flips which view is primary (same as **Tab**).
+  - **Dock** (▐) snaps the floating view into a **side-by-side split** with a
+    draggable divider — ideal for watching the 3D result while you nudge UVs in
+    2D.
+  - **Float** (◳) pops it back out as a **movable, resizable window** over the
+    primary view (the default).
+
+<p align="center"><img src="img/docked.png" alt="Docked side-by-side split view" width="820"></p>
 
 The **3D view mode** buttons (top center) switch how screens are shaded:
 **Shaded** (real content), **Distortion** (stretch check), **Checker** (a grid to
@@ -283,4 +289,4 @@ panel's Reference section.
 ---
 
 *UV Studio — a focused, modern reimagining of headus UVLayout for screen content.
-Built by [Toy Robot Media](http://www.toyrobotmedia.com/).*
+Created by [hamLT](https://motion.hamlt.com) · Powered by [Toy Robot Media](https://toyrobotmedia.com).*

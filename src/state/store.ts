@@ -362,15 +362,16 @@ export interface ScreenSpec {
   aspect: number
 }
 
-// After a Send, the app quits only once the DCC acks a clean apply (or after a
-// fallback timeout if the DCC is closed — it applies on its next launch). A
-// partial failure/error keeps the app open so the warning is actually seen.
+// After a Send, the app minimizes (steps aside for the DCC but keeps running)
+// only once the DCC acks a clean apply — or after a fallback timeout if the DCC
+// is closed (it applies on its next launch). A partial failure/error keeps the
+// app up front so the warning is actually seen.
 let sendQuitTimer: ReturnType<typeof setTimeout> | null = null
 function armSendQuit() {
   if (sendQuitTimer) clearTimeout(sendQuitTimer)
   sendQuitTimer = setTimeout(() => {
     sendQuitTimer = null
-    void linkBridge.quitApp()
+    void linkBridge.minimizeWindow()
   }, 6000)
 }
 function disarmSendQuit(): boolean {
@@ -2130,7 +2131,7 @@ export const useStore = create<AppState>((set, get) => ({
         }
         await linkBridge.sendGlb(buf, specs)
         set({ status: `Sent ${specs.length} screens to Cinema 4D (link folder)` })
-        void linkBridge.quitApp() // close UV Studio after sending; C4D comes forward
+        void linkBridge.minimizeWindow() // step aside so C4D comes forward
       }
     } catch {
       set({ status: 'Send failed — check the link folder' })
@@ -2163,8 +2164,9 @@ export const useStore = create<AppState>((set, get) => ({
     }
     set({ status: `${dcc} applied UVs to ${ack.applied} object${plural} ✓` })
     get().pushToast('good', `${dcc} applied UVs to ${ack.applied} object${plural}`)
-    // clean success right after a Send → hand off to the DCC and close
-    if (wasSending) setTimeout(() => void linkBridge.quitApp(), 1200)
+    // clean success right after a Send → hand off to the DCC and step aside
+    // (minimize, not quit — the app stays running for the next round-trip)
+    if (wasSending) setTimeout(() => void linkBridge.minimizeWindow(), 1200)
   },
 
   loadMesh: (mesh) => {

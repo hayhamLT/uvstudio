@@ -161,16 +161,14 @@ await capture('wizard', {
   // expand one screen's media picker so the thumbnail list is visible
   extra: `[...document.querySelectorAll('li .row-lift')].find(r => r.textContent.includes('WALL_SCREEN_03'))?.click()`,
 })
+// NB: the ?shot loader ghosts reference geometry to 35% for every scene shot,
+// so venue3d/workspace/docked all show the translucent-walls look.
 await capture('workspace', { url: `${APP}/?shot=zyn` })
-await capture('venue3d', { url: `${APP}/?shot=zyn&view=3d` })
-// same loaded state, reference geometry dropped to a 35% ghost — the hero shot
-await capture('venue-ghost', {
-  extra: `(() => {
-    const s = document.querySelector('input[type=range][min="0.15"]')
-    const set = Object.getOwnPropertyDescriptor(window.HTMLInputElement.prototype, 'value').set
-    set.call(s, '0.35')
-    s.dispatchEvent(new Event('input', { bubbles: true }))
-  })()`,
+await capture('venue3d', { url: `${APP}/?shot=zyn&view=3d` }) // also the marketing/README hero
+// docked split view — click the floating window's "Dock" button
+await capture('docked', {
+  url: `${APP}/?shot=zyn`,
+  extra: `document.querySelector('[title^="Dock"]')?.click()`,
 })
 
 // ---- 2. 3D view modes: close-ups of the 3D pane only -----------------------

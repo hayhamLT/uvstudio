@@ -891,6 +891,15 @@ fn focus_window(app: tauri::AppHandle) {
     }
 }
 
+/// Minimize the main window (used after a Send back — the app steps aside for
+/// the DCC but stays running, so the next round-trip is instant).
+#[tauri::command]
+fn minimize_window(app: tauri::AppHandle) {
+    if let Some(w) = app.get_webview_window("main") {
+        let _ = w.minimize();
+    }
+}
+
 /// Resize the main window (logical px) and re-center. The app calls this to keep
 /// a compact "launcher" window on the landing page and grow once a model loads.
 #[tauri::command]
@@ -991,6 +1000,7 @@ fn main() {
             updater_install,
             quit_app,
             focus_window,
+            minimize_window,
             resize_window,
             install_blender_addon,
             blender_status,

@@ -48,14 +48,24 @@ export default function Landing({
                 dragging ? 'scale-110' : 'group-hover/orb:scale-110'
               }`}
             >
-              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round" className="transition-transform duration-300 group-hover/orb:-translate-y-0.5">
+              <svg width="24" height="24" viewBox="0 0 24 24" className="transition-transform duration-300 group-hover/orb:-translate-y-0.5">
                 {dragging ? (
-                  <path d="M12 16V4m-5 5 5-5 5 5M5 16v2a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-2" />
+                  <path d="M12 16V4m-5 5 5-5 5 5M5 16v2a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-2" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round" />
                 ) : (
-                  <>
-                    <path d="M12 3 21 8v8l-9 5-9-5V8l9-5Z" strokeLinejoin="round" />
-                    <path d="M3.5 8 12 13l8.5-5M12 13v8" strokeLinejoin="round" />
-                  </>
+                  /* UV checker — the UV Studio mark (matches the app icon + favicon) */
+                  <g fill="#ffffff">
+                    <rect x="5" y="5" width="4" height="4" rx="0.6" />
+                    <rect x="13" y="5" width="4" height="4" rx="0.6" />
+                    <rect x="9" y="9" width="4" height="4" rx="0.6" />
+                    <rect x="5" y="13" width="4" height="4" rx="0.6" />
+                    <rect x="13" y="13" width="4" height="4" rx="0.6" />
+                    <g opacity="0.28">
+                      <rect x="9" y="5" width="4" height="4" rx="0.6" />
+                      <rect x="5" y="9" width="4" height="4" rx="0.6" />
+                      <rect x="13" y="9" width="4" height="4" rx="0.6" />
+                      <rect x="9" y="13" width="4" height="4" rx="0.6" />
+                    </g>
+                  </g>
                 )}
               </svg>
             </span>
@@ -80,26 +90,32 @@ export default function Landing({
         </button>
       </div>
 
-      {/* credit, pinned to the bottom — links to Toy Robot Media (opens in browser) */}
-      <a
-        href="http://www.toyrobotmedia.com/"
-        onClick={(e) => {
-          e.preventDefault()
-          void openExternal('http://www.toyrobotmedia.com/')
-        }}
-        title="Toy Robot Media"
-        className="group/credit absolute bottom-6 flex flex-col items-center gap-1 text-[11px] text-fog-500 transition hover:text-fog-300 ring-focus"
-      >
-        <span>Powered by</span>
-        <img
-          src="/trm_logo.webp"
-          alt="Toy Robot Media"
-          className="h-[25px] w-auto opacity-90 transition group-hover/credit:opacity-100"
-          onError={(e) => {
-            e.currentTarget.style.display = 'none'
+      {/* credit, pinned to the bottom (links open in the default browser) */}
+      <div className="absolute bottom-6 flex items-center gap-1 text-[11px] text-fog-500">
+        <span>Created by</span>
+        <a
+          href="https://motion.hamlt.com"
+          onClick={(e) => {
+            e.preventDefault()
+            void openExternal('https://motion.hamlt.com')
           }}
-        />
-      </a>
+          className="font-medium text-fog-400 transition hover:text-fog-200 ring-focus"
+        >
+          hamLT
+        </a>
+        <span className="px-0.5">·</span>
+        <span>Powered by</span>
+        <a
+          href="https://toyrobotmedia.com"
+          onClick={(e) => {
+            e.preventDefault()
+            void openExternal('https://toyrobotmedia.com')
+          }}
+          className="font-medium text-fog-400 transition hover:text-fog-200 ring-focus"
+        >
+          Toy Robot Media
+        </a>
+      </div>
 
       <input ref={inputRef} type="file" accept=".glb,.gltf,.psd,image/*" multiple className="hidden" onChange={onPick} />
     </div>

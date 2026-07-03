@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 <title>UV Studio — map artwork onto LED screens, instantly</title>
 <meta name="description" content="A modern, maximally-automatic tool for mapping artwork onto screens in venue and event 3D models — with one-click round-trips to Cinema 4D and Blender. Free for Mac and Windows." />
-<link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 24 24%22><rect width=%2224%22 height=%2224%22 rx=%225%22 fill=%22%232da9f7%22/><path d=%22M12 3 21 8v8l-9 5-9-5V8l9-5Z%22 fill=%22none%22 stroke=%22%2307090d%22 stroke-width=%221.8%22/></svg>" />
+<link rel="icon" type="image/svg+xml" href="/logo.svg" />
 <style>
   :root{
     --ink-950:#07090d; --ink-900:#0b0e14; --ink-850:#11151d; --ink-800:#161b25;
@@ -36,10 +36,7 @@
   }
   .topbar.scrolled{border-bottom-color:var(--line);}
   .topbar .logo{display:flex; align-items:center; gap:9px; font-weight:700; color:var(--fog-100); font-size:15px;}
-  .topbar .logo .cube{
-    width:26px; height:26px; border-radius:8px; background:linear-gradient(160deg,var(--brand-400),var(--brand-600));
-    display:flex; align-items:center; justify-content:center; color:var(--ink-950); font-size:14px;
-  }
+  .topbar .logo img{width:26px; height:26px; border-radius:7px; display:block;}
   .topbar nav{margin-left:auto; display:flex; align-items:center; gap:22px; font-size:13.5px;}
   .topbar nav a{color:var(--fog-300);}
   .topbar nav a:hover{color:var(--fog-100); text-decoration:none;}
@@ -138,21 +135,40 @@
   footer nav a{color:var(--fog-400);}
 
   @media (max-width: 860px){
-    .hero h1{font-size:36px;}
-    .features{grid-template-columns:1fr;}
-    .gallery{grid-template-columns:1fr;}
+    .hero{padding:64px 0 40px;}
+    .hero h1{font-size:34px;}
+    .hero p.lede{font-size:15.5px;}
+    section{padding:56px 0;}
+    .section-head{margin-bottom:36px;}
+    .features{grid-template-columns:1fr 1fr;}
+    .gallery{grid-template-columns:1fr !important;}
+    .gallery .stack{gap:12px;}
     .platforms{grid-template-columns:1fr;}
     .bridges{grid-template-columns:1fr;}
+    .download-card{padding:34px 22px;}
+  }
+  @media (max-width: 560px){
+    .wrap{padding:0 16px;}
+    .topbar{padding:12px 16px; gap:10px;}
+    .topbar nav{gap:14px;}
+    .topbar nav a.nav-link{display:none;}
+    .hero{padding:48px 0 32px;}
+    .hero h1{font-size:27px;}
+    .hero .kicker{font-size:11px;}
+    .hero .ctas{flex-direction:column;}
+    .hero .ctas .btn{width:100%; justify-content:center;}
+    .features{grid-template-columns:1fr;}
+    .section-head h2{font-size:26px;}
   }
 </style>
 </head>
 <body>
 
 <div class="topbar" id="topbar">
-  <div class="logo"><span class="cube">▢</span> UV Studio</div>
+  <div class="logo"><img src="/logo.svg" alt="" width="26" height="26"> UV Studio</div>
   <nav>
-    <a href="#features">Features</a>
-    <a href="#download">Download</a>
+    <a class="nav-link" href="#features">Features</a>
+    <a class="nav-link" href="#download">Download</a>
     <a href="/help/">Docs</a>
     <a class="btn primary" href="/app/">Launch app ↗</a>
   </nav>
@@ -169,7 +185,7 @@
   <div class="sub">No install needed for the browser build · <a href="/help/">read the docs</a></div>
 
   <div class="shot">
-    <img src="/help/img/venue-ghost.png" alt="UV Studio — a venue mapped in 3D, walls ghosted so the mapped screens shine through">
+    <img src="/help/img/venue3d.png" alt="UV Studio — a venue mapped in 3D, walls ghosted so the mapped screens shine through">
   </div>
 </div>
 
@@ -317,8 +333,8 @@
     <a href="https://github.com/hayhamLT/uvstudio">GitHub</a>
     <a href="https://github.com/hayhamLT/uvstudio/releases/latest">Releases</a>
   </nav>
-  UV Studio — a focused, modern reimagining of headus UVLayout for screen content.
-  Built by <a href="http://www.toyrobotmedia.com/" target="_blank" rel="noopener">Toy Robot Media</a>.
+  Created by <a href="https://motion.hamlt.com" target="_blank" rel="noopener">hamLT</a>
+  · Powered by <a href="https://toyrobotmedia.com" target="_blank" rel="noopener">Toy Robot Media</a>
 </footer>
 
 <script>

@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 <title>UV Studio — Help &amp; Documentation</title>
 <meta name="description" content="Full documentation for UV Studio — quick start, every tool explained with close-up screenshots, Cinema 4D / Blender bridges, shortcuts, and FAQ." />
-<link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 24 24%22><rect width=%2224%22 height=%2224%22 rx=%225%22 fill=%22%232da9f7%22/><path d=%22M12 3 21 8v8l-9 5-9-5V8l9-5Z%22 fill=%22none%22 stroke=%22%2307090d%22 stroke-width=%221.8%22/></svg>" />
+<link rel="icon" type="image/svg+xml" href="/logo.svg" />
 <style>
   :root{
     --ink-950:#07090d; --ink-900:#0b0e14; --ink-850:#11151d; --ink-800:#161b25;
@@ -44,10 +44,7 @@
     backdrop-filter:blur(14px) saturate(140%); border-bottom:1px solid var(--line);
   }
   .topbar .logo{display:flex; align-items:center; gap:9px; font-weight:700; color:var(--fog-100); font-size:15px;}
-  .topbar .logo .cube{
-    width:26px; height:26px; border-radius:8px; background:linear-gradient(160deg,var(--brand-400),var(--brand-600));
-    display:flex; align-items:center; justify-content:center; color:var(--ink-950); font-size:14px;
-  }
+  .topbar .logo img{width:26px; height:26px; border-radius:7px; display:block;}
   .topbar nav{margin-left:auto; display:flex; gap:18px; font-size:13.5px;}
   .topbar nav a{color:var(--fog-300);}
   .topbar nav a:hover{color:var(--fog-100); text-decoration:none;}
@@ -139,7 +136,7 @@
 <body>
 
 <div class="topbar">
-  <div class="logo"><span class="cube">▢</span> UV Studio</div>
+  <div class="logo"><img src="/logo.svg" alt="" width="26" height="26"> UV Studio</div>
   <nav>
     <a href="/">Open the app ↗</a>
     <a href="https://github.com/hayhamLT/uvstudio" target="_blank" rel="noopener">GitHub</a>
@@ -235,16 +232,27 @@
 
     <section id="workspace">
       <h2>The workspace</h2>
-      <p class="lede">Once loaded: a 2D map, a floating 3D view, and the Screens panel.</p>
+      <p class="lede">Three parts: a <b style="color:var(--fog-200)">primary view</b>, a <b style="color:var(--fog-200)">secondary view</b>, and the <b style="color:var(--fog-200)">Screens panel</b> on the right. The two views are the 2D map and the 3D venue — whichever you're not using as primary rides along as the secondary.</p>
       <figure>
-        <img src="img/workspace.png" alt="UV Studio workspace — 2D map, floating 3D view, screens panel">
-        <figcaption>2D map (outlined screen slices + pixel ruler) with the 3D view floating on top, and the Screens panel on the right.</figcaption>
+        <img src="img/workspace.png" alt="UV Studio workspace — 2D map primary, floating 3D view, screens panel">
+        <figcaption>The 2D map is primary here (outlined screen slices + a pixel ruler), with the 3D view floating on top and the Screens panel on the right.</figcaption>
+      </figure>
+
+      <h3 style="margin-top:26px;">Swap, dock, float</h3>
+      <p>The title bar of the secondary view has three small icons:</p>
+      <ul>
+        <li><b style="color:var(--fog-200)">Swap</b> (⇄) — flip which view is primary. The same as pressing <kbd>Tab</kbd> anywhere.</li>
+        <li><b style="color:var(--fog-200)">Dock</b> (▐) — snap the floating view into a <b>side-by-side split</b> with a draggable divider (below). Great for watching the 3D result while you nudge UVs in 2D.</li>
+        <li><b style="color:var(--fog-200)">Float</b> (◳) — pop the secondary view back out as a <b>movable, resizable window</b> you can drag anywhere over the primary view. This is the default.</li>
+      </ul>
+      <figure>
+        <img src="img/docked.png" alt="Docked split view — 3D on the left, 2D map on the right, draggable divider between">
+        <figcaption>Docked: the two views sit side by side. Drag the divider to resize; the swap icon still flips which side is which, and the float icon pops it back out.</figcaption>
       </figure>
       <figure>
         <img src="img/venue3d.png" alt="3D venue with mapped screens promoted to the main pane">
-        <figcaption>Press <kbd>Tab</kbd> — or use the swap icon — to make the 3D view primary instead.</figcaption>
+        <figcaption>Swapped so the 3D venue is primary (via <kbd>Tab</kbd> or the swap icon) with the 2D map floating.</figcaption>
       </figure>
-      <p style="font-size:14px; color:var(--fog-300);">The small icons on the floating window let you <b style="color:var(--fog-200)">swap</b> which view is primary, <b style="color:var(--fog-200)">dock</b> it into a split, or leave it <b style="color:var(--fog-200)">floating</b> as a movable window.</p>
     </section>
 
     <section id="view-modes">
@@ -404,8 +412,8 @@
 </div>
 
 <footer>
-  UV Studio — a focused, modern reimagining of headus UVLayout for screen content.
-  Built by <a href="http://www.toyrobotmedia.com/" target="_blank" rel="noopener">Toy Robot Media</a>.
+  Created by <a href="https://motion.hamlt.com" target="_blank" rel="noopener">hamLT</a>
+  · Powered by <a href="https://toyrobotmedia.com" target="_blank" rel="noopener">Toy Robot Media</a>
   · <a href="https://github.com/hayhamLT/uvstudio">Source on GitHub</a>
 </footer>
 

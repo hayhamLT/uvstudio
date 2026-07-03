@@ -457,6 +457,17 @@ export async function quitApp(): Promise<void> {
   }
 }
 
+/** Minimize the desktop window (after a Send back — the app steps aside for the
+ *  DCC but keeps running, so the next round-trip is instant). No-op on web. */
+export async function minimizeWindow(): Promise<void> {
+  if (!isDesktop()) return
+  try {
+    await tauri()!.core.invoke('minimize_window')
+  } catch {
+    /* ignore */
+  }
+}
+
 /** Desktop: whether the Blender add-on is installed (in the newest Blender). */
 export type BlenderStatus = { found: boolean; installed: boolean; path: string | null }
 export async function blenderStatus(): Promise<BlenderStatus | null> {

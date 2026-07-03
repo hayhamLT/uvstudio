@@ -6,7 +6,7 @@ reimagining of headus UVLayout, tailored for screen content, with one-click
 round-trips to **Cinema 4D** and **Blender**.
 
 <p align="center">
-  <img src="docs/img/venue-ghost.png" alt="UV Studio — a venue mapped in 3D, walls ghosted so the screens shine through" width="860">
+  <img src="docs/img/venue3d.png" alt="UV Studio — a venue mapped in 3D, walls ghosted so the screens shine through" width="860">
 </p>
 
 > 📖 **New here? Read the [User Guide](docs/GUIDE.md)** — a full, screenshot-led

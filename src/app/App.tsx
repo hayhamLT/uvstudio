@@ -134,6 +134,8 @@ export default function App() {
       await new Promise((r) => setTimeout(r, 500))
       useStore.getState().runMapping()
       useStore.getState().selectObject('FLOOR_SCREEN')
+      // docs convention: reference geometry ghosted to 35% in every screenshot
+      useStore.getState().setContextOpacity(0.35)
       // promote the 3D view to the big pane AFTER import (import resets primary)
       if (params.get('view') === '3d') {
         setPrimary('3d')
