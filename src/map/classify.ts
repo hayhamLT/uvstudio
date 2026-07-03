@@ -48,6 +48,42 @@ export function isNamedScreen(name: string, extraKeywords: string[] = []): boole
   return screenNameRe(extraKeywords).test(name)
 }
 
+/** Split an object name into words: on separators (_ - . space), camelCase, and
+ *  letter↔digit boundaries, dropping single chars and pure numbers
+ *  ("WALL_SCREEN_01" → WALL, SCREEN; "VideoWall" → Video, Wall;
+ *  "Outside1" → Outside). */
+export function tokenize(name: string): string[] {
+  return name
+    .replace(/([a-z0-9])([A-Z])/g, '$1 $2') // camelCase
+    .replace(/([a-zA-Z])(\d)/g, '$1 $2') // letter → digit
+    .replace(/(\d)([a-zA-Z])/g, '$1 $2') // digit → letter
+    .split(/[^a-zA-Z0-9]+/)
+    .map((t) => t.trim())
+    .filter((t) => t.length >= 2 && !/^\d+$/.test(t))
+}
+
+/** Words that recur across ≥2 of the given object names — surfaced in the import
+ *  dialog as one-click filter chips. Each token counted once per object; sorted
+ *  by how many objects share it (then alphabetically), capped at `limit`. */
+export function commonWords(names: string[], limit = 10): { label: string; count: number }[] {
+  const map = new Map<string, { label: string; count: number }>()
+  for (const name of names) {
+    const seen = new Set<string>()
+    for (const tok of tokenize(name)) {
+      const key = tok.toLowerCase()
+      if (seen.has(key)) continue
+      seen.add(key)
+      const cur = map.get(key)
+      if (cur) cur.count++
+      else map.set(key, { label: tok, count: 1 })
+    }
+  }
+  return [...map.values()]
+    .filter((t) => t.count >= 2)
+    .sort((a, b) => b.count - a.count || a.label.localeCompare(b.label))
+    .slice(0, limit)
+}
+
 /** Best-guess set of screen object names from a freshly imported scene. */
 export function classifyScreens(objects: SceneObject[], extraKeywords: string[] = []): Set<string> {
   // 1. name-based — if any object is named like a screen, trust names entirely

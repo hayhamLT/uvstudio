@@ -141,6 +141,8 @@ interface AppState {
   contextCount: number
   /** brightness of the reference geometry group, 0 (black) … 1 (white) */
   contextShade: number
+  /** opacity of the reference geometry group, 0.15 (ghost) … 1 (solid) */
+  contextOpacity: number
   /** whether the reference geometry group is shown */
   contextVisible: boolean
   /** the file this scene came from, for one-click Refresh */
@@ -184,6 +186,7 @@ interface AppState {
   confirmLink: (links: Record<string, number>) => Promise<void>
   cancelLink: () => void
   setContextShade: (v: number) => void
+  setContextOpacity: (v: number) => void
   setContextVisible: (v: boolean) => void
   loadDemoArena: () => void
   loadDemoPsd: () => Promise<void>
@@ -970,6 +973,7 @@ export const useStore = create<AppState>((set, get) => ({
   contextShells: [],
   contextCount: 0,
   contextShade: DEFAULT_CONTEXT_SHADE,
+  contextOpacity: 1,
   contextVisible: true,
   lastImportName: null,
   view3d: 'shaded',
@@ -1010,6 +1014,7 @@ export const useStore = create<AppState>((set, get) => ({
 
   loadScene: (objects, opts) => {
     const prevShade = get().contextShade
+    const prevOpacity = get().contextOpacity
     const prevVisible = get().contextVisible
     resetLive() // brand-new project: clears uv, atlas texture, per-screen textures
     authoredUV.clear()
@@ -1118,6 +1123,7 @@ export const useStore = create<AppState>((set, get) => ({
       contextShells,
       contextCount: new Set(contextShells.map((s) => s.objName)).size,
       contextShade: opts?.keepOverrides ? prevShade : DEFAULT_CONTEXT_SHADE,
+      contextOpacity: opts?.keepOverrides ? prevOpacity : 1,
       contextVisible: opts?.keepOverrides ? prevVisible : true,
       atlas: null,
       regions: [],
@@ -1178,6 +1184,7 @@ export const useStore = create<AppState>((set, get) => ({
   cancelImport: () => set({ pendingImport: null }),
 
   setContextShade: (v) => set({ contextShade: Math.max(0, Math.min(1, v)) }),
+  setContextOpacity: (v) => set({ contextOpacity: Math.max(0.15, Math.min(1, v)) }),
   setContextVisible: (v) => set({ contextVisible: v }),
 
   loadDemoArena: async () => {

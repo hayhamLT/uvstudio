@@ -53,10 +53,12 @@ UV Studio then asks which objects are **screens**:
 - **Checked objects become mappable screens.** Everything left unchecked is
   still imported, as dimmable **reference geometry** (the room, trusses, décor)
   so you keep your spatial context.
-- **Busy scene?** Use the **Filter** box to search by name. Tick individual
-  rows, or **Select all / Clear all**. The `… v` on the right is each object's
-  vertex count, handy for spotting heavy meshes. Editing keywords never
-  discards a box you ticked or cleared by hand.
+- **Busy scene?** Use the **Filter** box to search by name — or click a
+  **Shared** chip (the words that recur across your object names, like
+  `SCREEN` or `Outside`, each with a count) to filter by it in one click. Tick
+  individual rows, or **Select all / Clear all**. The `… v` on the right is
+  each object's vertex count, handy for spotting heavy meshes. Editing keywords
+  never discards a box you ticked or cleared by hand.
 
 Click **Import** and you're in.
 
@@ -146,10 +148,15 @@ Each row shows, at a glance:
   The eye control cycles **visible → solo → hidden** so you can isolate one
   screen while you work.
 
-At the bottom, **Reference geometry** groups every non-screen object. The slider
-sets how bright that context appears (black → 50% grey) and the eye hides it
-entirely — dim it right down when you want the screens to pop, bring it up when
-you need spatial reference.
+At the bottom, **Reference geometry** groups every non-screen object, with two
+sliders and an eye toggle:
+
+- **Brightness** — how bright the context shell appears (black → 50% grey).
+- **Opacity** — from solid down to a 15% ghost. Below 100% the shell turns
+  see-through, so screens glow through the venue walls while the structure
+  stays readable (rendered flicker-free — no z-fighting or double-darkened
+  faces). At 100% it's fully opaque with true occlusion.
+- The **eye** hides the group entirely.
 
 ---
 

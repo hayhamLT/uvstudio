@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import clsx from 'clsx'
 import { useStore } from '../state/store'
-import { classifyScreens, isNamedScreen, BUILTIN_SCREEN_KEYWORDS } from '../map/classify'
+import { classifyScreens, commonWords, isNamedScreen, BUILTIN_SCREEN_KEYWORDS } from '../map/classify'
 
 /** Lets the user pick which imported objects become screens. Screens are
  *  auto-detected by name on open; the detection keywords, a search filter, and
@@ -53,6 +53,12 @@ export default function ImportDialog() {
     // objs is stable for a given pending; extraKeywords drives re-detection
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [pending, extraKeywords],
+  )
+  // words shared across ≥2 object names → quick-filter chips
+  const common = useMemo(
+    () => (pending ? commonWords(objs.map((o) => o.name)) : []),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [pending],
   )
   const sel = useMemo(() => {
     const s = new Set(auto)
@@ -158,6 +164,30 @@ export default function ImportDialog() {
             {sel.size >= objs.length ? 'Clear all' : 'Select all'}
           </button>
         </div>
+
+        {/* words shared across object names — click to filter the list by one */}
+        {common.length > 0 && (
+          <div className="mb-2 flex flex-wrap items-center gap-1">
+            <span className="mr-0.5 text-[10px] font-semibold uppercase tracking-wider text-fog-500">Shared</span>
+            {common.map((t) => {
+              const active = q === t.label.toLowerCase()
+              return (
+                <button
+                  key={t.label}
+                  onClick={() => setFilter(active ? '' : t.label)}
+                  className={clsx(
+                    'btn-press rounded px-1.5 py-0.5 text-[10px] ring-focus transition',
+                    active
+                      ? 'bg-brand-500/20 text-brand-300'
+                      : 'bg-ink-700/60 text-fog-300 hover:bg-ink-600 hover:text-fog-100',
+                  )}
+                >
+                  {t.label} <span className={active ? 'text-brand-400/70' : 'text-fog-500'}>{t.count}</span>
+                </button>
+              )
+            })}
+          </div>
+        )}
 
         <div className="mb-1.5 flex items-center justify-between px-0.5 text-[11px] text-fog-400">
           <span>

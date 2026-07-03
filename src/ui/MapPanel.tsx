@@ -376,6 +376,8 @@ export default function MapPanel() {
   const contextCount = useStore((s) => s.contextCount)
   const contextShade = useStore((s) => s.contextShade)
   const setContextShade = useStore((s) => s.setContextShade)
+  const contextOpacity = useStore((s) => s.contextOpacity)
+  const setContextOpacity = useStore((s) => s.setContextOpacity)
   const contextVisible = useStore((s) => s.contextVisible)
   const setContextVisible = useStore((s) => s.setContextVisible)
 
@@ -469,22 +471,43 @@ export default function MapPanel() {
               </button>
             </span>
           </div>
-          <div className={`flex items-center gap-2 ${!contextVisible ? 'pointer-events-none opacity-40' : ''}`}>
-            <span
-              className="h-3.5 w-3.5 shrink-0 rounded-full ring-1 ring-inset ring-white/15"
-              style={{ background: greyHex(contextShade) }}
-            />
-            <input
-              type="range"
-              min={0}
-              max={0.5}
-              step={0.005}
-              value={contextShade}
-              onChange={(e) => setContextShade(Number(e.target.value))}
-              title="Reference brightness (black → 50% white)"
-              className="h-1.5 flex-1 cursor-pointer appearance-none rounded-full accent-white"
-              style={{ background: 'linear-gradient(to right, #000, #808080)' }}
-            />
+          <div className={`space-y-2 ${!contextVisible ? 'pointer-events-none opacity-40' : ''}`}>
+            <div className="flex items-center gap-2" title="Reference brightness (black → 50% white)">
+              <span
+                className="h-3.5 w-3.5 shrink-0 rounded-full ring-1 ring-inset ring-white/15"
+                style={{ background: greyHex(contextShade) }}
+              />
+              <input
+                type="range"
+                min={0}
+                max={0.5}
+                step={0.005}
+                value={contextShade}
+                onChange={(e) => setContextShade(Number(e.target.value))}
+                className="h-1.5 flex-1 cursor-pointer appearance-none rounded-full accent-white"
+                style={{ background: 'linear-gradient(to right, #000, #808080)' }}
+              />
+            </div>
+            <div className="flex items-center gap-2" title="Reference opacity (ghost → solid)">
+              {/* ghost/transparency icon: a fading circle */}
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" className="shrink-0 text-fog-400">
+                <circle cx="12" cy="12" r="8" strokeDasharray="4 3" />
+                <circle cx="12" cy="12" r="3.5" fill="currentColor" stroke="none" opacity="0.5" />
+              </svg>
+              <input
+                type="range"
+                min={0.15}
+                max={1}
+                step={0.01}
+                value={contextOpacity}
+                onChange={(e) => setContextOpacity(Number(e.target.value))}
+                className="h-1.5 flex-1 cursor-pointer appearance-none rounded-full accent-white"
+                style={{ background: 'linear-gradient(to right, transparent, #808080), repeating-conic-gradient(#2a3340 0% 25%, #11151d 0% 50%) 0 0 / 8px 8px' }}
+              />
+              <span className="w-8 shrink-0 text-right text-[10px] tabular-nums text-fog-500">
+                {Math.round(contextOpacity * 100)}%
+              </span>
+            </div>
           </div>
         </div>
       )}
