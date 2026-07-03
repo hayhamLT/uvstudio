@@ -91,30 +91,59 @@ export default function Landing({
       </div>
 
       {/* credit, pinned to the bottom (links open in the default browser) */}
-      <div className="absolute bottom-6 flex items-center gap-1 text-[11px] text-fog-500">
-        <span>Created by</span>
-        <a
-          href="https://motion.hamlt.com"
-          onClick={(e) => {
-            e.preventDefault()
-            void openExternal('https://motion.hamlt.com')
-          }}
-          className="font-medium text-fog-400 transition hover:text-fog-200 ring-focus"
-        >
-          hamLT
-        </a>
-        <span className="px-0.5">·</span>
-        <span>Powered by</span>
-        <a
-          href="https://toyrobotmedia.com"
-          onClick={(e) => {
-            e.preventDefault()
-            void openExternal('https://toyrobotmedia.com')
-          }}
-          className="font-medium text-fog-400 transition hover:text-fog-200 ring-focus"
-        >
-          Toy Robot Media
-        </a>
+      <div className="absolute bottom-6 flex flex-col items-center gap-1 text-[11px] text-fog-500">
+        <div className="flex items-center gap-1">
+          <span>Pairs with</span>
+          <a
+            href="https://www.preshow.link"
+            title="Plan and previz real-world shows — screens, timelines, review"
+            onClick={(e) => {
+              e.preventDefault()
+              void openExternal('https://www.preshow.link')
+            }}
+            className="font-medium text-fog-400 transition hover:text-fog-200 ring-focus"
+          >
+            Preshow.link
+          </a>
+          <span>for previz and</span>
+          <a
+            href="https://render.preshow.link"
+            title="Render comps locally — video mapped onto 3D scenes via headless Blender / Cinema 4D"
+            onClick={(e) => {
+              e.preventDefault()
+              void openExternal('https://render.preshow.link')
+            }}
+            className="font-medium text-fog-400 transition hover:text-fog-200 ring-focus"
+          >
+            PrevizRender
+          </a>
+          <span>for local renders</span>
+        </div>
+        <div className="flex items-center gap-1">
+          <span>Created by</span>
+          <a
+            href="https://motion.hamlt.com"
+            onClick={(e) => {
+              e.preventDefault()
+              void openExternal('https://motion.hamlt.com')
+            }}
+            className="font-medium text-fog-400 transition hover:text-fog-200 ring-focus"
+          >
+            hamLT
+          </a>
+          <span className="px-0.5">·</span>
+          <span>Powered by</span>
+          <a
+            href="https://toyrobotmedia.com"
+            onClick={(e) => {
+              e.preventDefault()
+              void openExternal('https://toyrobotmedia.com')
+            }}
+            className="font-medium text-fog-400 transition hover:text-fog-200 ring-focus"
+          >
+            Toy Robot Media
+          </a>
+        </div>
       </div>
 
       <input ref={inputRef} type="file" accept=".glb,.gltf,.psd,image/*" multiple className="hidden" onChange={onPick} />
