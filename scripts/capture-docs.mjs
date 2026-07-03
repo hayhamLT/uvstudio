@@ -163,6 +163,15 @@ await capture('wizard', {
 })
 await capture('workspace', { url: `${APP}/?shot=zyn` })
 await capture('venue3d', { url: `${APP}/?shot=zyn&view=3d` })
+// same loaded state, reference geometry dropped to a 35% ghost — the hero shot
+await capture('venue-ghost', {
+  extra: `(() => {
+    const s = document.querySelector('input[type=range][min="0.15"]')
+    const set = Object.getOwnPropertyDescriptor(window.HTMLInputElement.prototype, 'value').set
+    set.call(s, '0.35')
+    s.dispatchEvent(new Event('input', { bubbles: true }))
+  })()`,
+})
 
 // ---- 2. 3D view modes: close-ups of the 3D pane only -----------------------
 const view3dPane = `document.querySelector('[title*="Checker"]')?.closest('.relative.h-full.w-full')`
