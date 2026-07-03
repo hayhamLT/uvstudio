@@ -56,6 +56,25 @@ setup. Install the plugin / add-on from the app's **Preferences**.
 
 Only UV coordinates ever travel back — your geometry never round-trips.
 
+## Part of the Toy Robot Media family
+
+UV Studio is one of three sibling tools built by
+[hamLT](https://motion.hamlt.com) and powered by
+[Toy Robot Media](https://toyrobotmedia.com):
+
+- **[Preshow.link](https://www.preshow.link)** — plan and previz real-world
+  shows: venues, screens, timelines, review. UV Studio lives at
+  [uv.preshow.link](https://uv.preshow.link) for a reason.
+- **UV Studio** (this repo) — map artwork onto those screens, with C4D /
+  Blender round-trips.
+- **[PrevizRender](https://render.preshow.link)** —
+  render comps locally: video mapped onto 3D scenes via headless Blender or
+  Cinema 4D + Redshift.
+
+A planned round-trip lets Preshow.link send a screens GLB here for UV work and
+re-import it by object name (see `docs/toy-robot-family.md` in the
+Preshow.link repo for the draft handoff spec).
+
 ---
 
 ## Build from source (developers)
