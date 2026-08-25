@@ -14,3 +14,7 @@ index.html
 
 # session-local tooling, not project source
 .claude
+
+# Captured verbatim from the real C4D / Blender plugins — reformatting them
+# would defeat the point of recording exactly what the plugins emit.
+src/bridge/fixtures
