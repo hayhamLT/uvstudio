@@ -189,7 +189,7 @@ export function transformObjectUV(
   // aspect (w/h, in pixels) of the texture this screen samples — the same factor
   // the views apply to U, so we rotate in that visually-square space.
   const aspect = st.layeredMode
-    ? live.objAspect.get(obj.name) ?? 1
+    ? (live.objAspect.get(obj.name) ?? 1)
     : st.atlas
       ? st.atlas.width / Math.max(st.atlas.height, 1)
       : 1
@@ -270,10 +270,7 @@ export function snapshot(g: MapSnapshotSource): MapSnapshot {
   }
 }
 
-export function computePacked(
-  shells: Shell[],
-  uvMap: Map<number, Float32Array>,
-): Map<number, Float32Array> {
+export function computePacked(shells: Shell[], uvMap: Map<number, Float32Array>): Map<number, Float32Array> {
   const ids = shells.map((s) => s.id).filter((id) => uvMap.has(id))
   const islands = ids.map((id) => ({ uv: uvMap.get(id)! }))
   const result = packIslands(islands)

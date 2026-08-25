@@ -37,10 +37,7 @@ export function cancelRelaxJob() {
   worker?.postMessage({ type: 'cancel' } satisfies ToWorker)
 }
 
-export function ensureWorker(
-  get: () => RelaxSource,
-  set: (p: Partial<RelaxPatch>) => void,
-): Worker {
+export function ensureWorker(get: () => RelaxSource, set: (p: Partial<RelaxPatch>) => void): Worker {
   if (worker) return worker
   worker = new Worker(new URL('../workers/unwrap.worker.ts', import.meta.url), {
     type: 'module',

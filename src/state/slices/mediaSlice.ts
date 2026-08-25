@@ -18,25 +18,33 @@ import { type RectUV } from '../../map/fit'
 import { ocrRegionLabels, matchByLabels, similarity, normalize, matchNamesToLabels } from '../../map/ocr'
 import { loadPsdFile, flattenPsdLayers } from '../../mesh/loadPsd'
 import { redoStack, undoStack } from '../history'
-import {
-  isPsd,
-  loadImage,
-  loadImageFromBlob,
-  parseMediaItems,
-  suggestLinks,
-} from '../media'
-import {
-  matchLayerPool,
-  screenOverrides,
-  } from '../mapping'
+import { isPsd, loadImage, loadImageFromBlob, parseMediaItems, suggestLinks } from '../media'
+import { matchLayerPool, screenOverrides } from '../mapping'
 
+export type MediaSlice = Pick<
+  AppState,
+  | 'atlas'
+  | 'regions'
+  | 'layeredMode'
+  | 'psdLayerCount'
+  | 'layerPoolCount'
+  | 'pendingLink'
+  | 'ocrBusy'
+  | 'loadAtlasUrl'
+  | 'loadPsd'
+  | 'loadImages'
+  | 'setObjectImage'
+  | 'applyMediaFiles'
+  | 'beginLink'
+  | 'openLinkWizard'
+  | 'addLinkMedia'
+  | 'confirmLink'
+  | 'cancelLink'
+  | 'removeObjectTexture'
+  | 'autoMatch'
+>
 
-export type MediaSlice = Pick<AppState, 'atlas' | 'regions' | 'layeredMode' | 'psdLayerCount' | 'layerPoolCount' | 'pendingLink' | 'ocrBusy' | 'loadAtlasUrl' | 'loadPsd' | 'loadImages' | 'setObjectImage' | 'applyMediaFiles' | 'beginLink' | 'openLinkWizard' | 'addLinkMedia' | 'confirmLink' | 'cancelLink' | 'removeObjectTexture' | 'autoMatch'>
-
-export const createMediaSlice: StateCreator<AppState, [], [], MediaSlice> = (
-  set,
-  get,
-) => ({
+export const createMediaSlice: StateCreator<AppState, [], [], MediaSlice> = (set, get) => ({
   atlas: null,
   regions: [],
   layeredMode: false,
@@ -461,9 +469,7 @@ export const createMediaSlice: StateCreator<AppState, [], [], MediaSlice> = (
       // screens' existing UVs; the user maps on demand (Auto-map / M).
       if (get().autoMapOnImport) get().runMapping()
       const n = `${applied} screen${applied === 1 ? '' : 's'}`
-      const msg = get().autoMapOnImport
-        ? `Linked media to ${n}`
-        : `Linked media to ${n} — Auto-map to fit`
+      const msg = get().autoMapOnImport ? `Linked media to ${n}` : `Linked media to ${n} — Auto-map to fit`
       set({ status: msg })
       get().pushToast('good', msg)
     }
@@ -505,7 +511,10 @@ export const createMediaSlice: StateCreator<AppState, [], [], MediaSlice> = (
     set({ ocrBusy: true, status: 'Reading region labels (OCR)…' })
     try {
       const img = await loadImage(atlas.url)
-      const labeled = await ocrRegionLabels(img, regions.map((r) => ({ ...r })))
+      const labeled = await ocrRegionLabels(
+        img,
+        regions.map((r) => ({ ...r })),
+      )
       const assignment = matchByLabels(names, labeled)
       set({
         regions: labeled,
@@ -517,5 +526,5 @@ export const createMediaSlice: StateCreator<AppState, [], [], MediaSlice> = (
     } finally {
       set({ ocrBusy: false })
     }
-  }
+  },
 })

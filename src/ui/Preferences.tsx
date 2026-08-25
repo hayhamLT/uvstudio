@@ -125,8 +125,8 @@ export default function Preferences({ open, onClose }: { open: boolean; onClose:
         <Section title="Cinema 4D">
           {!link.linkSupported() ? (
             <p className="text-[12px] text-fog-400">
-              The Cinema 4D bridge needs the <span className="text-fog-200">desktop app</span> or a
-              Chromium browser.
+              The Cinema 4D bridge needs the <span className="text-fog-200">desktop app</span> or a Chromium
+              browser.
             </p>
           ) : (
             <>
@@ -185,7 +185,10 @@ export default function Preferences({ open, onClose }: { open: boolean; onClose:
                   </div>
                   {/* Where it installs — visible and adjustable */}
                   <div className="flex items-center gap-2 rounded-md border border-line/70 bg-ink-800/60 px-2.5 py-1.5">
-                    <code className="min-w-0 flex-1 truncate text-[11px] text-fog-400" title={c4d?.path ?? ''}>
+                    <code
+                      className="min-w-0 flex-1 truncate text-[11px] text-fog-400"
+                      title={c4d?.path ?? ''}
+                    >
                       {c4d?.path ?? 'Pick a Cinema 4D plugins folder'}
                     </code>
                     <button
@@ -254,8 +257,8 @@ export default function Preferences({ open, onClose }: { open: boolean; onClose:
             />
           </Row>
           <p className="text-[11px] text-fog-500">
-            Comma-separated. An object whose name contains any of these words is
-            auto-detected as a screen in the import dialog.
+            Comma-separated. An object whose name contains any of these words is auto-detected as a screen in
+            the import dialog.
           </p>
         </Section>
 
@@ -337,8 +340,7 @@ function Toggle({
       <button
         onClick={() => onChange(!checked)}
         className={
-          'relative h-5 w-9 shrink-0 rounded-full transition ' +
-          (checked ? 'bg-brand-500' : 'bg-ink-600')
+          'relative h-5 w-9 shrink-0 rounded-full transition ' + (checked ? 'bg-brand-500' : 'bg-ink-600')
         }
       >
         <span

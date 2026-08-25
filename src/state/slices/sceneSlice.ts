@@ -17,23 +17,36 @@ import { contentRectFromImage } from '../../map/contentRect'
 import { matchByLabels } from '../../map/ocr'
 import { demoArena, makeDemoAtlas, demoRegions } from '../../map/demo'
 import { redoStack, undoStack } from '../history'
-import {
-  authoredUV,
-  screenOverrides,
-  } from '../mapping'
-import {
-  DEFAULT_CONTEXT_SHADE,
-  type MapObject,
-  type MapShell,
-  } from '../types'
+import { authoredUV, screenOverrides } from '../mapping'
+import { DEFAULT_CONTEXT_SHADE, type MapObject, type MapShell } from '../types'
 
+export type SceneSlice = Pick<
+  AppState,
+  | 'mode'
+  | 'mapObjects'
+  | 'mapShells'
+  | 'contextShells'
+  | 'contextCount'
+  | 'contextShade'
+  | 'contextOpacity'
+  | 'contextVisible'
+  | 'lastImportName'
+  | 'pendingImport'
+  | 'importedObjects'
+  | 'screenOrder'
+  | 'setMode'
+  | 'loadScene'
+  | 'beginImport'
+  | 'confirmImport'
+  | 'cancelImport'
+  | 'setContextShade'
+  | 'setContextOpacity'
+  | 'setContextVisible'
+  | 'loadDemoArena'
+  | 'loadDemoPsd'
+>
 
-export type SceneSlice = Pick<AppState, 'mode' | 'mapObjects' | 'mapShells' | 'contextShells' | 'contextCount' | 'contextShade' | 'contextOpacity' | 'contextVisible' | 'lastImportName' | 'pendingImport' | 'importedObjects' | 'screenOrder' | 'setMode' | 'loadScene' | 'beginImport' | 'confirmImport' | 'cancelImport' | 'setContextShade' | 'setContextOpacity' | 'setContextVisible' | 'loadDemoArena' | 'loadDemoPsd'>
-
-export const createSceneSlice: StateCreator<AppState, [], [], SceneSlice> = (
-  set,
-  get,
-) => ({
+export const createSceneSlice: StateCreator<AppState, [], [], SceneSlice> = (set, get) => ({
   mode: 'map',
   mapObjects: [],
   mapShells: [],
@@ -191,9 +204,10 @@ export const createSceneSlice: StateCreator<AppState, [], [], SceneSlice> = (
       selectedObject: mapObjects[0]?.name ?? null,
       hasUV: anyUV,
       isPacked: false,
-      status: anyUV || anyImported
-        ? `Imported ${mapObjects.length} screens${contextShells.length ? ` + reference geometry` : ''} — showing their UVs`
-        : `Scene: ${mapObjects.length} objects`,
+      status:
+        anyUV || anyImported
+          ? `Imported ${mapObjects.length} screens${contextShells.length ? ` + reference geometry` : ''} — showing their UVs`
+          : `Scene: ${mapObjects.length} objects`,
       uvVersion: get().uvVersion + 1,
     })
 
@@ -253,5 +267,5 @@ export const createSceneSlice: StateCreator<AppState, [], [], SceneSlice> = (
     } catch {
       set({ status: 'Demo PSD not found — import a .psd instead' })
     }
-  }
+  },
 })

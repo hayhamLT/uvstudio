@@ -63,7 +63,7 @@ export default function MapSurfaces() {
   // reads only `live` (mutable, non-reactive), so a stable identity is honest
   // here and lets the distortion effect list it as a dependency
   const aspectFor = useCallback(
-    (objName: string) => (layeredMode ? live.objAspect.get(objName) ?? 1 : live.atlasAspect || 1),
+    (objName: string) => (layeredMode ? (live.objAspect.get(objName) ?? 1) : live.atlasAspect || 1),
     [layeredMode],
   )
 
@@ -99,7 +99,6 @@ export default function MapSurfaces() {
       const edges = new THREE.EdgesGeometry(geo, 25) // silhouette for selection outline
       return { geo, wire, edges }
     })
-     
   }, [mapShells, flippedObjs])
 
   useEffect(
@@ -215,7 +214,7 @@ export default function MapSurfaces() {
         const visible = !hiddenSet.has(ms.objName) && (soloScreen === null || soloScreen === ms.objName)
         if (!visible) return <group key={ms.id} visible={false} />
 
-        const tex = layeredMode ? live.objTextures.get(ms.objName) ?? null : live.atlasTexture
+        const tex = layeredMode ? (live.objTextures.get(ms.objName) ?? null) : live.atlasTexture
         const hasUV = live.uv.has(ms.id)
         const contentTextured = !!tex && hasUV && (layeredMode || mappedSet.has(ms.objName))
         const isSel = selectedObject === ms.objName

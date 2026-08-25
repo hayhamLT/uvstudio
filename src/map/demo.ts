@@ -22,8 +22,7 @@ function quadScreen(name: string, o: V3, du: V3, dv: V3, nu = 6, nv = 4): PolyMe
     }
   }
   for (let j = 0; j < nv; j++)
-    for (let i = 0; i < nu; i++)
-      faces.push([idx(i, j), idx(i + 1, j), idx(i + 1, j + 1), idx(i, j + 1)])
+    for (let i = 0; i < nu; i++) faces.push([idx(i, j), idx(i + 1, j), idx(i + 1, j + 1), idx(i, j + 1)])
   return { name, positions: Float32Array.from(positions), faces }
 }
 
@@ -49,8 +48,7 @@ function ribbon(
     }
   }
   for (let j = 0; j < nv; j++)
-    for (let i = 0; i < nu; i++)
-      faces.push([idx(i, j), idx(i + 1, j), idx(i + 1, j + 1), idx(i, j + 1)])
+    for (let i = 0; i < nu; i++) faces.push([idx(i, j), idx(i + 1, j), idx(i + 1, j + 1), idx(i, j + 1)])
   return { name, positions: Float32Array.from(positions), faces }
 }
 

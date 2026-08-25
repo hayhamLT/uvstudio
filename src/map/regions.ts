@@ -100,11 +100,7 @@ export function detectRegions(
       y0: minY / h,
       x1: (maxX + 1) / w,
       y1: (maxY + 1) / h,
-      color: [
-        Math.round(sumR / count),
-        Math.round(sumG / count),
-        Math.round(sumB / count),
-      ],
+      color: [Math.round(sumR / count), Math.round(sumG / count), Math.round(sumB / count)],
       areaFrac: count / (w * h),
     })
   }

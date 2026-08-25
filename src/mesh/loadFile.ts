@@ -7,9 +7,7 @@ import type { PolyMesh, SceneObject } from './types'
  *  page. Cached after the first call. */
 let loaderPromise: Promise<GLTFLoaderType> | null = null
 function gltfLoader(): Promise<GLTFLoaderType> {
-  loaderPromise ??= import('three/examples/jsm/loaders/GLTFLoader.js').then(
-    (m) => new m.GLTFLoader(),
-  )
+  loaderPromise ??= import('three/examples/jsm/loaders/GLTFLoader.js').then((m) => new m.GLTFLoader())
   return loaderPromise
 }
 
@@ -73,8 +71,7 @@ async function gltfToScene(buffer: ArrayBuffer): Promise<SceneObject[]> {
           if (!pos) return
           const uvAttr = geo.getAttribute('uv') as THREE.BufferAttribute | undefined
           const mat = (Array.isArray(m.material) ? m.material[0] : m.material) as
-            | THREE.MeshStandardMaterial
-            | undefined
+            THREE.MeshStandardMaterial | undefined
           const texCanvas = uvAttr ? textureToCanvas(mat?.map) : null
           const hasUV = !!uvAttr && !!texCanvas
 

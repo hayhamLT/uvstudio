@@ -12,11 +12,7 @@ interface FileSystemHandleLike {
 
 /** Parse a model file and open the screen-selection flow. `media` are any
  *  image/PSD files imported alongside it, auto-applied to matching screens. */
-export async function importModelFile(
-  file: File,
-  handle?: FileSystemHandleLike | null,
-  media?: File[],
-) {
+export async function importModelFile(file: File, handle?: FileSystemHandleLike | null, media?: File[]) {
   const s = useStore.getState()
   s.setStatus(`Loading ${file.name}…`)
   lastHandle = handle ?? null
@@ -96,7 +92,11 @@ export async function openModelPicker(fallbackInput?: HTMLInputElement | null) {
       await importMapFiles(files)
       return
     }
-    await importModelFile(model, null, files.filter((f) => f !== model && !isModelFile(f)))
+    await importModelFile(
+      model,
+      null,
+      files.filter((f) => f !== model && !isModelFile(f)),
+    )
     return
   }
   if (canPickWithHandle()) {
@@ -186,7 +186,11 @@ export async function handleViewportDrop(files: FileList | File[]) {
   const model = arr.find(isModelFile)
   if (model) {
     // import the model + any image/PSD files dropped with it (auto-applied)
-    await importModelFile(model, null, arr.filter((f) => f !== model && !isModelFile(f)))
+    await importModelFile(
+      model,
+      null,
+      arr.filter((f) => f !== model && !isModelFile(f)),
+    )
     return
   }
 

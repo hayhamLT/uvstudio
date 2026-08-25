@@ -43,7 +43,11 @@ function render(size) {
   }
   for (let y = 0; y < W; y++) {
     const t = y / W
-    const col = [top[0] + (bot[0] - top[0]) * t, top[1] + (bot[1] - top[1]) * t, top[2] + (bot[2] - top[2]) * t]
+    const col = [
+      top[0] + (bot[0] - top[0]) * t,
+      top[1] + (bot[1] - top[1]) * t,
+      top[2] + (bot[2] - top[2]) * t,
+    ]
     for (let x = 0; x < W; x++) if (inRound(x, y)) set(x, y, col, 1)
   }
 
@@ -191,6 +195,14 @@ write('128x128.png', p128)
 write('128x128@2x.png', p256)
 write('icon.png', p512)
 write('icon.ico', ico(p256))
-write('icon.icns', icns([['ic07', p128], ['ic08', p256], ['ic09', p512], ['ic10', p1024]]))
+write(
+  'icon.icns',
+  icns([
+    ['ic07', p128],
+    ['ic08', p256],
+    ['ic09', p512],
+    ['ic10', p1024],
+  ]),
+)
 fs.writeFileSync(path.join(OUT, '..', '..', 'app-icon.png'), p1024)
 console.log('icons written to', OUT)

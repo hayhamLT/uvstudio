@@ -7,8 +7,7 @@ const ctx = self as unknown as DedicatedWorkerGlobalScope
 
 let activeJob = -1
 
-const sleep = (ms: number) =>
-  ms > 0 ? new Promise<void>((r) => setTimeout(r, ms)) : Promise.resolve()
+const sleep = (ms: number) => (ms > 0 ? new Promise<void>((r) => setTimeout(r, ms)) : Promise.resolve())
 
 function post(msg: FromWorker, transfer: Transferable[] = []) {
   ctx.postMessage(msg, transfer)

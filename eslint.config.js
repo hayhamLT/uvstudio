@@ -43,10 +43,7 @@ export default tseslint.config(
       // upstream types genuinely don't line up — warn, don't block the build.
       '@typescript-eslint/no-explicit-any': 'warn',
       // `cond ? a() : b()` as a statement is used throughout as a terse dispatch
-      '@typescript-eslint/no-unused-expressions': [
-        'error',
-        { allowTernary: true, allowShortCircuit: true },
-      ],
+      '@typescript-eslint/no-unused-expressions': ['error', { allowTernary: true, allowShortCircuit: true }],
     },
   },
   {

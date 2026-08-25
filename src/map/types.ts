@@ -16,5 +16,4 @@ export interface Region {
 
 export const regionWidth = (r: Region) => r.x1 - r.x0
 export const regionHeight = (r: Region) => r.y1 - r.y0
-export const regionAspect = (r: Region) =>
-  (r.x1 - r.x0) / Math.max(r.y1 - r.y0, 1e-6)
+export const regionAspect = (r: Region) => (r.x1 - r.x0) / Math.max(r.y1 - r.y0, 1e-6)

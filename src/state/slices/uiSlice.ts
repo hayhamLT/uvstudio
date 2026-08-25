@@ -10,15 +10,30 @@
 import type { StateCreator } from 'zustand'
 import type { AppState } from '../store'
 
-
 let toastCounter = 0
 
-export type UiSlice = Pick<AppState, 'status' | 'toasts' | 'uvVersion' | 'hasUV' | 'isPacked' | 'view3d' | 'setView3d' | 'cullBackface' | 'setCullBackface' | 'editMode' | 'mapSelection' | 'setEditMode' | 'setMapSelection' | 'clearMapSelection' | 'setStatus' | 'pushToast' | 'dismissToast'>
+export type UiSlice = Pick<
+  AppState,
+  | 'status'
+  | 'toasts'
+  | 'uvVersion'
+  | 'hasUV'
+  | 'isPacked'
+  | 'view3d'
+  | 'setView3d'
+  | 'cullBackface'
+  | 'setCullBackface'
+  | 'editMode'
+  | 'mapSelection'
+  | 'setEditMode'
+  | 'setMapSelection'
+  | 'clearMapSelection'
+  | 'setStatus'
+  | 'pushToast'
+  | 'dismissToast'
+>
 
-export const createUiSlice: StateCreator<AppState, [], [], UiSlice> = (
-  set,
-  get,
-) => ({
+export const createUiSlice: StateCreator<AppState, [], [], UiSlice> = (set, get) => ({
   status: 'Load a model to begin',
   toasts: [],
   uvVersion: 0,
@@ -37,5 +52,5 @@ export const createUiSlice: StateCreator<AppState, [], [], UiSlice> = (
   pushToast: (kind, msg) =>
     // keep at most 4 on screen — older ones roll off the top of the stack
     set({ toasts: [...get().toasts.slice(-3), { id: ++toastCounter, kind, msg }] }),
-  dismissToast: (id) => set({ toasts: get().toasts.filter((t) => t.id !== id) })
+  dismissToast: (id) => set({ toasts: get().toasts.filter((t) => t.id !== id) }),
 })

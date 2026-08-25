@@ -15,20 +15,35 @@ import { SAMPLES } from '../../mesh/samples'
 import { live, resetLive } from '../live'
 import type { SerializedShell, ToWorker } from '../../workers/protocol'
 import { cancelRelaxJob, ensureWorker, nextJobId } from '../relax'
-import {
-  computePacked,
-  } from '../mapping'
-import {
-  DEFAULT_DISPLAY,
-  } from '../types'
+import { computePacked } from '../mapping'
+import { DEFAULT_DISPLAY } from '../types'
 
+export type UnwrapSlice = Pick<
+  AppState,
+  | 'mesh'
+  | 'he'
+  | 'modelName'
+  | 'shells'
+  | 'shellSet'
+  | 'tool'
+  | 'display'
+  | 'isRelaxing'
+  | 'relaxProgress'
+  | 'overallDistortion'
+  | 'selectedShells'
+  | 'loadMesh'
+  | 'loadSample'
+  | 'setTool'
+  | 'setDisplay'
+  | 'flatten'
+  | 'cancelRelax'
+  | 'pack'
+  | 'unpack'
+  | 'selectShell'
+  | 'clearSelection'
+>
 
-export type UnwrapSlice = Pick<AppState, 'mesh' | 'he' | 'modelName' | 'shells' | 'shellSet' | 'tool' | 'display' | 'isRelaxing' | 'relaxProgress' | 'overallDistortion' | 'selectedShells' | 'loadMesh' | 'loadSample' | 'setTool' | 'setDisplay' | 'flatten' | 'cancelRelax' | 'pack' | 'unpack' | 'selectShell' | 'clearSelection'>
-
-export const createUnwrapSlice: StateCreator<AppState, [], [], UnwrapSlice> = (
-  set,
-  get,
-) => ({
+export const createUnwrapSlice: StateCreator<AppState, [], [], UnwrapSlice> = (set, get) => ({
   mesh: null,
   he: null,
   modelName: '',
@@ -128,5 +143,5 @@ export const createUnwrapSlice: StateCreator<AppState, [], [], UnwrapSlice> = (
     else sel.add(id)
     set({ selectedShells: sel })
   },
-  clearSelection: () => set({ selectedShells: new Set() })
+  clearSelection: () => set({ selectedShells: new Set() }),
 })

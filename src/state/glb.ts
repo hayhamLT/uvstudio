@@ -43,7 +43,7 @@ export function screenSpecs(g: ScreenResSource): ScreenSpec[] {
         h = f.h
       }
     }
-    return { name, w, h, aspect: h ? w / h : live.objAspect.get(name) ?? 1 }
+    return { name, w, h, aspect: h ? w / h : (live.objAspect.get(name) ?? 1) }
   })
 }
 
@@ -70,7 +70,7 @@ export async function buildMappedGlb(
     geo.setIndex(Array.from(ms.shell.triangles))
     geo.setAttribute('uv', new THREE.BufferAttribute(uv.slice(), 2))
     geo.computeVertexNormals()
-    const tex = layeredMode ? live.objTextures.get(ms.objName) ?? null : live.atlasTexture
+    const tex = layeredMode ? (live.objTextures.get(ms.objName) ?? null) : live.atlasTexture
     const mat = new THREE.MeshStandardMaterial({
       map: tex ?? null,
       color: 0xffffff,

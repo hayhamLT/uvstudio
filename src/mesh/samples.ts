@@ -48,12 +48,36 @@ export function quadSphere(seg = 8, radius = 1): PolyMesh {
   }
   // 6 faces of the cube, each subdivided seg×seg
   const faceDirs: [[number, number, number], [number, number, number], [number, number, number]][] = [
-    [[0, 0, 1], [1, 0, 0], [0, 1, 0]], // +z
-    [[0, 0, -1], [-1, 0, 0], [0, 1, 0]], // -z
-    [[1, 0, 0], [0, 0, -1], [0, 1, 0]], // +x
-    [[-1, 0, 0], [0, 0, 1], [0, 1, 0]], // -x
-    [[0, 1, 0], [1, 0, 0], [0, 0, -1]], // +y
-    [[0, -1, 0], [1, 0, 0], [0, 0, 1]], // -y
+    [
+      [0, 0, 1],
+      [1, 0, 0],
+      [0, 1, 0],
+    ], // +z
+    [
+      [0, 0, -1],
+      [-1, 0, 0],
+      [0, 1, 0],
+    ], // -z
+    [
+      [1, 0, 0],
+      [0, 0, -1],
+      [0, 1, 0],
+    ], // +x
+    [
+      [-1, 0, 0],
+      [0, 0, 1],
+      [0, 1, 0],
+    ], // -x
+    [
+      [0, 1, 0],
+      [1, 0, 0],
+      [0, 0, -1],
+    ], // +y
+    [
+      [0, -1, 0],
+      [1, 0, 0],
+      [0, 0, 1],
+    ], // -y
   ]
   for (const [normal, uDir, vDir] of faceDirs) {
     for (let j = 0; j < seg; j++) {
@@ -102,8 +126,8 @@ export function box(size = 1): PolyMesh {
 export function torus(R = 1, r = 0.4, majorSeg = 24, minorSeg = 12): PolyMesh {
   const b = new Builder()
   const idx = (i: number, j: number) => {
-    const u = (i % majorSeg) / majorSeg * Math.PI * 2
-    const vv = (j % minorSeg) / minorSeg * Math.PI * 2
+    const u = ((i % majorSeg) / majorSeg) * Math.PI * 2
+    const vv = ((j % minorSeg) / minorSeg) * Math.PI * 2
     const cx = Math.cos(u)
     const cz = Math.sin(u)
     const x = (R + r * Math.cos(vv)) * cx
@@ -123,7 +147,7 @@ export function torus(R = 1, r = 0.4, majorSeg = 24, minorSeg = 12): PolyMesh {
 export function cylinder(radius = 0.7, height = 2, radial = 24, heightSeg = 6): PolyMesh {
   const b = new Builder()
   const ring = (j: number, h: number) => {
-    const a = (j % radial) / radial * Math.PI * 2
+    const a = ((j % radial) / radial) * Math.PI * 2
     return b.vertex(Math.cos(a) * radius, h, Math.sin(a) * radius)
   }
   for (let s = 0; s < heightSeg; s++) {

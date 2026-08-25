@@ -46,8 +46,8 @@ test('the demo scene loads, maps, and renders both viewports', async ({ page }) 
 
   // drive the real store (dev-only handle) — no binary fixture needed
   await page.evaluate(async () => {
-    await (window as unknown as { uvStore: { getState(): { loadDemoArena(): Promise<void> } } })
-      .uvStore.getState()
+    await (window as unknown as { uvStore: { getState(): { loadDemoArena(): Promise<void> } } }).uvStore
+      .getState()
       .loadDemoArena()
   })
 
@@ -80,8 +80,8 @@ test('the demo scene loads, maps, and renders both viewports', async ({ page }) 
 test('undo and redo round-trip a screen transform', async ({ page }) => {
   await page.goto('/app/')
   await page.evaluate(async () => {
-    await (window as unknown as { uvStore: { getState(): { loadDemoArena(): Promise<void> } } })
-      .uvStore.getState()
+    await (window as unknown as { uvStore: { getState(): { loadDemoArena(): Promise<void> } } }).uvStore
+      .getState()
       .loadDemoArena()
   })
   await expect(page.locator('canvas').first()).toBeVisible({ timeout: 15_000 })

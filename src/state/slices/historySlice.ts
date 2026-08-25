@@ -11,13 +11,9 @@ import type { StateCreator } from 'zustand'
 import type { AppState } from '../store'
 import { redoStack, restoreDoc, snapshotDoc, trimHistory, undoStack } from '../history'
 
-
 export type HistorySlice = Pick<AppState, 'undoCount' | 'redoCount' | 'pushUndo' | 'undo' | 'redo'>
 
-export const createHistorySlice: StateCreator<AppState, [], [], HistorySlice> = (
-  set,
-  get,
-) => ({
+export const createHistorySlice: StateCreator<AppState, [], [], HistorySlice> = (set, get) => ({
   undoCount: 0,
   redoCount: 0,
   pushUndo: () => {
@@ -41,5 +37,5 @@ export const createHistorySlice: StateCreator<AppState, [], [], HistorySlice> = 
     const snap = redoStack.pop()!
     restoreDoc(snap, set, get())
     set({ undoCount: undoStack.length, redoCount: redoStack.length, status: 'Redo' })
-  }
+  },
 })

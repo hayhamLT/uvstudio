@@ -85,7 +85,9 @@ export default defineConfig({
   // ignore .claude/ — permission-settings writes there mid-session and every
   // change would full-reload the dev app (wiping its state).
   server: {
-    port: Number((globalThis as { process?: { env?: Record<string, string | undefined> } }).process?.env?.PORT) || 5173,
+    port:
+      Number((globalThis as { process?: { env?: Record<string, string | undefined> } }).process?.env?.PORT) ||
+      5173,
     watch: { ignored: ['**/.claude/**'] },
   },
   plugins: [react(), tailwindcss(), emitVersionJson(), emitAppCsp()],

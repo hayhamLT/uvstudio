@@ -27,12 +27,6 @@ import {
 // re-exported so existing `from '../state/store'` imports keep working
 export type { AppMode, Display, MapObject, MapShell, MediaItem, ScreenSpec, Tool, Toast }
 
-
-
-
-
-
-
 export interface AppState {
   mesh: PolyMesh | null
   he: HEMesh | null
@@ -214,42 +208,6 @@ export interface AppState {
   pushToast: (kind: Toast['kind'], msg: string) => void
   dismissToast: (id: number) => void
 }
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 // ---------------------------------------------------------------------------
 // The store is assembled from slices (src/state/slices/*). Each slice owns one

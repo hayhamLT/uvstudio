@@ -3,11 +3,11 @@
 The **same** React/Vite app ships as both a website and a native desktop app.
 You edit the code once; both targets pick it up.
 
-| Target | Command | Output | Where it runs |
-|---|---|---|---|
-| **Web** (preshow.link) | `npm run build` | `dist/` | any modern browser |
-| **Desktop** (Mac + Windows) | `npm run tauri:build` | installers in `src-tauri/target/release/bundle/` | native app |
-| Desktop dev | `npm run tauri:dev` | — | hot-reloads like `npm run dev` |
+| Target                      | Command               | Output                                           | Where it runs                  |
+| --------------------------- | --------------------- | ------------------------------------------------ | ------------------------------ |
+| **Web** (preshow.link)      | `npm run build`       | `dist/`                                          | any modern browser             |
+| **Desktop** (Mac + Windows) | `npm run tauri:build` | installers in `src-tauri/target/release/bundle/` | native app                     |
+| Desktop dev                 | `npm run tauri:dev`   | —                                                | hot-reloads like `npm run dev` |
 
 Nothing is forked: `src-tauri/` is a thin native shell around `dist/`. All UI,
 unwrapping, PSD handling, etc. live in `src/` and are shared verbatim.
@@ -55,7 +55,7 @@ folder layout:
 Each writer drops `scene.glb` then writes `scene.json` **last**; the reader polls
 the manifest timestamp, so a half-written GLB is never read.
 
-**Round-trip:** C4D *Send selection* → app auto-loads the model → you unwrap →
+**Round-trip:** C4D _Send selection_ → app auto-loads the model → you unwrap →
 **Export ▸ Send to Cinema 4D** → the plugin copies the new UVs back onto your
 objects by name.
 
@@ -70,8 +70,12 @@ set, otherwise the chunk/media pixel size) two ways:
   manifest `scene.json`):
 
   ```json
-  { "v": 1, "app": "UV Studio", "kind": "screen-map",
-    "screens": [ { "name": "WALL_SCREEN_01", "w": 1150, "h": 359, "aspect": 3.2 } ] }
+  {
+    "v": 1,
+    "app": "UV Studio",
+    "kind": "screen-map",
+    "screens": [{ "name": "WALL_SCREEN_01", "w": 1150, "h": 359, "aspect": 3.2 }]
+  }
   ```
 
 Point a render/playback pipeline at the sidecar to build each screen's media at

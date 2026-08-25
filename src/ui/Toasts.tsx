@@ -103,7 +103,15 @@ function ToastCard({ toast }: { toast: Toast }) {
         title="Dismiss"
         className="btn-press flex h-5 w-5 shrink-0 items-center justify-center rounded text-fog-500 hover:bg-ink-700 hover:text-fog-100"
       >
-        <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round">
+        <svg
+          width="11"
+          height="11"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="2.2"
+          strokeLinecap="round"
+        >
           <path d="M18 6 6 18M6 6l12 12" />
         </svg>
       </button>

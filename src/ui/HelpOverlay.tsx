@@ -197,7 +197,9 @@ export default function HelpOverlay({ onClose }: { onClose: () => void }) {
               key={t}
               onClick={() => setTab(t)}
               className={`flex-1 rounded-md px-3 py-1.5 text-sm font-medium capitalize transition ring-focus ${
-                tab === t ? 'bg-brand-500/90 text-white' : 'text-fog-300 hover:bg-ink-700/60 hover:text-fog-100'
+                tab === t
+                  ? 'bg-brand-500/90 text-white'
+                  : 'text-fog-300 hover:bg-ink-700/60 hover:text-fog-100'
               }`}
             >
               {t}

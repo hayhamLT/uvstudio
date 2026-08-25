@@ -43,8 +43,8 @@ export default function UpdateBanner({ info, onClose }: { info: UpdateInfo; onCl
         </h2>
         <p className="mt-2 text-[13px] leading-relaxed text-fog-300">
           UV Studio <span className="text-fog-100">{info.version}</span> is out — you have{' '}
-          <span className="text-fog-100">{currentVersion}</span>. One click installs it and relaunches
-          the app. The Cinema&nbsp;4D / Blender plugins update with it.
+          <span className="text-fog-100">{currentVersion}</span>. One click installs it and relaunches the
+          app. The Cinema&nbsp;4D / Blender plugins update with it.
         </p>
         <div className="mt-5 flex justify-end gap-2">
           <button

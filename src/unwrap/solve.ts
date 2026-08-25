@@ -80,13 +80,7 @@ export function cgls(A: COO, b: Float64Array, iters = 400, tol = 1e-7): Float64A
  * Solve a symmetric positive-definite system A x = b with conjugate gradient.
  * Supports a warm start (x0) for fast re-solves across ARAP iterations.
  */
-export function cgSPD(
-  A: COO,
-  b: Float64Array,
-  x0?: Float64Array,
-  iters = 300,
-  tol = 1e-7,
-): Float64Array {
+export function cgSPD(A: COO, b: Float64Array, x0?: Float64Array, iters = 300, tol = 1e-7): Float64Array {
   const n = A.nCols
   const x = x0 ? Float64Array.from(x0) : new Float64Array(n)
   const r = new Float64Array(n)

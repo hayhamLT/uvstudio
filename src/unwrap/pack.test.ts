@@ -7,11 +7,7 @@ function square(x0: number, y0: number, s: number): Float32Array {
 
 describe('packing', () => {
   it('packs islands inside the unit square', () => {
-    const islands = [
-      { uv: square(0, 0, 2) },
-      { uv: square(10, 10, 1) },
-      { uv: square(-5, 3, 1.5) },
-    ]
+    const islands = [{ uv: square(0, 0, 2) }, { uv: square(10, 10, 1) }, { uv: square(-5, 3, 1.5) }]
     const res = packIslands(islands, { angleSteps: 8 })
     expect(res.uv.length).toBe(3)
     for (const uv of res.uv) {

@@ -14,7 +14,11 @@ export function loadImage(url: string): Promise<HTMLImageElement> {
     // when an image is handed to texImage2D straight from onload, before its
     // bitmap is decoded — decode() guarantees pixels are ready. Chromium
     // decodes synchronously on upload, so this is a no-op there.
-    img.onload = () => img.decode().then(() => resolve(img), () => resolve(img))
+    img.onload = () =>
+      img.decode().then(
+        () => resolve(img),
+        () => resolve(img),
+      )
     img.onerror = reject
     img.src = url
   })

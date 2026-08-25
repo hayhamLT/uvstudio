@@ -7,8 +7,7 @@ import { computeDistortion } from './distortion'
 function flatPatch(): Shell {
   const positions: number[] = []
   const idx = (i: number, j: number) => j * 3 + i
-  for (let j = 0; j < 3; j++)
-    for (let i = 0; i < 3; i++) positions.push(i, j, 0)
+  for (let j = 0; j < 3; j++) for (let i = 0; i < 3; i++) positions.push(i, j, 0)
   const triangles: number[] = []
   for (let j = 0; j < 2; j++) {
     for (let i = 0; i < 2; i++) {

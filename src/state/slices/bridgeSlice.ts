@@ -15,7 +15,6 @@ import * as linkBridge from '../../bridge/link'
 import { buildReturnPayload, type ReturnObjectInput } from '../../bridge/roundtrip'
 import { buildMappedGlb, screenManifest, screenSpecs } from '../glb'
 
-
 // After a Send, the app minimizes (steps aside for the DCC but keeps running)
 // only once the DCC acks a clean apply — or after a fallback timeout if the DCC
 // is closed (it applies on its next launch). A partial failure/error keeps the
@@ -39,10 +38,7 @@ function disarmSendQuit(): boolean {
 
 export type BridgeSlice = Pick<AppState, 'exportGltf' | 'sendToC4D' | 'handleUvAck'>
 
-export const createBridgeSlice: StateCreator<AppState, [], [], BridgeSlice> = (
-  set,
-  get,
-) => ({
+export const createBridgeSlice: StateCreator<AppState, [], [], BridgeSlice> = (set, get) => ({
   exportGltf: async () => {
     const g = get()
     const specs = screenSpecs(g)
@@ -72,7 +68,10 @@ export const createBridgeSlice: StateCreator<AppState, [], [], BridgeSlice> = (
     download(buf, 'screen_map.glb', 'model/gltf-binary')
     download(screenManifest(specs), 'screen_map.json', 'application/json')
     set({ status: `Exported ${specs.length} screens — screen_map.glb + .json (LED sizes)` })
-    get().pushToast('good', `Exported ${specs.length} screen${specs.length === 1 ? '' : 's'} — screen_map.glb + .json`)
+    get().pushToast(
+      'good',
+      `Exported ${specs.length} screen${specs.length === 1 ? '' : 's'} — screen_map.glb + .json`,
+    )
   },
   sendToC4D: async () => {
     const g = get()
@@ -123,7 +122,9 @@ export const createBridgeSlice: StateCreator<AppState, [], [], BridgeSlice> = (
         const payload = buildReturnPayload(uvInputs, Date.now())
         payload.screens = specs
         await linkBridge.sendUVs(payload)
-        set({ status: `Sent UVs for ${uvInputs.length} object${uvInputs.length === 1 ? '' : 's'} — waiting for confirmation…` })
+        set({
+          status: `Sent UVs for ${uvInputs.length} object${uvInputs.length === 1 ? '' : 's'} — waiting for confirmation…`,
+        })
         // Don't quit yet — wait for the plugin's ack so a partial failure is SEEN
         // (handleUvAck quits on success, stays open + warns on missed/error).
         // Fallback: if no ack lands (DCC closed — it applies on next launch), quit.
@@ -157,8 +158,7 @@ export const createBridgeSlice: StateCreator<AppState, [], [], BridgeSlice> = (
     const plural = ack.applied === 1 ? '' : 's'
     if (ack.missed?.length) {
       const names =
-        ack.missed.slice(0, 3).join(', ') +
-        (ack.missed.length > 3 ? ` +${ack.missed.length - 3} more` : '')
+        ack.missed.slice(0, 3).join(', ') + (ack.missed.length > 3 ? ` +${ack.missed.length - 3} more` : '')
       set({
         status: `⚠ ${dcc} applied UVs to ${ack.applied} object${plural} — couldn't find: ${names}`,
       })
@@ -171,5 +171,5 @@ export const createBridgeSlice: StateCreator<AppState, [], [], BridgeSlice> = (
     // clean success right after a Send → hand off to the DCC and step aside
     // (minimize, not quit — the app stays running for the next round-trip)
     if (wasSending) setTimeout(() => void linkBridge.minimizeWindow(), 1200)
-  }
+  },
 })

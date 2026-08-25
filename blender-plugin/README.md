@@ -16,9 +16,10 @@ Blender <--(UVs per face-corner)----- <temp>/UVStudioBridge/to_c4d/scene.json  <
   into every detected Blender version's addons folder. Then in Blender:
   **Edit ▸ Preferences ▸ Add-ons** → enable **UV Studio Bridge** (once).
 - **Manual:** install `uvstudio_bridge.py` via Blender ▸ Preferences ▸ Add-ons ▸
-  *Install from Disk*, then enable it.
+  _Install from Disk_, then enable it.
 
 Addons folder by OS:
+
 - macOS `~/Library/Application Support/Blender/<ver>/scripts/addons/`
 - Windows `%APPDATA%\Blender Foundation\Blender\<ver>\scripts\addons\`
 - Linux `~/.config/blender/<ver>/scripts/addons/`

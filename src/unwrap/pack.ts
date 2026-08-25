@@ -110,9 +110,7 @@ export function packIslands(
   if (islands.length === 0) return { uv: [], fill: 0 }
 
   const prepared = islands.map((i) => prepare(i, angleSteps))
-  const order = prepared
-    .map((_, i) => i)
-    .sort((a, b) => prepared[b].h - prepared[a].h)
+  const order = prepared.map((_, i) => i).sort((a, b) => prepared[b].h - prepared[a].h)
 
   // Binary search the largest scale whose shelf packing fits height ≤ 1.
   let lo = 0

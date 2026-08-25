@@ -14,12 +14,22 @@ function Thumb({ item }: { item: MediaItem | null }) {
   const cls = 'h-8 w-11'
   if (!item)
     return (
-      <div className={clsx(cls, 'flex shrink-0 items-center justify-center rounded border border-dashed border-line bg-ink-950/60 text-[9px] text-fog-500')}>
+      <div
+        className={clsx(
+          cls,
+          'flex shrink-0 items-center justify-center rounded border border-dashed border-line bg-ink-950/60 text-[9px] text-fog-500',
+        )}
+      >
         UVs
       </div>
     )
   return (
-    <div className={clsx(cls, 'flex shrink-0 items-center justify-center overflow-hidden rounded border border-line bg-ink-950')}>
+    <div
+      className={clsx(
+        cls,
+        'flex shrink-0 items-center justify-center overflow-hidden rounded border border-line bg-ink-950',
+      )}
+    >
       {item.thumb ? (
         <img src={item.thumb} alt="" draggable={false} className="max-h-full max-w-full object-contain" />
       ) : (
@@ -105,9 +115,9 @@ export default function LinkWizard() {
             </>
           ) : (
             <>
-              Each screen takes one image / PSD layer — click a screen's media to change it. Name
-              matches are pre-linked. Screens on <span className="text-fog-200">keep imported</span>{' '}
-              stay on their imported texture &amp; UVs.
+              Each screen takes one image / PSD layer — click a screen's media to change it. Name matches are
+              pre-linked. Screens on <span className="text-fog-200">keep imported</span> stay on their
+              imported texture &amp; UVs.
             </>
           )}
         </p>
@@ -122,9 +132,7 @@ export default function LinkWizard() {
                   onClick={() => setOpen(isOpen ? null : obj)}
                   className={clsx(
                     'row-lift flex cursor-pointer items-center gap-2.5 rounded-lg border px-2 py-1.5',
-                    isOpen
-                      ? 'border-brand-500/40 bg-brand-500/10'
-                      : 'border-transparent hover:bg-ink-700/40',
+                    isOpen ? 'border-brand-500/40 bg-brand-500/10' : 'border-transparent hover:bg-ink-700/40',
                   )}
                 >
                   <span

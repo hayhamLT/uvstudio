@@ -11,20 +11,46 @@ import type { StateCreator } from 'zustand'
 import type { AppState } from '../store'
 import { live } from '../live'
 import { prefBool, prefStr } from '../prefs'
-import {
-  authoredUV,
-  mapObjectUV,
-  snapshot,
-  transformObjectUV,
-} from '../mapping'
+import { authoredUV, mapObjectUV, snapshot, transformObjectUV } from '../mapping'
 
+export type MapSlice = Pick<
+  AppState,
+  | 'assignment'
+  | 'mapOrient'
+  | 'mapProjection'
+  | 'screenRes'
+  | 'mapFill'
+  | 'mapObjFit'
+  | 'mapFitInfo'
+  | 'mappedObjects'
+  | 'selectedObject'
+  | 'hiddenScreens'
+  | 'soloScreen'
+  | 'autoMapOnImport'
+  | 'screenKeywords'
+  | 'scaleMode'
+  | 'assign'
+  | 'rotateObject'
+  | 'flipObject'
+  | 'scaleSelection'
+  | 'scaleObject'
+  | 'setScaleMode'
+  | 'resetObjectOrient'
+  | 'setObjectProjection'
+  | 'setScreenRes'
+  | 'setMapFill'
+  | 'setAutoMapOnImport'
+  | 'setScreenKeywords'
+  | 'setObjectFit'
+  | 'runMapping'
+  | 'runMappingFor'
+  | 'selectObject'
+  | 'moveScreen'
+  | 'toggleHidden'
+  | 'toggleSolo'
+>
 
-export type MapSlice = Pick<AppState, 'assignment' | 'mapOrient' | 'mapProjection' | 'screenRes' | 'mapFill' | 'mapObjFit' | 'mapFitInfo' | 'mappedObjects' | 'selectedObject' | 'hiddenScreens' | 'soloScreen' | 'autoMapOnImport' | 'screenKeywords' | 'scaleMode' | 'assign' | 'rotateObject' | 'flipObject' | 'scaleSelection' | 'scaleObject' | 'setScaleMode' | 'resetObjectOrient' | 'setObjectProjection' | 'setScreenRes' | 'setMapFill' | 'setAutoMapOnImport' | 'setScreenKeywords' | 'setObjectFit' | 'runMapping' | 'runMappingFor' | 'selectObject' | 'moveScreen' | 'toggleHidden' | 'toggleSolo'>
-
-export const createMapSlice: StateCreator<AppState, [], [], MapSlice> = (
-  set,
-  get,
-) => ({
+export const createMapSlice: StateCreator<AppState, [], [], MapSlice> = (set, get) => ({
   assignment: {},
   mapOrient: {},
   mapProjection: {},
@@ -239,9 +265,11 @@ export const createMapSlice: StateCreator<AppState, [], [], MapSlice> = (
     // also called internally (region change, remove content, …) and must stay quiet
     if (opts?.announce) {
       if (mapped.length)
-        get().pushToast('good', `Mapped ${mapped.length}/${g.mapObjects.length} screen${g.mapObjects.length === 1 ? '' : 's'}`)
-      else
-        get().pushToast('info', 'Nothing to map yet — add images or PSD layers to the screens first')
+        get().pushToast(
+          'good',
+          `Mapped ${mapped.length}/${g.mapObjects.length} screen${g.mapObjects.length === 1 ? '' : 's'}`,
+        )
+      else get().pushToast('info', 'Nothing to map yet — add images or PSD layers to the screens first')
     }
   },
   // Explicit per-screen auto-map: re-projects when a target exists (PSD layer,
@@ -259,10 +287,10 @@ export const createMapSlice: StateCreator<AppState, [], [], MapSlice> = (
     // it BACK to its authored mapping. Re-projecting to {0,0,1,1} would trash
     // panorama slices, and doing nothing leaves a stale manual move in place.
     const hasTarget =
-      !g.layeredMode                        // atlas mode — region assignment is the target
-      || live.layerPool.length > 0          // PSD/images were loaded
-      || g.assignment[objName] != null       // manual region assignment
-      || live.objTextures.has(objName)       // the screen has its own content to fit
+      !g.layeredMode || // atlas mode — region assignment is the target
+      live.layerPool.length > 0 || // PSD/images were loaded
+      g.assignment[objName] != null || // manual region assignment
+      live.objTextures.has(objName) // the screen has its own content to fit
     if (g.importedObjects.includes(objName) && !hasTarget && obj.shellIds.some((id) => authoredUV.has(id))) {
       if (!opts?.noUndo) get().pushUndo()
       obj.shellIds.forEach((id) => {
@@ -337,9 +365,7 @@ export const createMapSlice: StateCreator<AppState, [], [], MapSlice> = (
     ),
   // Reorder a screen in the draw stack (later = drawn on top, for overlaps).
   moveScreen: (objName, dir) => {
-    const order = get().screenOrder.length
-      ? [...get().screenOrder]
-      : get().mapObjects.map((o) => o.name)
+    const order = get().screenOrder.length ? [...get().screenOrder] : get().mapObjects.map((o) => o.name)
     const i = order.indexOf(objName)
     if (i < 0) return
     const j = dir === 'up' ? i - 1 : i + 1
@@ -357,5 +383,5 @@ export const createMapSlice: StateCreator<AppState, [], [], MapSlice> = (
       soloScreen: get().soloScreen === objName ? null : objName,
       uvVersion: get().uvVersion + 1,
     })
-  }
+  },
 })

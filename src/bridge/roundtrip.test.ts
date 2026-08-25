@@ -21,8 +21,20 @@ function shell(): Shell {
 }
 
 const UV = Float32Array.from([
-  0, 0, 1, 0, 1, 1, 0, 1, // quad corners
-  0.2, 0.2, 0.5, 0.2, 0.2, 0.5, // triangle corners
+  0,
+  0,
+  1,
+  0,
+  1,
+  1,
+  0,
+  1, // quad corners
+  0.2,
+  0.2,
+  0.5,
+  0.2,
+  0.2,
+  0.5, // triangle corners
 ])
 
 describe('buildReturnObject', () => {

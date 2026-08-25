@@ -124,7 +124,16 @@ export default function FloatingWindow({
             title={collapsed ? 'Expand' : 'Collapse'}
             className="flex h-5 w-5 items-center justify-center rounded text-fog-400 hover:bg-ink-600 hover:text-fog-100"
           >
-            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <svg
+              width="13"
+              height="13"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            >
               {collapsed ? <path d="M6 9l6 6 6-6" /> : <path d="M5 12h14" />}
             </svg>
           </button>
@@ -137,8 +146,19 @@ export default function FloatingWindow({
           title="Drag to resize"
           className="absolute bottom-0 right-0 z-40 h-5 w-5 cursor-nwse-resize"
         >
-          <svg viewBox="0 0 16 16" className="absolute bottom-0.5 right-0.5 text-fog-400/70" width="12" height="12">
-            <path d="M14 6 L6 14 M14 11 L11 14" stroke="currentColor" strokeWidth="1.4" fill="none" strokeLinecap="round" />
+          <svg
+            viewBox="0 0 16 16"
+            className="absolute bottom-0.5 right-0.5 text-fog-400/70"
+            width="12"
+            height="12"
+          >
+            <path
+              d="M14 6 L6 14 M14 11 L11 14"
+              stroke="currentColor"
+              strokeWidth="1.4"
+              fill="none"
+              strokeLinecap="round"
+            />
           </svg>
         </div>
       )}

@@ -23,8 +23,7 @@ export function buildSurfaceGeometry(mesh: PolyMesh): {
   return { geometry, faceOfTri: Int32Array.from(faceOfTri) }
 }
 
-const pairKey = (a: number, b: number, V: number) =>
-  a < b ? a * V + b : b * V + a
+const pairKey = (a: number, b: number, V: number) => (a < b ? a * V + b : b * V + a)
 
 /** Map an undirected vertex pair to its edge id. */
 export function buildEdgeMap(he: HEMesh): Map<number, number> {
@@ -72,7 +71,6 @@ export function closestEdgeOnFace(
   }
   return best
 }
-
 
 export function faceNormal(pos: Float32Array, verts: number[]): [number, number, number] {
   // Newell's method — robust for triangles and n-gons

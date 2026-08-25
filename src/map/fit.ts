@@ -101,11 +101,7 @@ function planeBasis(n: [number, number, number]): {
   up: [number, number, number]
 } {
   const ref = Math.abs(dot3(n, WORLD_UP)) > 0.95 ? WORLD_ALT : WORLD_UP
-  const up = norm3([
-    ref[0] - n[0] * dot3(ref, n),
-    ref[1] - n[1] * dot3(ref, n),
-    ref[2] - n[2] * dot3(ref, n),
-  ])
+  const up = norm3([ref[0] - n[0] * dot3(ref, n), ref[1] - n[1] * dot3(ref, n), ref[2] - n[2] * dot3(ref, n)])
   // right = up × n  → looking at the front (from +n), +right is viewer-right
   const right = norm3(cross3(up, n))
   return { right, up }
@@ -424,7 +420,12 @@ export function flattenAndFit(he: HEMesh, rect: RectUV, opts: FitOpts = {}): Fit
   const proj = opts.projection ?? 'auto'
 
   const packMulti = (flat: Float32Array[]) =>
-    flat.length > 1 ? packIslands(flat.map((uv) => ({ uv })), { margin: 0.01, angleSteps: 1 }).uv : flat
+    flat.length > 1
+      ? packIslands(
+          flat.map((uv) => ({ uv })),
+          { margin: 0.01, angleSteps: 1 },
+        ).uv
+      : flat
 
   let flat: Float32Array[]
   if (proj === 'cylindrical' || proj === 'spherical') {
