@@ -61,7 +61,18 @@ const APP_CSP = [
 
 // Inject the CSP as a <meta> tag at BUILD time only — GitHub Pages can't send
 // headers, and doing it in dev would kill Vite's HMR websocket + inline scripts.
+//
+// The injection is then VERIFIED before the bundle is written, and a miss fails
+// the build. A security header that is silently dropped — by a plugin-order
+// change, an upgrade, a rename of the app entry — is worse than one that was
+// never added, because nothing on the page looks different. Failing the build
+// is also better than asserting it in CI: it holds for every build, including
+// the desktop one, not just the paths a workflow happens to cover.
 function emitAppCsp() {
+  // Watched rather than re-read from the emitted bundle: Vite processes HTML
+  // after generateBundle, and this also catches the app entry being renamed or
+  // dropped entirely (the handler would simply never see an `app/` path).
+  let injected = false
   return {
     name: 'emit-app-csp',
     apply: 'build' as const,
@@ -69,11 +80,17 @@ function emitAppCsp() {
       order: 'post' as const,
       handler(html: string, ctx: { path: string }) {
         if (!ctx.path.includes('app/')) return html
-        return html.replace(
+        const out = html.replace(
           '<head>',
           `<head>\n    <meta http-equiv="Content-Security-Policy" content="${APP_CSP}" />`,
         )
+        injected = out.includes('Content-Security-Policy')
+        return out
       },
+    },
+    closeBundle() {
+      if (!injected)
+        throw new Error('emit-app-csp: the app page was built WITHOUT its Content-Security-Policy meta tag')
     },
   }
 }
