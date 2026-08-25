@@ -483,19 +483,50 @@ fn remove_plugin_from_prefs_configs() {
 }
 
 /// Copy the plugin into a folder that needs admin rights, prompting the user once.
+/// Quote a path as a single POSIX shell word. `'` is the only character that
+/// can escape single quotes, so it is closed, escaped and reopened.
+#[cfg(target_os = "macos")]
+fn sh_quote(p: &Path) -> String {
+    format!("'{}'", p.display().to_string().replace('\'', "'\\''"))
+}
+
+/// Quote a string as an AppleScript literal (backslash and double quote are the
+/// only escapes AppleScript recognises inside a string).
+#[cfg(target_os = "macos")]
+fn applescript_quote(s: &str) -> String {
+    format!("\"{}\"", s.replace('\\', "\\\\").replace('"', "\\\""))
+}
+
+/// Quote a string as a PowerShell single-quoted literal (a literal `'` is
+/// written by doubling it; nothing else is special inside single quotes).
+#[cfg(target_os = "windows")]
+fn ps_quote(p: &Path) -> String {
+    format!("'{}'", p.display().to_string().replace('\'', "''"))
+}
+
 /// We stage the files in temp (no rights needed) and then move them into place
 /// with one elevated shell command (macOS: the native admin prompt; Windows: a
 /// UAC PowerShell copy). Returns Ok only if the elevated step actually ran.
+///
+/// Both paths are built by QUOTING every interpolated path rather than trusting
+/// it to contain no metacharacters. This command runs with administrator
+/// privileges, and a plugins directory is not guaranteed to be tame — an
+/// apostrophe in a user name (`/Users/O'Brien/…`) alone used to break out of the
+/// shell quoting here.
 #[cfg(target_os = "macos")]
 fn elevated_copy_into(src: &Path, app_plugins: &Path) -> Result<(), String> {
     let staged = copy_plugin_into(src, &std::env::temp_dir())?; // <temp>/UVStudioBridge
-    // single-quote the paths for the shell; the AppleScript literal uses double quotes
+    let dest_bridge = app_plugins.join("UVStudioBridge");
     let sh = format!(
-        "rm -rf '{dest}/UVStudioBridge' && cp -R '{stage}' '{dest}/'",
-        dest = app_plugins.display(),
-        stage = staged.display()
+        "rm -rf {dest} && cp -R {stage} {into}/",
+        dest = sh_quote(&dest_bridge),
+        stage = sh_quote(&staged),
+        into = sh_quote(app_plugins),
     );
-    let apple = format!("do shell script \"{sh}\" with administrator privileges");
+    let apple = format!(
+        "do shell script {} with administrator privileges",
+        applescript_quote(&sh)
+    );
     let status = std::process::Command::new("osascript")
         .arg("-e")
         .arg(&apple)
@@ -512,11 +543,13 @@ fn elevated_copy_into(src: &Path, app_plugins: &Path) -> Result<(), String> {
 fn elevated_copy_into(src: &Path, app_plugins: &Path) -> Result<(), String> {
     let staged = copy_plugin_into(src, &std::env::temp_dir())?;
     let dest = app_plugins.join("UVStudioBridge");
-    // UAC-elevated robocopy mirror of the staged folder into the destination
+    // UAC-elevated robocopy mirror of the staged folder into the destination.
+    // Each path goes through ps_quote so an apostrophe in the path cannot end
+    // the PowerShell literal early and inject into an elevated command.
     let ps = format!(
-        "Start-Process robocopy -ArgumentList '\"{}\" \"{}\" /MIR' -Verb RunAs -Wait",
-        staged.display(),
-        dest.display()
+        "Start-Process robocopy -ArgumentList @({}, {}, '/MIR') -Verb RunAs -Wait",
+        ps_quote(&staged),
+        ps_quote(&dest)
     );
     let status = std::process::Command::new("powershell")
         .args(["-NoProfile", "-Command", &ps])
@@ -783,10 +816,28 @@ async fn download_and_open_update(
         .find(|a| a.name.to_lowercase().ends_with(ext))
         .ok_or_else(|| format!("no {ext} installer in the release"))?;
 
+    // This path deliberately bypasses the SIGNED updater (it is the fallback for
+    // builds whose latest.json predates it), so both halves of the asset are
+    // treated as untrusted input from the GitHub API:
+    //   • the download host is pinned to GitHub, and
+    //   • the name is reduced to a bare file name, so `../../…` in a release
+    //     asset name cannot write outside the Downloads folder.
+    if !(asset.url.starts_with("https://github.com/")
+        || asset.url.starts_with("https://objects.githubusercontent.com/")
+        || asset.url.starts_with("https://api.github.com/"))
+    {
+        return Err("refusing to download an installer from an unexpected host".into());
+    }
+    let file_name = Path::new(&asset.name)
+        .file_name()
+        .map(|n| n.to_string_lossy().to_string())
+        .filter(|n| !n.is_empty() && n != "." && n != "..")
+        .ok_or("release asset has no usable file name")?;
+
     // save into the user's Downloads folder (fall back to temp)
     let dir = app.path().download_dir().unwrap_or_else(|_| std::env::temp_dir());
     let _ = fs::create_dir_all(&dir);
-    let path = dir.join(&asset.name);
+    let path = dir.join(&file_name);
 
     // download (blocking) off the async runtime
     let url = asset.url.clone();
@@ -816,12 +867,22 @@ async fn download_and_open_update(
 }
 
 /// Open a URL in the user's default browser (used to start an update download).
+///
+/// Two guards: the scheme must be http/https (so this can never be talked into
+/// launching `file:` or a custom handler), and on Windows the URL is passed as
+/// a direct ARGUMENT to rundll32 rather than through `cmd /C start`, where an
+/// `&` in the URL would end the command and start a second one.
 #[tauri::command]
 fn open_url(url: String) -> Result<(), String> {
+    if !(url.starts_with("https://") || url.starts_with("http://")) {
+        return Err("only http(s) URLs can be opened".into());
+    }
     #[cfg(target_os = "macos")]
     let spawned = std::process::Command::new("open").arg(&url).spawn();
     #[cfg(target_os = "windows")]
-    let spawned = std::process::Command::new("cmd").args(["/C", "start", "", &url]).spawn();
+    let spawned = std::process::Command::new("rundll32")
+        .args(["url.dll,FileProtocolHandler", &url])
+        .spawn();
     #[cfg(all(not(target_os = "macos"), not(target_os = "windows")))]
     let spawned = std::process::Command::new("xdg-open").arg(&url).spawn();
     spawned.map(|_| ()).map_err(|e| e.to_string())
@@ -1089,5 +1150,48 @@ mod tests {
         assert!(plugin_installed_at(&plugins));
 
         let _ = fs::remove_dir_all(&root);
+    }
+
+    /// The plugin installer runs its copy with ADMINISTRATOR rights, so the
+    /// quoting that builds that command is security-relevant, not cosmetic.
+    /// An apostrophe in a path (`/Users/O'Brien/…`) is the realistic case.
+    #[cfg(target_os = "macos")]
+    #[test]
+    fn quoting_survives_hostile_paths() {
+        use std::path::Path;
+        assert_eq!(sh_quote(Path::new("/tmp/plain")), "'/tmp/plain'");
+        // ' closes the quote, escapes a literal ', and reopens
+        assert_eq!(
+            sh_quote(Path::new("/Users/O'Brien/p")),
+            r"'/Users/O'\''Brien/p'"
+        );
+        // Round-trip through a REAL shell: whatever the path contains, the
+        // quoted form must expand back to exactly one word equal to the input.
+        for raw in [
+            "/tmp/plain",
+            "/Users/O'Brien/p",
+            "/tmp/a'; rm -rf /; echo '",
+            "/tmp/has space/and\"dq\"",
+            "/tmp/$HOME/`id`/\\back",
+        ] {
+            let out = std::process::Command::new("sh")
+                .arg("-c")
+                .arg(format!("printf %s {}", sh_quote(Path::new(raw))))
+                .output()
+                .expect("sh");
+            assert_eq!(String::from_utf8_lossy(&out.stdout), raw, "quoting {raw}");
+        }
+
+        // AppleScript literals escape backslash and double quote
+        assert_eq!(applescript_quote(r#"say "hi"\"#), r#""say \"hi\"\\""#);
+    }
+
+    #[cfg(target_os = "windows")]
+    #[test]
+    fn ps_quoting_survives_hostile_paths() {
+        use std::path::Path;
+        assert_eq!(ps_quote(Path::new(r"C:\tmp\plain")), r"'C:\tmp\plain'");
+        // PowerShell escapes a literal ' by doubling it
+        assert_eq!(ps_quote(Path::new(r"C:\O'Brien")), r"'C:\O''Brien'");
     }
 }
