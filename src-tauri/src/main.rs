@@ -1186,6 +1186,79 @@ mod tests {
         assert_eq!(applescript_quote(r#"say "hi"\"#), r#""say \"hi\"\\""#);
     }
 
+    /// The desktop app is the FOURTH implementation of the folder protocol (the
+    /// C4D plugin, the Blender add-on and the web app are the others), and the
+    /// only one whose transport is native Rust. The Python and TypeScript ends
+    /// are covered by src/bridge/roundtrip.live.test.ts against real plugin
+    /// sidecars; this covers the pieces that decide WHERE those files are read
+    /// and written, and whether a new drop is noticed.
+    #[test]
+    fn link_pointer_redirects_to_a_custom_folder() {
+        let root = std::env::temp_dir().join(format!("uvs-link-{}", std::process::id()));
+        let custom = root.join("custom link");
+        fs::create_dir_all(&custom).unwrap();
+
+        // no pointer -> the zero-config temp folder, with both halves created
+        let ptr = link_pointer();
+        let restore = fs::read_to_string(&ptr).ok();
+        let _ = fs::remove_file(&ptr);
+        let dflt = resolve_link_dir();
+        assert!(dflt.join(TO_APP).is_dir(), "to_app not created");
+        assert!(dflt.join(TO_C4D).is_dir(), "to_c4d not created");
+
+        // pointer present -> follow it, and create both halves there too. This
+        // is what keeps the DCC plugins pointed at the same folder as the app.
+        fs::write(&ptr, custom.to_string_lossy().as_bytes()).unwrap();
+        let resolved = resolve_link_dir();
+        assert_eq!(resolved, custom);
+        assert!(custom.join(TO_APP).is_dir());
+        assert!(custom.join(TO_C4D).is_dir());
+
+        // a pointer naming somewhere unusable must fall back, not error out
+        fs::write(&ptr, b"/definitely/not/writable/uvstudio").unwrap();
+        assert_eq!(resolve_link_dir(), default_link_dir());
+
+        // whitespace-only pointer is treated as absent
+        fs::write(&ptr, b"   \n").unwrap();
+        assert_eq!(resolve_link_dir(), default_link_dir());
+
+        match restore {
+            Some(v) => fs::write(&ptr, v).unwrap(),
+            None => {
+                let _ = fs::remove_file(&ptr);
+            }
+        }
+        let _ = fs::remove_dir_all(&root);
+    }
+
+    /// `read_ts` is how the desktop side decides a drop is NEW. A half-written
+    /// or malformed manifest must read as "nothing to do" rather than panic or
+    /// be mistaken for a fresh scene — the plugins write temp+rename precisely
+    /// so this never sees a partial file, but a corrupt one must still be safe.
+    #[test]
+    fn read_ts_ignores_missing_and_malformed_manifests() {
+        let dir = std::env::temp_dir().join(format!("uvs-ts-{}", std::process::id()));
+        fs::create_dir_all(&dir).unwrap();
+
+        assert_eq!(read_ts(&dir), None, "absent manifest");
+
+        fs::write(dir.join(MANIFEST), b"{ this is not json").unwrap();
+        assert_eq!(read_ts(&dir), None, "malformed manifest");
+
+        fs::write(dir.join(MANIFEST), br#"{"v":2,"kind":"geo-forward"}"#).unwrap();
+        assert_eq!(read_ts(&dir), None, "manifest without a ts");
+
+        fs::write(dir.join(MANIFEST), br#"{"v":2,"ts":1787641738925}"#).unwrap();
+        assert_eq!(read_ts(&dir), Some(1787641738925), "real manifest");
+
+        // a newer drop must read as a different ts, which is what makes the
+        // frontend treat it as a new scene rather than a repeat of the last one
+        fs::write(dir.join(MANIFEST), br#"{"v":2,"ts":1787641738926}"#).unwrap();
+        assert_eq!(read_ts(&dir), Some(1787641738926));
+
+        let _ = fs::remove_dir_all(&dir);
+    }
+
     #[cfg(target_os = "windows")]
     #[test]
     fn ps_quoting_survives_hostile_paths() {

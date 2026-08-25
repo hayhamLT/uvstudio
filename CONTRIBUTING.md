@@ -39,6 +39,27 @@ once, then `npm run test:e2e`. It boots the real tool, drives the demo scene
 through the actual store and checks the mapping pipeline and undo/redo — the
 layer that catches what a type-check cannot (see `tests/e2e/`).
 
+## The landing-page guide video
+
+`public/guide.mp4` is a real capture of the tool, not a mockup — `npm run video`
+drives the app through the whole flow with Playwright, injects the caption
+strip into the page, and transcodes to H.264:
+
+```bash
+npm run dev -- --port 5199     # in another shell
+npm run video                  # → public/guide.mp4 + guide-poster.jpg
+```
+
+It needs `public/landing-venue.glb` and `public/show-content.png` (both
+committed) and `ffmpeg` on PATH. Re-record it whenever the UI changes enough
+that the video misrepresents the tool — a stale product video is worse than
+none.
+
+Two things that are easy to get wrong when editing the script: `uvstudio.split`
+is the SECONDARY pane's fraction, not the primary's, and the primary viewport is
+the right-hand full-height canvas — the screens list renders a small canvas per
+thumbnail, so "the biggest canvas" is not a safe way to find the 3D view.
+
 Bridge changes want `docs/BRIDGE-TESTING.md` too: both Cinema 4D and Blender can
 be driven headlessly, so a C4D/Blender round-trip is testable without clicking.
 

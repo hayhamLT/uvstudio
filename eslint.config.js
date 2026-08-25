@@ -47,9 +47,14 @@ export default tseslint.config(
     },
   },
   {
-    // Node-side scripts and configs
+    // Node-side scripts and configs. Browser globals too: the Playwright and
+    // CDP scripts pass callbacks that are serialised and run IN THE PAGE, so
+    // `window`/`document` are legitimately in scope inside them.
     files: ['scripts/**/*.mjs', '*.config.{ts,js}', 'tests/**/*.ts'],
-    languageOptions: { globals: { ...globals.node } },
+    languageOptions: { globals: { ...globals.node, ...globals.browser } },
+    rules: {
+      'no-unused-vars': ['warn', { argsIgnorePattern: '^_', varsIgnorePattern: '^_' }],
+    },
   },
   prettier, // must stay last — turns off everything stylistic
 )

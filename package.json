@@ -19,7 +19,8 @@
     "docs:shots": "node scripts/capture-docs.mjs",
     "test:e2e": "playwright test",
     "lint": "eslint .",
-    "format": "prettier --write ."
+    "format": "prettier --write .",
+    "video": "node scripts/video/record-guide.mjs"
   },
   "dependencies": {
     "@react-three/drei": "^10.7.8",

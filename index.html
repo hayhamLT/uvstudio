@@ -118,6 +118,9 @@
   .frame .bar .u{margin-left:12px; flex:1; height:20px; border-radius:6px; background:rgba(255,255,255,0.04); border:1px solid var(--line-soft);
     display:flex; align-items:center; padding:0 10px; font-size:11px; color:var(--faint);}
   .frame img{width:100%; display:block; aspect-ratio:16/10; object-fit:cover; object-position:center top;}
+  /* the guide video is a real 16:9 capture, so it keeps its own ratio rather
+     than being cropped to the 16:10 the still screenshots use */
+  .frame video{width:100%; display:block; aspect-ratio:16/9; background:#09090b;}
   .hero-shot{max-width:980px; margin:44px auto 0;}
   .worked{margin:30px auto 0; display:flex; align-items:center; justify-content:center; gap:24px; flex-wrap:wrap;
     color:var(--faint); font-size:13px;}
@@ -252,6 +255,7 @@
   </a>
   <div class="links">
     <a class="link" href="#how">How it works</a>
+    <a class="link" href="#guide">Watch</a>
     <a class="link" href="#features">Features</a>
     <a class="link" href="/help/">Docs</a>
     <a class="btn primary" href="/app/">Launch app ↗</a>
@@ -307,6 +311,37 @@
     <div class="step card">
       <div class="n">4</div><h3>Send back</h3>
       <p>UVs land back on your original objects, losslessly — or export a textured GLB.</p>
+    </div>
+  </div>
+ </div>
+</section>
+
+<!-- GUIDE VIDEO -->
+<section id="guide">
+ <div class="wrap">
+  <div class="head reveal">
+    <span class="eyebrow">Watch it happen</span>
+    <h2>A venue mapped, end to end</h2>
+    <p>Forty seconds, no cuts — a real venue model in, artwork linked, every screen mapped. This is the actual tool, not a mockup.</p>
+  </div>
+  <div class="hero-shot reveal">
+    <div class="frame">
+      <div class="bar"><i></i><i></i><i></i><span class="u">uv.preshow.link/app</span></div>
+      <!-- preload=none: the page should not spend 800kB of a visitor's
+           bandwidth on a video they may never press play on -->
+      <video
+        id="guide-video"
+        controls
+        playsinline
+        muted
+        loop
+        preload="none"
+        poster="/guide-poster.jpg"
+        aria-label="Guide: mapping a venue's screens in UV Studio, start to finish"
+      >
+        <source src="/guide.mp4" type="video/mp4" />
+        <p>Your browser can't play this video — <a href="/help/">read the illustrated guide</a> instead.</p>
+      </video>
     </div>
   </div>
  </div>
