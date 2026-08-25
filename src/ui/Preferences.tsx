@@ -2,6 +2,7 @@ import { useEffect, useState, type ReactNode } from 'react'
 import { useStore } from '../state/store'
 import * as link from '../bridge/link'
 import { currentVersion, checkForUpdate } from '../app/updater'
+import { useModalA11y } from './useModalA11y'
 
 /** Set-once / rarely-touched settings — Cinema 4D setup and import defaults. */
 export default function Preferences({ open, onClose }: { open: boolean; onClose: () => void }) {
@@ -25,6 +26,9 @@ export default function Preferences({ open, onClose }: { open: boolean; onClose:
       void link.isCustomLinkFolder().then(setLinkCustom)
     }
   }, [open])
+  // Esc closes, Tab stays inside, focus returns to the opener (the header
+  // already promised Esc worked — it didn't until this landed).
+  const { panelRef, dialogProps } = useModalA11y(open, onClose, 'prefs-title')
   if (!open) return null
 
   const connect = async () => {
@@ -101,11 +105,15 @@ export default function Preferences({ open, onClose }: { open: boolean; onClose:
       onClick={onClose}
     >
       <div
-        className="glass max-h-[92vh] w-[540px] max-w-[92vw] animate-float-up overflow-y-auto rounded-2xl p-6 shadow-2xl"
+        {...dialogProps}
+        ref={panelRef}
+        className="glass max-h-[92vh] w-[540px] max-w-[92vw] animate-float-up overflow-y-auto rounded-2xl p-6 shadow-2xl outline-none"
         onClick={(e) => e.stopPropagation()}
       >
         <div className="mb-5 flex items-center justify-between">
-          <h2 className="text-lg font-semibold text-fog-100">Preferences</h2>
+          <h2 id="prefs-title" className="text-lg font-semibold text-fog-100">
+            Preferences
+          </h2>
           <button
             onClick={onClose}
             className="rounded-md px-2 py-1 text-sm text-fog-400 hover:bg-ink-700 hover:text-fog-100"
@@ -117,8 +125,8 @@ export default function Preferences({ open, onClose }: { open: boolean; onClose:
         <Section title="Cinema 4D">
           {!link.linkSupported() ? (
             <p className="text-[12px] text-fog-400">
-              The Cinema 4D bridge needs the <span className="text-fog-200">desktop app</span> or a
-              Chromium browser.
+              The Cinema 4D bridge needs the <span className="text-fog-200">desktop app</span> or a Chromium
+              browser.
             </p>
           ) : (
             <>
@@ -177,7 +185,10 @@ export default function Preferences({ open, onClose }: { open: boolean; onClose:
                   </div>
                   {/* Where it installs — visible and adjustable */}
                   <div className="flex items-center gap-2 rounded-md border border-line/70 bg-ink-800/60 px-2.5 py-1.5">
-                    <code className="min-w-0 flex-1 truncate text-[11px] text-fog-400" title={c4d?.path ?? ''}>
+                    <code
+                      className="min-w-0 flex-1 truncate text-[11px] text-fog-400"
+                      title={c4d?.path ?? ''}
+                    >
                       {c4d?.path ?? 'Pick a Cinema 4D plugins folder'}
                     </code>
                     <button
@@ -246,8 +257,8 @@ export default function Preferences({ open, onClose }: { open: boolean; onClose:
             />
           </Row>
           <p className="text-[11px] text-fog-500">
-            Comma-separated. An object whose name contains any of these words is
-            auto-detected as a screen in the import dialog.
+            Comma-separated. An object whose name contains any of these words is auto-detected as a screen in
+            the import dialog.
           </p>
         </Section>
 
@@ -329,8 +340,7 @@ function Toggle({
       <button
         onClick={() => onChange(!checked)}
         className={
-          'relative h-5 w-9 shrink-0 rounded-full transition ' +
-          (checked ? 'bg-brand-500' : 'bg-ink-600')
+          'relative h-5 w-9 shrink-0 rounded-full transition ' + (checked ? 'bg-brand-500' : 'bg-ink-600')
         }
       >
         <span

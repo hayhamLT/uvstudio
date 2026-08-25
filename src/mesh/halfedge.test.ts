@@ -27,7 +27,9 @@ describe('half-edge', () => {
     // pentagon (0..4) + quad (1,0,5,6) sharing edge 0-1 — Blender-style n-gon input
     const he = buildHalfEdge({
       name: 'ngon',
-      positions: new Float32Array([0,0,0, 2,0,0, 2.6,1.9,0, 1,3.1,0, -0.6,1.9,0, 2,-1,0, 0,-1,0]),
+      positions: new Float32Array([
+        0, 0, 0, 2, 0, 0, 2.6, 1.9, 0, 1, 3.1, 0, -0.6, 1.9, 0, 2, -1, 0, 0, -1, 0,
+      ]),
       faces: [
         [0, 1, 2, 3, 4],
         [1, 0, 6, 5],
@@ -56,7 +58,7 @@ describe('shells', () => {
   it('fan-triangulates an n-gon and keeps its polygon loop', () => {
     const he = buildHalfEdge({
       name: 'pent',
-      positions: new Float32Array([0,0,0, 2,0,0, 2.6,1.9,0, 1,3.1,0, -0.6,1.9,0]),
+      positions: new Float32Array([0, 0, 0, 2, 0, 0, 2.6, 1.9, 0, 1, 3.1, 0, -0.6, 1.9, 0]),
       faces: [[0, 1, 2, 3, 4]],
     })
     const { shells } = extractShells(he, new Set())

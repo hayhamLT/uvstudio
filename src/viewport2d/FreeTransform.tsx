@@ -191,7 +191,7 @@ export default function FreeTransform({ aspect }: { aspect: number }) {
         it.uv[v * 2 + 1] = wy
       })
     }
-    live.dirty = true
+    live.uvEpoch++
     const nv = useStore.getState().uvVersion + 1
     useStore.setState({ uvVersion: nv })
     lastVersionRef.current = nv
@@ -295,7 +295,7 @@ export default function FreeTransform({ aspect }: { aspect: number }) {
       const ox = su * uh.x + sv * vh.x
       const oy = su * uh.y + sv * vh.y
       const ang = Math.atan2(-oy, ox) // to screen space (y down)
-      const a = (((ang * 180) / Math.PI) % 180 + 180) % 180
+      const a = ((((ang * 180) / Math.PI) % 180) + 180) % 180
       const bucket = Math.round(a / 45) % 4
       return ['ew-resize', 'nwse-resize', 'ns-resize', 'nesw-resize'][bucket]
     }

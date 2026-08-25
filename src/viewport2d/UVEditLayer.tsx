@@ -164,7 +164,8 @@ export default function UVEditLayer({ aspect }: { aspect: number }) {
         const d = e.n[0][0] * e.n[1][0] + e.n[0][1] * e.n[1][1] + e.n[0][2] * e.n[1][2]
         const coplanar = Math.abs(d) >= 0.9995
         const isDiagonal = coplanar && triLong[e.t[0]] === ekey && triLong[e.t[1]] === ekey
-        if (isDiagonal) parent[find(e.t[0])] = find(e.t[1]) // merge the quad's two triangles
+        if (isDiagonal)
+          parent[find(e.t[0])] = find(e.t[1]) // merge the quad's two triangles
         else creaseEdges.push({ shellId: ms.id, a: e.a, b: e.b }) // quad side or crease — show thin
       }
       const groups = new Map<number, { tris: [number, number, number][]; verts: Set<number> }>()
@@ -197,7 +198,12 @@ export default function UVEditLayer({ aspect }: { aspect: number }) {
       const geo = new LineSegmentsGeometry()
       geo.setPositions(pos)
       geo.setColors(col)
-      const mat = new LineMaterial({ linewidth: width, vertexColors: true, transparent: true, depthTest: false })
+      const mat = new LineMaterial({
+        linewidth: width,
+        vertexColors: true,
+        transparent: true,
+        depthTest: false,
+      })
       const lines = new LineSegments2(geo, mat)
       lines.frustumCulled = false
       lines.renderOrder = 5
@@ -359,7 +365,7 @@ export default function UVEditLayer({ aspect }: { aspect: number }) {
     if (editMode === 'object') {
       const f = pickFace(wx, wy)
       const obj = f ? topo.shellObj.get(f.shellId) : null
-      return obj ? topo.objKeys.get(obj) ?? null : null
+      return obj ? (topo.objKeys.get(obj) ?? null) : null
     }
     if (editMode === 'vertex') {
       const v = pickVertex(wx, wy)
@@ -448,7 +454,7 @@ export default function UVEditLayer({ aspect }: { aspect: number }) {
         uv[vi * 2] += du
         uv[vi * 2 + 1] += dv
       }
-      live.dirty = true
+      live.uvEpoch++
       // the 2D coverage marker (and RES readout) are memoised on uvVersion — bump
       // it so the yellow box physically follows the drag in the 2D view.
       useStore.setState({ uvVersion: useStore.getState().uvVersion + 1 })
@@ -464,8 +470,7 @@ export default function UVEditLayer({ aspect }: { aspect: number }) {
       maxX = Math.max(x0, x1)
     const minY = Math.min(y0, y1),
       maxY = Math.max(y0, y1)
-    const inBox = (w: [number, number]) =>
-      w[0] >= minX && w[0] <= maxX && w[1] >= minY && w[1] <= maxY
+    const inBox = (w: [number, number]) => w[0] >= minX && w[0] <= maxX && w[1] >= minY && w[1] <= maxY
     const next = shift ? new Set(useStore.getState().mapSelection) : new Set<string>()
     if (editMode === 'object') {
       for (const { keys } of topo.objList) {
@@ -556,7 +561,7 @@ export default function UVEditLayer({ aspect }: { aspect: number }) {
           uv[i + 1] = cv + (o[i + 1] - cv) * factor
         }
       }
-      live.dirty = true
+      live.uvEpoch++
       useStore.setState({ uvVersion: useStore.getState().uvVersion + 1 })
     }
     const onMoveWin = (ev: PointerEvent) => {
@@ -581,7 +586,7 @@ export default function UVEditLayer({ aspect }: { aspect: number }) {
     }
     const cancel = () => {
       for (const [id, o] of orig) live.uv.get(id)?.set(o)
-      live.dirty = true
+      live.uvEpoch++
       useStore.setState({ uvVersion: useStore.getState().uvVersion + 1 })
       cleanup()
       useStore.getState().setScaleMode(false)
@@ -607,11 +612,9 @@ export default function UVEditLayer({ aspect }: { aspect: number }) {
     window.addEventListener('keydown', onKey, true)
     useStore.setState({ status: `Scaling ${objName} — move mouse, click to set, Esc to cancel` })
     return cleanup
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [scaleMode, aspect, allShells, camera, gl])
 
   // ---- per-frame overlay rendering ----
-  const cVert = new THREE.Color('#5cc8ff')
   const cEdge = new THREE.Color('#9fe0ff')
   const cSeam = new THREE.Color('#ff7a3c')
   const cSel = new THREE.Color('#ffffff') // selected vertices / edges — high contrast
@@ -934,17 +937,35 @@ export default function UVEditLayer({ aspect }: { aspect: number }) {
       {editMode === 'face' && (
         <>
           <mesh geometry={topo.hoverFaceGeo} renderOrder={3}>
-            <meshBasicMaterial color="#ffd23f" transparent opacity={0.24} depthTest={false} side={THREE.DoubleSide} />
+            <meshBasicMaterial
+              color="#ffd23f"
+              transparent
+              opacity={0.24}
+              depthTest={false}
+              side={THREE.DoubleSide}
+            />
           </mesh>
           <mesh geometry={topo.faceFillGeo} renderOrder={4}>
-            <meshBasicMaterial color="#ffffff" transparent opacity={0.3} depthTest={false} side={THREE.DoubleSide} />
+            <meshBasicMaterial
+              color="#ffffff"
+              transparent
+              opacity={0.3}
+              depthTest={false}
+              side={THREE.DoubleSide}
+            />
           </mesh>
         </>
       )}
       {editMode === 'object' && !layeredMode && (
         <>
           <mesh geometry={topo.fillGeo} renderOrder={4}>
-            <meshBasicMaterial color="#ffe14d" transparent opacity={0.18} depthTest={false} side={THREE.DoubleSide} />
+            <meshBasicMaterial
+              color="#ffe14d"
+              transparent
+              opacity={0.18}
+              depthTest={false}
+              side={THREE.DoubleSide}
+            />
           </mesh>
           <lineSegments geometry={topo.objGeo} renderOrder={5}>
             <lineBasicMaterial vertexColors transparent opacity={0.98} depthTest={false} />
@@ -954,16 +975,40 @@ export default function UVEditLayer({ aspect }: { aspect: number }) {
       {editMode === 'vertex' && (
         <>
           <points geometry={topo.pointsGeo} renderOrder={6}>
-            <pointsMaterial map={sprite} color="#5cc8ff" size={7} sizeAttenuation={false} transparent alphaTest={0.5} depthTest={false} />
+            <pointsMaterial
+              map={sprite}
+              color="#5cc8ff"
+              size={7}
+              sizeAttenuation={false}
+              transparent
+              alphaTest={0.5}
+              depthTest={false}
+            />
           </points>
           <points geometry={topo.hoverDot} renderOrder={8}>
-            <pointsMaterial map={sprite} color="#ffd23f" size={14} sizeAttenuation={false} transparent alphaTest={0.5} depthTest={false} />
+            <pointsMaterial
+              map={sprite}
+              color="#ffd23f"
+              size={14}
+              sizeAttenuation={false}
+              transparent
+              alphaTest={0.5}
+              depthTest={false}
+            />
           </points>
         </>
       )}
       {showSelDots && (
         <points geometry={topo.selGeo} renderOrder={7}>
-          <pointsMaterial map={sprite} color="#ffffff" size={12} sizeAttenuation={false} transparent alphaTest={0.5} depthTest={false} />
+          <pointsMaterial
+            map={sprite}
+            color="#ffffff"
+            size={12}
+            sizeAttenuation={false}
+            transparent
+            alphaTest={0.5}
+            depthTest={false}
+          />
         </points>
       )}
 

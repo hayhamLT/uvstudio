@@ -40,7 +40,7 @@ nothing to pick. The panel is just one button.
 - **Send:** select **editable polygon** object(s) in C4D → click **Send selection
   to UV Studio**. UV Studio auto-loads them.
 - **Receive:** in UV Studio, unwrap, then **Export ▸ Send to Cinema 4D**.
-  With *Auto-receive* ticked, the plugin writes the new UVs onto your original
+  With _Auto-receive_ ticked, the plugin writes the new UVs onto your original
   objects within a second — matched by a stable id (then by name) — leaving the
   geometry, materials, and hierarchy untouched. Re-projecting a cylinder adds a
   UV seam with **no** geometry change (C4D UVW tags are per-corner).

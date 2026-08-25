@@ -121,7 +121,9 @@ export default function App() {
         return
       }
       const s = useStore.getState()
-      s.confirmImport((s.pendingImport?.objects ?? []).filter((o) => /SCREEN/i.test(o.name)).map((o) => o.name))
+      s.confirmImport(
+        (s.pendingImport?.objects ?? []).filter((o) => /SCREEN/i.test(o.name)).map((o) => o.name),
+      )
       // PSD parsing is async — wait for the wizard to actually open
       for (let i = 0; i < 100 && !useStore.getState().pendingLink; i++)
         await new Promise((r) => setTimeout(r, 150))
@@ -236,8 +238,22 @@ export default function App() {
   const iconBtnCls =
     'flex h-5 w-5 items-center justify-center rounded text-fog-400 hover:bg-ink-600 hover:text-fog-100'
   const swapBtn = (
-    <button onClick={swap} title="Swap the two views (Tab)" className={iconBtnCls}>
-      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+    <button
+      onClick={swap}
+      aria-label="Swap the two views (Tab)"
+      title="Swap the two views (Tab)"
+      className={iconBtnCls}
+    >
+      <svg
+        width="13"
+        height="13"
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="1.8"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      >
         <path d="M16 3l4 4-4 4" />
         <path d="M20 7H7a4 4 0 0 0-4 4" />
         <path d="M8 21l-4-4 4-4" />
@@ -246,16 +262,44 @@ export default function App() {
     </button>
   )
   const dockBtn = (
-    <button onClick={() => setDock(true)} title="Dock — snap into a split view" className={iconBtnCls}>
-      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+    <button
+      onClick={() => setDock(true)}
+      aria-label="Dock — snap into a split view"
+      title="Dock — snap into a split view"
+      className={iconBtnCls}
+    >
+      <svg
+        width="13"
+        height="13"
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="1.8"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      >
         <rect x="3" y="4" width="18" height="16" rx="2" />
         <path d="M14 4v16" />
       </svg>
     </button>
   )
   const undockBtn = (
-    <button onClick={() => setDock(false)} title="Float — pop out as a movable window" className={iconBtnCls}>
-      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+    <button
+      onClick={() => setDock(false)}
+      aria-label="Float — pop out as a movable window"
+      title="Float — pop out as a movable window"
+      className={iconBtnCls}
+    >
+      <svg
+        width="13"
+        height="13"
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="1.8"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      >
         <path d="M10 4H6a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-4" />
         <path d="M14 4h6v6M20 4l-9 9" />
       </svg>
@@ -270,39 +314,39 @@ export default function App() {
           <Landing onHelp={() => setHelp(true)} onPrefs={() => setPrefs(true)} />
         ) : (
           <>
-        <div className="relative min-w-0 flex-1">
-          {docked ? (
-            <DockedSplit
-              primary={primary}
-              split={split}
-              setSplit={setSplit}
-              secondaryTitle={primary === '2d' ? '3D' : '2D map'}
-              actions={
+            <div className="relative min-w-0 flex-1">
+              {docked ? (
+                <DockedSplit
+                  primary={primary}
+                  split={split}
+                  setSplit={setSplit}
+                  secondaryTitle={primary === '2d' ? '3D' : '2D map'}
+                  actions={
+                    <>
+                      {swapBtn}
+                      {undockBtn}
+                    </>
+                  }
+                />
+              ) : (
                 <>
-                  {swapBtn}
-                  {undockBtn}
+                  <div className="absolute inset-0">{primary === '2d' ? <Viewport2D /> : <Viewport3D />}</div>
+                  <FloatingWindow
+                    title={primary === '2d' ? '3D' : '2D map'}
+                    actions={
+                      <>
+                        {swapBtn}
+                        {dockBtn}
+                      </>
+                    }
+                    defaultRect={{ x: 16, y: 16, w: 420, h: 320 }}
+                  >
+                    {primary === '2d' ? <Viewport3D /> : <Viewport2D />}
+                  </FloatingWindow>
                 </>
-              }
-            />
-          ) : (
-            <>
-              <div className="absolute inset-0">{primary === '2d' ? <Viewport2D /> : <Viewport3D />}</div>
-              <FloatingWindow
-                title={primary === '2d' ? '3D' : '2D map'}
-                actions={
-                  <>
-                    {swapBtn}
-                    {dockBtn}
-                  </>
-                }
-                defaultRect={{ x: 16, y: 16, w: 420, h: 320 }}
-              >
-                {primary === '2d' ? <Viewport3D /> : <Viewport2D />}
-              </FloatingWindow>
-            </>
-          )}
-        </div>
-        <MapPanel />
+              )}
+            </div>
+            <MapPanel />
           </>
         )}
       </div>
@@ -380,6 +424,9 @@ function DockedSplit({
           document.body.style.cursor = 'col-resize'
           e.preventDefault()
         }}
+        role="separator"
+        aria-orientation="vertical"
+        aria-label="Resize the two panes"
         title="Drag to resize"
         className="relative z-20 w-1 shrink-0 cursor-col-resize bg-line transition-colors hover:bg-brand-500"
       />
@@ -459,7 +506,10 @@ function useKeyboardShortcuts(setHelp: Dispatch<SetStateAction<boolean>>) {
           // toggle backface culling in the 3D view (no toolbar button — hotkey only)
           const next = !s.cullBackface
           s.setCullBackface(next)
-          s.pushToast('info', next ? 'Backface culling on — front faces only' : 'Backface culling off — double-sided')
+          s.pushToast(
+            'info',
+            next ? 'Backface culling on — front faces only' : 'Backface culling off — double-sided',
+          )
           break
         }
         case '=':

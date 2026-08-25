@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState, type ChangeEvent } from 'react'
 import clsx from 'clsx'
 import { useStore, type MediaItem } from '../state/store'
+import { useModalA11y } from './useModalA11y'
 
 const hash = (name: string) => {
   let h = 0
@@ -13,12 +14,22 @@ function Thumb({ item }: { item: MediaItem | null }) {
   const cls = 'h-8 w-11'
   if (!item)
     return (
-      <div className={clsx(cls, 'flex shrink-0 items-center justify-center rounded border border-dashed border-line bg-ink-950/60 text-[9px] text-fog-500')}>
+      <div
+        className={clsx(
+          cls,
+          'flex shrink-0 items-center justify-center rounded border border-dashed border-line bg-ink-950/60 text-[9px] text-fog-500',
+        )}
+      >
         UVs
       </div>
     )
   return (
-    <div className={clsx(cls, 'flex shrink-0 items-center justify-center overflow-hidden rounded border border-line bg-ink-950')}>
+    <div
+      className={clsx(
+        cls,
+        'flex shrink-0 items-center justify-center overflow-hidden rounded border border-line bg-ink-950',
+      )}
+    >
       {item.thumb ? (
         <img src={item.thumb} alt="" draggable={false} className="max-h-full max-w-full object-contain" />
       ) : (
@@ -50,6 +61,9 @@ export default function LinkWizard() {
     }
   }, [pending])
 
+  // NB: above the early return — hooks must run in the same order every render
+  const { panelRef, dialogProps } = useModalA11y(!!pending, cancelLink, 'link-title')
+
   if (!pending) return null
   const { objects, items } = pending
   const byId = new Map(items.map((i) => [i.id, i]))
@@ -80,9 +94,15 @@ export default function LinkWizard() {
 
   return (
     <div className="fixed inset-0 z-[100] flex items-center justify-center bg-ink-950/70 backdrop-blur-sm">
-      <div className="glass animate-modal-in flex max-h-[86vh] w-[620px] max-w-[94vw] flex-col rounded-2xl p-5 shadow-2xl">
+      <div
+        {...dialogProps}
+        ref={panelRef}
+        className="glass animate-modal-in flex max-h-[86vh] w-[620px] max-w-[94vw] flex-col rounded-2xl p-5 shadow-2xl outline-none"
+      >
         <div className="mb-1 flex items-center justify-between">
-          <h2 className="text-base font-semibold text-fog-100">Link media to screens</h2>
+          <h2 id="link-title" className="text-base font-semibold text-fog-100">
+            Link media to screens
+          </h2>
           <span className="text-xs tabular-nums text-fog-400">
             {linkedCount}/{objects.length} linked
           </span>
@@ -95,9 +115,9 @@ export default function LinkWizard() {
             </>
           ) : (
             <>
-              Each screen takes one image / PSD layer — click a screen's media to change it. Name
-              matches are pre-linked. Screens on <span className="text-fog-200">keep imported</span>{' '}
-              stay on their imported texture &amp; UVs.
+              Each screen takes one image / PSD layer — click a screen's media to change it. Name matches are
+              pre-linked. Screens on <span className="text-fog-200">keep imported</span> stay on their
+              imported texture &amp; UVs.
             </>
           )}
         </p>
@@ -112,9 +132,7 @@ export default function LinkWizard() {
                   onClick={() => setOpen(isOpen ? null : obj)}
                   className={clsx(
                     'row-lift flex cursor-pointer items-center gap-2.5 rounded-lg border px-2 py-1.5',
-                    isOpen
-                      ? 'border-brand-500/40 bg-brand-500/10'
-                      : 'border-transparent hover:bg-ink-700/40',
+                    isOpen ? 'border-brand-500/40 bg-brand-500/10' : 'border-transparent hover:bg-ink-700/40',
                   )}
                 >
                   <span

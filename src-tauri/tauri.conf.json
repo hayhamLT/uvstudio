@@ -24,14 +24,12 @@
       }
     ],
     "security": {
-      "csp": null
+      "csp": "default-src 'self'; base-uri 'self'; object-src 'none'; form-action 'none'; frame-ancestors 'none'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: asset: http://asset.localhost; font-src 'self' data:; worker-src 'self' blob:; connect-src 'self' data: blob: ipc: http://ipc.localhost https://api.github.com"
     }
   },
   "plugins": {
     "updater": {
-      "endpoints": [
-        "https://github.com/hayhamLT/uvstudio/releases/latest/download/latest.json"
-      ],
+      "endpoints": ["https://github.com/hayhamLT/uvstudio/releases/latest/download/latest.json"],
       "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IDkwQ0IwM0ZGNzg0MjdCMjYKUldRbWUwSjQvd1BMa0ZVNGl3bUhVMFArU1hBcEtCWTBvL0taZjJBbnk3OFk0SUwySC95bTBGakUK"
     }
   },

@@ -8,6 +8,7 @@ import MapView2D from './MapView2D'
 import { makeCheckerTexture } from '../three/checker'
 import { distortionColor, THEME } from '../three/colors'
 import ActiveFrameloop from '../three/ActiveFrameloop'
+import { useUvEpochGate } from '../three/useUvEpochGate'
 
 interface ShellGeo {
   id: number
@@ -73,7 +74,6 @@ function UVScene() {
       bnd.setIndex(boundary)
       return { id: s.id, position, color, fill, edges, boundary: bnd, vertCount: s.vertCount }
     })
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [shells])
 
   useEffect(
@@ -106,7 +106,9 @@ function UVScene() {
     })
   }, [geos, shells, display.distortion, selectedShells, uvVersion])
 
+  const needsUpload = useUvEpochGate([geos, shells, isPacked])
   useFrame(() => {
+    if (!needsUpload()) return
     shells.forEach((s, i) => {
       const g = geos[i]
       const packed = live.packed?.get(s.id)
@@ -182,12 +184,7 @@ function UVScene() {
               />
             </mesh>
             <lineSegments geometry={g.edges} renderOrder={2}>
-              <lineBasicMaterial
-                color="#0a0e14"
-                transparent
-                opacity={0.25}
-                depthTest={false}
-              />
+              <lineBasicMaterial color="#0a0e14" transparent opacity={0.25} depthTest={false} />
             </lineSegments>
             <lineSegments geometry={g.boundary} renderOrder={3}>
               <lineBasicMaterial
@@ -297,7 +294,8 @@ export default function Viewport2D() {
         <UVScene />
       </Canvas>
       <div className="pointer-events-none absolute left-3 top-3 select-none rounded-md bg-ink-900/70 px-2.5 py-1 text-[11px] font-medium uppercase tracking-wider text-fog-400 backdrop-blur">
-        2D · UV {isRelaxing && <span className="ml-2 text-brand-400 normal-case tracking-normal">relaxing…</span>}
+        2D · UV{' '}
+        {isRelaxing && <span className="ml-2 text-brand-400 normal-case tracking-normal">relaxing…</span>}
       </div>
       {!hasUV && !isRelaxing && <EmptyUV />}
     </div>

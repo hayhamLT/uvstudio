@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react'
 import clsx from 'clsx'
 import { useStore } from '../state/store'
 import { classifyScreens, commonWords, isNamedScreen, BUILTIN_SCREEN_KEYWORDS } from '../map/classify'
+import { useModalA11y } from './useModalA11y'
 
 /** Lets the user pick which imported objects become screens. Screens are
  *  auto-detected by name on open; the detection keywords, a search filter, and
@@ -16,7 +17,11 @@ export default function ImportDialog() {
   const setScreenKeywords = useStore((s) => s.setScreenKeywords)
 
   const extraKeywords = useMemo(
-    () => keywords.split(',').map((k) => k.trim()).filter(Boolean),
+    () =>
+      keywords
+        .split(',')
+        .map((k) => k.trim())
+        .filter(Boolean),
     [keywords],
   )
 
@@ -35,17 +40,8 @@ export default function ImportDialog() {
   }, [pending])
 
   // Esc closes the dialog (matches every other modal).
-  useEffect(() => {
-    if (!pending) return
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') {
-        e.stopPropagation()
-        cancelImport()
-      }
-    }
-    window.addEventListener('keydown', onKey, true)
-    return () => window.removeEventListener('keydown', onKey, true)
-  }, [pending, cancelImport])
+  // Esc / focus trap / focus restore (see useModalA11y)
+  const { panelRef, dialogProps } = useModalA11y(!!pending, cancelImport, 'import-title')
 
   const objs = pending?.objects ?? []
   const auto = useMemo(
@@ -105,23 +101,37 @@ export default function ImportDialog() {
       onClick={cancelImport}
     >
       <div
-        className="glass animate-modal-in flex max-h-[86vh] w-[500px] max-w-full flex-col rounded-2xl p-5 shadow-2xl"
+        {...dialogProps}
+        ref={panelRef}
+        className="glass animate-modal-in flex max-h-[86vh] w-[500px] max-w-full flex-col rounded-2xl p-5 shadow-2xl outline-none"
         onClick={(e) => e.stopPropagation()}
       >
         {/* header */}
         <div className="mb-1 flex items-baseline justify-between gap-3">
-          <h2 className="text-base font-semibold text-fog-100">Choose screens</h2>
+          <h2 id="import-title" className="text-base font-semibold text-fog-100">
+            Choose screens
+          </h2>
           <span className="truncate font-mono text-[11px] text-fog-400/70">{pending.fileName}</span>
         </div>
         <p className="mb-4 text-xs leading-relaxed text-fog-400">
-          Checked objects become mappable <span className="text-fog-200">screens</span>. Everything else
-          still imports as dimmable <span className="text-fog-200">reference geometry</span>.
+          Checked objects become mappable <span className="text-fog-200">screens</span>. Everything else still
+          imports as dimmable <span className="text-fog-200">reference geometry</span>.
         </p>
 
         {/* detection keywords — the auto-selector, editable inline */}
         <div className="mb-3 rounded-xl border border-line bg-ink-900/50 p-3">
           <label className="flex items-center gap-2 text-[11px] font-semibold uppercase tracking-wider text-fog-400">
-            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" className="text-brand-400">
+            <svg
+              width="13"
+              height="13"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="1.8"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              className="text-brand-400"
+            >
               <path d="m12 3-1.9 5.8a2 2 0 0 1-1.3 1.3L3 12l5.8 1.9a2 2 0 0 1 1.3 1.3L12 21l1.9-5.8a2 2 0 0 1 1.3-1.3L21 12l-5.8-1.9a2 2 0 0 1-1.3-1.3Z" />
             </svg>
             Auto-detect screens named like
@@ -145,7 +155,16 @@ export default function ImportDialog() {
         {/* filter + counts */}
         <div className="mb-2 flex items-center gap-2">
           <div className="relative flex-1">
-            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" className="pointer-events-none absolute left-2.5 top-1/2 -translate-y-1/2 text-fog-500">
+            <svg
+              width="13"
+              height="13"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="1.9"
+              strokeLinecap="round"
+              className="pointer-events-none absolute left-2.5 top-1/2 -translate-y-1/2 text-fog-500"
+            >
               <circle cx="11" cy="11" r="7" />
               <path d="m20 20-3.5-3.5" />
             </svg>
@@ -168,7 +187,9 @@ export default function ImportDialog() {
         {/* words shared across object names — click to filter the list by one */}
         {common.length > 0 && (
           <div className="mb-2 flex flex-wrap items-center gap-1">
-            <span className="mr-0.5 text-[10px] font-semibold uppercase tracking-wider text-fog-500">Shared</span>
+            <span className="mr-0.5 text-[10px] font-semibold uppercase tracking-wider text-fog-500">
+              Shared
+            </span>
             {common.map((t) => {
               const active = q === t.label.toLowerCase()
               return (
@@ -191,8 +212,8 @@ export default function ImportDialog() {
 
         <div className="mb-1.5 flex items-center justify-between px-0.5 text-[11px] text-fog-400">
           <span>
-            <span className="font-semibold text-brand-300">{sel.size}</span> screen{sel.size === 1 ? '' : 's'} ·{' '}
-            <span className="text-fog-300">{refCount}</span> reference
+            <span className="font-semibold text-brand-300">{sel.size}</span> screen{sel.size === 1 ? '' : 's'}{' '}
+            · <span className="text-fog-300">{refCount}</span> reference
           </span>
           {q && (
             <span className="text-fog-500">
@@ -230,19 +251,34 @@ export default function ImportDialog() {
                       )}
                     >
                       {on && (
-                        <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3.5" strokeLinecap="round" strokeLinejoin="round">
+                        <svg
+                          width="11"
+                          height="11"
+                          viewBox="0 0 24 24"
+                          fill="none"
+                          stroke="currentColor"
+                          strokeWidth="3.5"
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                        >
                           <path d="M5 12l5 5L20 6" />
                         </svg>
                       )}
                     </span>
                     <span className="min-w-0 flex-1 truncate text-sm">{o.name}</span>
                     {named && (
-                      <span className="rounded bg-brand-500/15 px-1.5 py-0.5 text-[10px] font-medium text-brand-300">screen</span>
+                      <span className="rounded bg-brand-500/15 px-1.5 py-0.5 text-[10px] font-medium text-brand-300">
+                        screen
+                      </span>
                     )}
                     {o.textureImage && (
-                      <span className="rounded bg-good/15 px-1.5 py-0.5 text-[10px] font-medium text-good">textured</span>
+                      <span className="rounded bg-good/15 px-1.5 py-0.5 text-[10px] font-medium text-good">
+                        textured
+                      </span>
                     )}
-                    <span className="w-12 shrink-0 text-right text-[10px] tabular-nums text-fog-500">{verts} v</span>
+                    <span className="w-12 shrink-0 text-right text-[10px] tabular-nums text-fog-500">
+                      {verts} v
+                    </span>
                   </button>
                 </li>
               )

@@ -1,4 +1,4 @@
-import { useEffect, useMemo, type ReactNode } from 'react'
+import { useEffect, useMemo, type ReactNode, type ReactElement } from 'react'
 import { Canvas, useFrame, useThree } from '@react-three/fiber'
 import ActiveFrameloop from '../three/ActiveFrameloop'
 import { OrbitControls } from '@react-three/drei'
@@ -11,6 +11,7 @@ import { isEmbeddedHost } from '../ui/env'
 import { handleViewportDrop } from '../ui/importMap'
 import UVEditLayer from './UVEditLayer'
 import FreeTransform from './FreeTransform'
+import { useUvEpochGate } from '../three/useUvEpochGate'
 
 // DEV-ONLY docs tooling: during a ?shot capture run, render continuously and keep
 // the drawing buffer so `canvas.toDataURL()` returns real pixels (see App.tsx).
@@ -62,7 +63,8 @@ function Scene({
   const editMode = useStore((s) => s.editMode)
   const uvVersion = useStore((s) => s.uvVersion)
   // when the selected screen is one chunk of a larger PSD, show the WHOLE PSD
-  const bgTex = srcTex ?? (layeredMode ? live.objTextures.get(selectedObject ?? '') ?? null : live.atlasTexture)
+  const bgTex =
+    srcTex ?? (layeredMode ? (live.objTextures.get(selectedObject ?? '') ?? null) : live.atlasTexture)
   const alphaChecker = useMemo(makeAlphaChecker, [])
   alphaChecker.repeat.set(Math.max(1, Math.round(aspect * 9)), 9)
 
@@ -89,7 +91,9 @@ function Scene({
     [geos],
   )
 
+  const needsUpload = useUvEpochGate([geos, aspect, srcRect])
   useFrame(() => {
+    if (!needsUpload()) return
     const r = srcRect
     geos.forEach((g) => {
       const uv = live.uv.get(g.id)
@@ -153,6 +157,9 @@ function Scene({
     }
     if (!isFinite(u0)) return null
     return { x0: u0, y0: 1 - v1, x1: u1, y1: 1 - v0 }
+    // uvVersion is not read here — it is the invalidation SIGNAL for live.uv,
+    // which the body reads imperatively and the linter cannot see.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [layeredMode, selectedObject, geos, uvVersion])
 
   const markerBox = useMemo(() => {
@@ -215,7 +222,12 @@ function Scene({
                   />
                 </mesh>
                 <lineSegments geometry={g.bnd} renderOrder={4}>
-                  <lineBasicMaterial color={sel ? '#ffd23f' : col} transparent opacity={1} depthTest={false} />
+                  <lineBasicMaterial
+                    color={sel ? '#ffd23f' : col}
+                    transparent
+                    opacity={1}
+                    depthTest={false}
+                  />
                 </lineSegments>
               </group>
             )
@@ -236,7 +248,13 @@ function Scene({
                   <planeGeometry
                     args={[(markerRect.x1 - markerRect.x0) * aspect, markerRect.y1 - markerRect.y0]}
                   />
-                  <meshBasicMaterial color="#ffd23f" transparent opacity={0.2} depthTest={false} toneMapped={false} />
+                  <meshBasicMaterial
+                    color="#ffd23f"
+                    transparent
+                    opacity={0.2}
+                    depthTest={false}
+                    toneMapped={false}
+                  />
                 </mesh>
               )}
               {markerBox && (
@@ -292,7 +310,7 @@ function EditToolbar() {
     id: 'object' | 'vertex' | 'edge' | 'face'
     label: string
     hot: string
-    icon: JSX.Element
+    icon: ReactElement
   }[] = [
     { id: 'vertex', label: 'Vertex', hot: '1', icon: VPath },
     { id: 'edge', label: 'Edge', hot: '2', icon: EPath },
@@ -313,7 +331,16 @@ function EditToolbar() {
               : 'text-fog-400 hover:bg-ink-700 hover:text-fog-100')
           }
         >
-          <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round">
+          <svg
+            width="17"
+            height="17"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="1.7"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          >
             {m.icon}
           </svg>
         </button>
@@ -335,6 +362,7 @@ function TBtn({
 }) {
   return (
     <button
+      aria-label={title}
       title={title}
       onClick={onClick}
       className={
@@ -342,7 +370,16 @@ function TBtn({
         (active ? 'bg-brand-500/20 text-brand-400' : 'text-fog-400 hover:bg-ink-700 hover:text-fog-100')
       }
     >
-      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round">
+      <svg
+        width="15"
+        height="15"
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="1.7"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      >
         {children}
       </svg>
     </button>
@@ -436,12 +473,12 @@ export default function MapView2D() {
   const selectedObject = useStore((s) => s.selectedObject)
   useStore((s) => s.uvVersion) // re-evaluate aspect after a PSD load
   // if the selected screen is one chunk of a bigger PSD, show the WHOLE PSD
-  const src = layeredMode && selectedObject ? live.objSource.get(selectedObject) ?? null : null
+  const src = layeredMode && selectedObject ? (live.objSource.get(selectedObject) ?? null) : null
   const aspect = src
     ? src.aspect
     : layeredMode
       ? selectedObject
-        ? live.objAspect.get(selectedObject) ?? 1
+        ? (live.objAspect.get(selectedObject) ?? 1)
         : 1
       : atlas
         ? atlas.width / atlas.height
@@ -518,8 +555,8 @@ export default function MapView2D() {
           <div className="max-w-xs text-xs leading-relaxed text-fog-400/70">
             {embedded ? (
               <>
-                Click the <span className="font-medium text-fog-200">image ＋</span> button on this
-                screen in the Screens list to add an image — its UVs are generated automatically.
+                Click the <span className="font-medium text-fog-200">image ＋</span> button on this screen in
+                the Screens list to add an image — its UVs are generated automatically.
               </>
             ) : (
               <>
@@ -531,12 +568,12 @@ export default function MapView2D() {
         </div>
       )}
       {!layeredMode && atlas && mappedCount === 0 && (
-        <div className="pointer-events-none absolute inset-x-0 bottom-6 text-center text-xs text-fog-400/70">
+        <div className="pointer-events-none absolute inset-x-0 bottom-14 text-center text-xs text-fog-400/70">
           Assign objects to regions, then “Map UVs”
         </div>
       )}
       {layeredMode && !selectedObject && mappedCount === 0 && (
-        <div className="pointer-events-none absolute inset-x-0 bottom-6 text-center text-xs text-fog-400/70">
+        <div className="pointer-events-none absolute inset-x-0 bottom-14 text-center text-xs text-fog-400/70">
           {embedded
             ? 'Select a screen, then click its image ＋ button to map it'
             : 'Select a screen, then drop an image here to map it'}

@@ -69,7 +69,8 @@ ws.onmessage = (e) => {
   if (m.id && pending.has(m.id)) {
     const { res, rej } = pending.get(m.id)
     pending.delete(m.id)
-    m.error ? rej(new Error(m.error.message)) : res(m.result)
+    if (m.error) rej(new Error(m.error.message))
+    else res(m.result)
   }
 }
 const cdp = (method, params = {}) =>
@@ -86,7 +87,12 @@ const evaluate = async (expr) =>
 await cdp('Page.enable')
 await cdp('Runtime.enable')
 // force a consistent 1440x900 @2x viewport regardless of the window's browser chrome
-await cdp('Emulation.setDeviceMetricsOverride', { width: 1440, height: 900, deviceScaleFactor: 2, mobile: false })
+await cdp('Emulation.setDeviceMetricsOverride', {
+  width: 1440,
+  height: 900,
+  deviceScaleFactor: 2,
+  mobile: false,
+})
 
 /**
  * Capture one screenshot.

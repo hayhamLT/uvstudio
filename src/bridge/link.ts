@@ -84,7 +84,10 @@ type DirHandle = {
 }
 type FileHandle = {
   getFile: () => Promise<File>
-  createWritable: () => Promise<{ write: (d: BufferSource | string) => Promise<void>; close: () => Promise<void> }>
+  createWritable: () => Promise<{
+    write: (d: BufferSource | string) => Promise<void>
+    close: () => Promise<void>
+  }>
 }
 
 let webRoot: DirHandle | null = null
@@ -152,7 +155,8 @@ async function webConnect(): Promise<boolean> {
       }
     }
   }
-  const pick = (window as unknown as { showDirectoryPicker: (o?: unknown) => Promise<DirHandle> }).showDirectoryPicker
+  const pick = (window as unknown as { showDirectoryPicker: (o?: unknown) => Promise<DirHandle> })
+    .showDirectoryPicker
   try {
     const dir = await pick({ id: 'uvstudio-link', mode: 'readwrite' })
     if (dir.requestPermission) await dir.requestPermission({ mode: 'readwrite' })
@@ -358,15 +362,11 @@ export async function installC4DPlugin(): Promise<PluginInstall | null> {
 /** Desktop only: install into ONLY the latest detected C4D, with a precise
  *  result so the UI can distinguish installed / no-C4D-found / error (important
  *  for diagnosing Windows, where prefs paths vary). */
-export async function installC4DPluginLatest(): Promise<
-  PluginInstall | null | { error: string }
-> {
+export async function installC4DPluginLatest(): Promise<PluginInstall | null | { error: string }> {
   if (!isDesktop()) return null
   try {
     // explicit Install: allow an admin prompt if the app folder needs it
-    const p = (await tauri()!.core.invoke('install_c4d_plugin_latest', { elevate: true })) as
-      | string
-      | null
+    const p = (await tauri()!.core.invoke('install_c4d_plugin_latest', { elevate: true })) as string | null
     return p ? { auto: true, paths: [p] } : null
   } catch (e) {
     return { error: String(e) }
@@ -408,9 +408,7 @@ export async function refreshPluginSilently(): Promise<boolean> {
   if (!isDesktop()) return false
   try {
     // never prompt for admin on launch — silent best-effort only
-    return !!((await tauri()!.core.invoke('install_c4d_plugin_latest', { elevate: false })) as
-      | string
-      | null)
+    return !!((await tauri()!.core.invoke('install_c4d_plugin_latest', { elevate: false })) as string | null)
   } catch {
     return false
   }
@@ -440,9 +438,7 @@ export async function updaterInstall(): Promise<void> {
 /** Desktop only: download the platform installer for an update and open it
  *  (mac mounts the .dmg, Windows runs the .exe). Returns the saved path, or
  *  throws so the caller can fall back to opening the release page. */
-export async function downloadAndOpenUpdate(
-  assets: { name: string; url: string }[],
-): Promise<string> {
+export async function downloadAndOpenUpdate(assets: { name: string; url: string }[]): Promise<string> {
   if (!isDesktop()) throw new Error('not desktop')
   return (await tauri()!.core.invoke('download_and_open_update', { assets })) as string
 }
@@ -550,7 +546,11 @@ export async function sendUVs(payload: ReturnPayload): Promise<void> {
  * to it. Returns the saved path, or null (cancelled / not desktop, where the
  * caller falls back to a browser download).
  */
-export async function saveGlb(defaultName: string, buf: ArrayBuffer, sidecar: string): Promise<string | null> {
+export async function saveGlb(
+  defaultName: string,
+  buf: ArrayBuffer,
+  sidecar: string,
+): Promise<string | null> {
   if (!isDesktop()) return null
   const path = await tauri()!.core.invoke('export_glb', {
     name: defaultName,
@@ -574,8 +574,7 @@ export async function importModelMedia(): Promise<{ name: string; buf: ArrayBuff
   if (!isDesktop()) return null
   try {
     const picked = (await tauri()!.core.invoke('import_model_media')) as
-      | { name: string; bytes: number[] }[]
-      | null
+      { name: string; bytes: number[] }[] | null
     if (!picked || !picked.length) return null
     return picked.map((p) => ({ name: p.name, buf: new Uint8Array(p.bytes).buffer }))
   } catch {
@@ -640,10 +639,12 @@ export function watchIncoming(
   // desktop: react instantly to the Rust watcher's push event
   const t = tauri()
   if (t?.event?.listen) {
-    void t.event.listen('bridge-changed', () => void pull()).then((un) => {
-      if (stopped) un()
-      else unlisten = un
-    })
+    void t.event
+      .listen('bridge-changed', () => void pull())
+      .then((un) => {
+        if (stopped) un()
+        else unlisten = un
+      })
   }
 
   // import anything already waiting (e.g. a Send that cold-launched the app),

@@ -92,17 +92,29 @@ body {
 }
 
 @keyframes pulse-ring {
-  0% { box-shadow: 0 0 0 0 color-mix(in srgb, var(--color-brand-500) 55%, transparent); }
-  70% { box-shadow: 0 0 0 8px transparent; }
-  100% { box-shadow: 0 0 0 0 transparent; }
+  0% {
+    box-shadow: 0 0 0 0 color-mix(in srgb, var(--color-brand-500) 55%, transparent);
+  }
+  70% {
+    box-shadow: 0 0 0 8px transparent;
+  }
+  100% {
+    box-shadow: 0 0 0 0 transparent;
+  }
 }
 .animate-pulse-ring {
   animation: pulse-ring 1.6s ease-out infinite;
 }
 
 @keyframes float-up {
-  from { opacity: 0; transform: translateY(6px); }
-  to { opacity: 1; transform: translateY(0); }
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 .animate-float-up {
   animation: float-up 0.18s ease-out forwards;
@@ -110,8 +122,14 @@ body {
 
 /* Modal / dialog entrance — quick settle, no bounce */
 @keyframes modal-in {
-  from { opacity: 0; transform: translateY(8px) scale(0.97); }
-  to { opacity: 1; transform: none; }
+  from {
+    opacity: 0;
+    transform: translateY(8px) scale(0.97);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
 }
 .animate-modal-in {
   animation: modal-in 0.16s cubic-bezier(0.2, 0.9, 0.3, 1);
@@ -119,14 +137,23 @@ body {
 
 /* Toast cards slide in from the right, slide out the same way */
 @keyframes toast-in {
-  from { opacity: 0; transform: translateX(18px); }
-  to { opacity: 1; transform: none; }
+  from {
+    opacity: 0;
+    transform: translateX(18px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
 }
 .animate-toast-in {
   animation: toast-in 0.18s cubic-bezier(0.2, 0.9, 0.3, 1);
 }
 @keyframes toast-out {
-  to { opacity: 0; transform: translateX(18px); }
+  to {
+    opacity: 0;
+    transform: translateX(18px);
+  }
 }
 .animate-toast-out {
   animation: toast-out 0.16s ease-in forwards;
@@ -134,8 +161,12 @@ body {
 
 /* One green ripple when a screen row flips to "mapped" */
 @keyframes map-pulse {
-  0% { box-shadow: 0 0 0 0 color-mix(in srgb, var(--color-good) 45%, transparent); }
-  100% { box-shadow: 0 0 0 10px transparent; }
+  0% {
+    box-shadow: 0 0 0 0 color-mix(in srgb, var(--color-good) 45%, transparent);
+  }
+  100% {
+    box-shadow: 0 0 0 10px transparent;
+  }
 }
 .animate-map-pulse {
   animation: map-pulse 0.7s ease-out 2;
@@ -166,8 +197,12 @@ body {
 /* Menus must never be gated behind opacity (a paused/throttled animation would
    leave them invisible). Animate transform only — opacity stays 1. */
 @keyframes menu-pop {
-  from { transform: translateY(-4px) scale(0.98); }
-  to { transform: translateY(0) scale(1); }
+  from {
+    transform: translateY(-4px) scale(0.98);
+  }
+  to {
+    transform: translateY(0) scale(1);
+  }
 }
 .animate-menu-pop {
   animation: menu-pop 0.12s ease-out;
@@ -176,22 +211,51 @@ body {
 
 /* Import orb — organic, breathing motion (eased, staggered, non-mechanical). */
 @keyframes orb-breathe {
-  0%, 100% { transform: scale(1); }
-  50% { transform: scale(1.05); }
+  0%,
+  100% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.05);
+  }
 }
 @keyframes orb-ripple {
-  0% { transform: scale(0.8); opacity: 0; }
-  25% { opacity: 0.45; }
-  100% { transform: scale(1.55); opacity: 0; }
+  0% {
+    transform: scale(0.8);
+    opacity: 0;
+  }
+  25% {
+    opacity: 0.45;
+  }
+  100% {
+    transform: scale(1.55);
+    opacity: 0;
+  }
 }
 @keyframes orb-drift {
-  0% { transform: rotate(0deg) scale(1); }
-  50% { transform: rotate(180deg) scale(1.04); }
-  100% { transform: rotate(360deg) scale(1); }
+  0% {
+    transform: rotate(0deg) scale(1);
+  }
+  50% {
+    transform: rotate(180deg) scale(1.04);
+  }
+  100% {
+    transform: rotate(360deg) scale(1);
+  }
 }
-.animate-orb-breathe { animation: orb-breathe 4.5s ease-in-out infinite; }
-.animate-orb-ripple { animation: orb-ripple 4.2s cubic-bezier(0.22, 0.61, 0.36, 1) infinite; }
-.animate-orb-drift { animation: orb-drift 26s ease-in-out infinite; }
+.animate-orb-breathe {
+  animation: orb-breathe 4.5s ease-in-out infinite;
+}
+.animate-orb-ripple {
+  animation: orb-ripple 4.2s cubic-bezier(0.22, 0.61, 0.36, 1) infinite;
+}
+.animate-orb-drift {
+  animation: orb-drift 26s ease-in-out infinite;
+}
 /* hover intensifies the breathing/ripples a touch */
-.group\/orb:hover .animate-orb-breathe { animation-duration: 3s; }
-.group\/orb:hover .animate-orb-ripple { animation-duration: 3.2s; }
+.group\/orb:hover .animate-orb-breathe {
+  animation-duration: 3s;
+}
+.group\/orb:hover .animate-orb-ripple {
+  animation-duration: 3.2s;
+}

@@ -1,5 +1,3 @@
-import { readPsd } from 'ag-psd'
-
 // ---------------------------------------------------------------------------
 // Parse a layered PSD into named layer images (with alpha). Each leaf layer
 // becomes one screen's content; the layer name is the matching clue.
@@ -38,6 +36,10 @@ export function flattenPsdLayers(psd: PsdResult): HTMLCanvasElement {
 
 export async function loadPsdFile(file: File): Promise<PsdResult> {
   const buf = await file.arrayBuffer()
+  // ag-psd is a big parser that only the PSD path needs — load it on demand so
+  // it stays out of the initial bundle (this function is already async, so the
+  // import costs nothing at the call sites).
+  const { readPsd } = await import('ag-psd')
   // ag-psd renders each layer to its own <canvas> (with alpha) in the browser.
   const psd = readPsd(buf, { skipThumbnail: true })
   const layers: PsdLayer[] = []

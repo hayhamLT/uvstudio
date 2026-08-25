@@ -18,8 +18,7 @@ export interface ShellSet {
  */
 export function extractShells(he: HEMesh, seams: Set<number> = new Set()): ShellSet {
   const heCount = he.halfEdgeCount
-  const isCut = (edge: number) =>
-    seams.has(edge) || he.heTwin[he.edgeHe[edge]] === -1
+  const isCut = (edge: number) => seams.has(edge) || he.heTwin[he.edgeHe[edge]] === -1
 
   // 1. Union corners (half-edges) that share a UV vertex: same original
   //    vertex, not separated by a cut edge.

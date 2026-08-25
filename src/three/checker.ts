@@ -4,12 +4,7 @@ import * as THREE from 'three'
  * A procedural checker texture used both as the 3D surface overlay and the 2D
  * UV-space background. Tinted to match the studio theme.
  */
-export function makeCheckerTexture(
-  size = 1024,
-  cells = 16,
-  a = '#1b2330',
-  b = '#2a3b50',
-): THREE.Texture {
+export function makeCheckerTexture(size = 1024, cells = 16, a = '#1b2330', b = '#2a3b50'): THREE.Texture {
   const canvas = document.createElement('canvas')
   canvas.width = canvas.height = size
   const ctx = canvas.getContext('2d')!
@@ -50,12 +45,7 @@ export function makeCheckerTexture(
  * Cached per aspect so repeated screens share one texture.
  */
 const checkerCache = new Map<string, THREE.Texture>()
-export function checkerForAspect(
-  aspect: number,
-  rows = 12,
-  a = '#f2f3f5',
-  b = '#8b93a0',
-): THREE.Texture {
+export function checkerForAspect(aspect: number, rows = 12, a = '#f2f3f5', b = '#8b93a0'): THREE.Texture {
   const A = aspect > 0 && isFinite(aspect) ? aspect : 1
   const key = `${Math.round(A * 100)}|${rows}|${a}|${b}`
   const hit = checkerCache.get(key)

@@ -12,11 +12,7 @@ interface FileSystemHandleLike {
 
 /** Parse a model file and open the screen-selection flow. `media` are any
  *  image/PSD files imported alongside it, auto-applied to matching screens. */
-export async function importModelFile(
-  file: File,
-  handle?: FileSystemHandleLike | null,
-  media?: File[],
-) {
+export async function importModelFile(file: File, handle?: FileSystemHandleLike | null, media?: File[]) {
   const s = useStore.getState()
   s.setStatus(`Loading ${file.name}…`)
   lastHandle = handle ?? null
@@ -60,7 +56,11 @@ async function pickModelFile(): Promise<{
     })
     const files = await Promise.all(handles.map(async (h) => ({ h, f: await h.getFile() })))
     const model = files.find(({ f }) => isModelFile(f))
-    if (!model) return null
+    if (!model) {
+      // media-only pick → route to the map-content flow instead of dropping it
+      if (files.length) await importMapFiles(files.map(({ f }) => f))
+      return null
+    }
     return {
       file: model.f,
       handle: model.h,
@@ -86,8 +86,17 @@ export async function openModelPicker(fallbackInput?: HTMLInputElement | null) {
     if (!picked || !picked.length) return
     const files = picked.map((p) => new File([p.buf], p.name, { type: mimeForName(p.name) }))
     const model = files.find(isModelFile)
-    if (!model) return // no model in the selection — nothing to load
-    await importModelFile(model, null, files.filter((f) => f !== model && !isModelFile(f)))
+    if (!model) {
+      // no model in the selection — the picker allows images/PSDs too, so a
+      // media-only pick means "import map content", not a silent no-op
+      await importMapFiles(files)
+      return
+    }
+    await importModelFile(
+      model,
+      null,
+      files.filter((f) => f !== model && !isModelFile(f)),
+    )
     return
   }
   if (canPickWithHandle()) {
@@ -177,7 +186,11 @@ export async function handleViewportDrop(files: FileList | File[]) {
   const model = arr.find(isModelFile)
   if (model) {
     // import the model + any image/PSD files dropped with it (auto-applied)
-    await importModelFile(model, null, arr.filter((f) => f !== model && !isModelFile(f)))
+    await importModelFile(
+      model,
+      null,
+      arr.filter((f) => f !== model && !isModelFile(f)),
+    )
     return
   }
 

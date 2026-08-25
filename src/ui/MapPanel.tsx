@@ -47,7 +47,16 @@ function RowBtn({
             : 'text-fog-400 enabled:hover:bg-ink-700 enabled:hover:text-fog-100',
       )}
     >
-      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+      <svg
+        width="14"
+        height="14"
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="1.8"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      >
         {children}
       </svg>
     </button>
@@ -150,8 +159,10 @@ function ScreenRow({ name }: { name: string }) {
   const mediaImg = live.objTextures.get(name)?.image as
     | (CanvasImageSource & { width?: number; naturalWidth?: number; height?: number; naturalHeight?: number })
     | undefined
-  const fullW = (mediaImg as { naturalWidth?: number })?.naturalWidth || (mediaImg as { width?: number })?.width || 0
-  const fullH = (mediaImg as { naturalHeight?: number })?.naturalHeight || (mediaImg as { height?: number })?.height || 0
+  const fullW =
+    (mediaImg as { naturalWidth?: number })?.naturalWidth || (mediaImg as { width?: number })?.width || 0
+  const fullH =
+    (mediaImg as { naturalHeight?: number })?.naturalHeight || (mediaImg as { height?: number })?.height || 0
   let u0 = Infinity,
     u1 = -Infinity,
     v0 = Infinity,
@@ -238,7 +249,10 @@ function ScreenRow({ name }: { name: string }) {
           <div className="mt-0.5 flex items-center gap-1.5 text-[11px]">
             <span className={statusColor}>{status}</span>
             {resW > 0 && (
-              <span className={resOverride ? 'text-brand-300' : 'text-fog-500'} title={resOverride ? 'custom resolution' : 'detected from media'}>
+              <span
+                className={resOverride ? 'text-brand-300' : 'text-fog-500'}
+                title={resOverride ? 'custom resolution' : 'detected from media'}
+              >
                 · {resW}×{resH}
               </span>
             )}
@@ -264,7 +278,9 @@ function ScreenRow({ name }: { name: string }) {
           </RowBtn>
           {/* one control cycles: visible → solo → hidden → visible */}
           <RowBtn
-            title={solo ? 'Soloed · click to hide' : hidden ? 'Hidden · click to show' : 'Visible · click to solo'}
+            title={
+              solo ? 'Soloed · click to hide' : hidden ? 'Hidden · click to show' : 'Visible · click to solo'
+            }
             active={solo}
             onClick={() => {
               if (solo) {
@@ -321,45 +337,45 @@ function ScreenRow({ name }: { name: string }) {
       {/* selected row expands to its config — transform tools live in the 2D viewer */}
       {isSel && (
         <>
-        {/* render resolution — detected from media, editable to the real LED size */}
-        <div
-          className="mt-2 flex items-center gap-1.5 border-t border-line/60 pt-2"
-          onClick={(e) => e.stopPropagation()}
-        >
-          <span className="text-[10px] font-semibold uppercase tracking-wider text-fog-500">Res</span>
-          <input
-            type="number"
-            min={0}
-            value={resW || ''}
-            placeholder={String(autoW || '—')}
-            onChange={(e) => setScreenRes(name, Number(e.target.value), resH)}
-            className="w-16 rounded-md border border-line bg-ink-800 px-1.5 py-0.5 text-right text-[11px] text-fog-200 ring-focus"
-          />
-          <span className="text-fog-500">×</span>
-          <input
-            type="number"
-            min={0}
-            value={resH || ''}
-            placeholder={String(autoH || '—')}
-            onChange={(e) => setScreenRes(name, resW, Number(e.target.value))}
-            className="w-16 rounded-md border border-line bg-ink-800 px-1.5 py-0.5 text-right text-[11px] text-fog-200 ring-focus"
-          />
-          <span className="text-[10px] text-fog-500">px</span>
-          {resOverride && (
-            <button
-              onClick={() => setScreenRes(name, 0, 0)}
-              title="Reset to detected resolution"
-              className="rounded px-1 text-[10px] text-fog-400 hover:bg-ink-700 hover:text-fog-100"
-            >
-              auto
-            </button>
-          )}
-          {resMismatch && (
-            <span className="text-[10px] text-warn" title="applied media doesn't match this resolution">
-              media {autoW}×{autoH}
-            </span>
-          )}
-        </div>
+          {/* render resolution — detected from media, editable to the real LED size */}
+          <div
+            className="mt-2 flex items-center gap-1.5 border-t border-line/60 pt-2"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <span className="text-[10px] font-semibold uppercase tracking-wider text-fog-500">Res</span>
+            <input
+              type="number"
+              min={0}
+              value={resW || ''}
+              placeholder={String(autoW || '—')}
+              onChange={(e) => setScreenRes(name, Number(e.target.value), resH)}
+              className="w-16 rounded-md border border-line bg-ink-800 px-1.5 py-0.5 text-right text-[11px] text-fog-200 ring-focus"
+            />
+            <span className="text-fog-500">×</span>
+            <input
+              type="number"
+              min={0}
+              value={resH || ''}
+              placeholder={String(autoH || '—')}
+              onChange={(e) => setScreenRes(name, resW, Number(e.target.value))}
+              className="w-16 rounded-md border border-line bg-ink-800 px-1.5 py-0.5 text-right text-[11px] text-fog-200 ring-focus"
+            />
+            <span className="text-[10px] text-fog-500">px</span>
+            {resOverride && (
+              <button
+                onClick={() => setScreenRes(name, 0, 0)}
+                title="Reset to detected resolution"
+                className="rounded px-1 text-[10px] text-fog-400 hover:bg-ink-700 hover:text-fog-100"
+              >
+                auto
+              </button>
+            )}
+            {resMismatch && (
+              <span className="text-[10px] text-warn" title="applied media doesn't match this resolution">
+                media {autoW}×{autoH}
+              </span>
+            )}
+          </div>
         </>
       )}
 
@@ -394,7 +410,12 @@ export default function MapPanel() {
   const onModel = async (e: ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(e.target.files ?? [])
     const model = files.find(isModelFile)
-    if (model) await importModelFile(model, null, files.filter((f) => f !== model && !isModelFile(f)))
+    if (model)
+      await importModelFile(
+        model,
+        null,
+        files.filter((f) => f !== model && !isModelFile(f)),
+      )
     e.target.value = ''
   }
   const onImages = async (e: ChangeEvent<HTMLInputElement>) => {
@@ -417,7 +438,16 @@ export default function MapPanel() {
       <div className="flex flex-col gap-1 px-2 pb-4">
         {mapObjects.length === 0 ? (
           <div className="mx-1 flex flex-col items-center gap-3 rounded-lg border border-dashed border-line px-4 py-8 text-center">
-            <svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" className="text-fog-500" strokeLinejoin="round">
+            <svg
+              width="30"
+              height="30"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="1.5"
+              className="text-fog-500"
+              strokeLinejoin="round"
+            >
               <path d="M12 3 21 8v8l-9 5-9-5V8l9-5Z" />
               <path d="M3.5 8 12 13l8.5-5M12 13v8" />
             </svg>
@@ -490,7 +520,15 @@ export default function MapPanel() {
             </div>
             <div className="flex items-center gap-2" title="Reference opacity (ghost → solid)">
               {/* ghost/transparency icon: a fading circle */}
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" className="shrink-0 text-fog-400">
+              <svg
+                width="14"
+                height="14"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="1.8"
+                className="shrink-0 text-fog-400"
+              >
                 <circle cx="12" cy="12" r="8" strokeDasharray="4 3" />
                 <circle cx="12" cy="12" r="3.5" fill="currentColor" stroke="none" opacity="0.5" />
               </svg>
@@ -502,7 +540,10 @@ export default function MapPanel() {
                 value={contextOpacity}
                 onChange={(e) => setContextOpacity(Number(e.target.value))}
                 className="h-1.5 flex-1 cursor-pointer appearance-none rounded-full accent-white"
-                style={{ background: 'linear-gradient(to right, transparent, #808080), repeating-conic-gradient(#2a3340 0% 25%, #11151d 0% 50%) 0 0 / 8px 8px' }}
+                style={{
+                  background:
+                    'linear-gradient(to right, transparent, #808080), repeating-conic-gradient(#2a3340 0% 25%, #11151d 0% 50%) 0 0 / 8px 8px',
+                }}
               />
               <span className="w-8 shrink-0 text-right text-[10px] tabular-nums text-fog-500">
                 {Math.round(contextOpacity * 100)}%
@@ -512,8 +553,22 @@ export default function MapPanel() {
         </div>
       )}
 
-      <input ref={modelRef} type="file" accept=".gltf,.glb,.psd,image/*" multiple className="hidden" onChange={onModel} />
-      <input ref={imagesRef} type="file" accept="image/*,.psd" multiple className="hidden" onChange={onImages} />
+      <input
+        ref={modelRef}
+        type="file"
+        accept=".gltf,.glb,.psd,image/*"
+        multiple
+        className="hidden"
+        onChange={onModel}
+      />
+      <input
+        ref={imagesRef}
+        type="file"
+        accept="image/*,.psd"
+        multiple
+        className="hidden"
+        onChange={onImages}
+      />
     </aside>
   )
 }
@@ -528,7 +583,16 @@ function greyHex(shade: number) {
 
 function EyeIcon() {
   return (
-    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+    <svg
+      width="13"
+      height="13"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.8"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
       <path d="M2 12s4-7 10-7 10 7 10 7-4 7-10 7S2 12 2 12Z" />
       <circle cx="12" cy="12" r="3" />
     </svg>
@@ -537,7 +601,16 @@ function EyeIcon() {
 
 function EyeOffIcon() {
   return (
-    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+    <svg
+      width="13"
+      height="13"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.8"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
       <path d="M3 3l18 18" />
       <path d="M10.6 5.1A10.9 10.9 0 0 1 12 5c6 0 10 7 10 7a18 18 0 0 1-2.2 2.9M6.7 6.7A18 18 0 0 0 2 12s4 7 10 7a10.9 10.9 0 0 0 3.3-.5" />
     </svg>

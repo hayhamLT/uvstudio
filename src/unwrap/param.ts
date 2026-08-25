@@ -84,8 +84,7 @@ export function buildParamContext(shell: Shell): ParamContext {
     local[o + 5] = y2
     const a2 = Math.max(area, 1e-9) * 2
     // cotangent at a vertex = dot(otherTwoEdges) / (2*area); weight = 0.5*cot
-    const cot = (ux: number, uy: number, vx: number, vy: number) =>
-      (ux * vx + uy * vy) / a2
+    const cot = (ux: number, uy: number, vx: number, vy: number) => (ux * vx + uy * vy) / a2
     // edge (0,1) opposite vertex 2; edge (1,2) opp 0; edge (2,0) opp 1.
     // Clamp to a small positive value: obtuse triangles give negative
     // cotangents that can make the ARAP Laplacian indefinite and stall CG.
@@ -170,8 +169,7 @@ export function lscm(ctx: ParamContext): Float64Array {
     // Local coords -> W_j complex coefficients (Lévy LSCM).
     const x = [local[o], local[o + 2], local[o + 4]]
     const y = [local[o + 1], local[o + 3], local[o + 5]]
-    const dT =
-      x[0] * (y[1] - y[2]) + x[1] * (y[2] - y[0]) + x[2] * (y[0] - y[1])
+    const dT = x[0] * (y[1] - y[2]) + x[1] * (y[2] - y[0]) + x[2] * (y[0] - y[1])
     const s = 1 / Math.sqrt(Math.max(Math.abs(dT), 1e-12))
     // W_0 = (x2-x1)+i(y2-y1), W_1=(x0-x2)+i(y0-y2), W_2=(x1-x0)+i(y1-y0)
     const Wx = [x[2] - x[1], x[0] - x[2], x[1] - x[0]]

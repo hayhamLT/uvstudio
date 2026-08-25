@@ -20,26 +20,27 @@ six repo secrets below exist; until then builds are simply unsigned.
 3. In **Keychain Access**, find **"Developer ID Application: … (TEAMID)"**,
    right-click → **Export** → save a **`.p12`** and set an export password.
 
-   *(Shortcut: Xcode ▸ Settings ▸ Accounts ▸ Manage Certificates ▸ + ▸
-   Developer ID Application also creates it, then export the `.p12` as above.)*
+   _(Shortcut: Xcode ▸ Settings ▸ Accounts ▸ Manage Certificates ▸ + ▸
+   Developer ID Application also creates it, then export the `.p12` as above.)_
 
 ## The six GitHub secrets
 
 Add these at **GitHub ▸ repo ▸ Settings ▸ Secrets and variables ▸ Actions ▸
 New repository secret** (do **not** paste them into chat or commit them):
 
-| Secret | Value / how to get it |
-|--------|----------------------|
-| `APPLE_CERTIFICATE` | the `.p12` base64-encoded: `base64 -i cert.p12 \| pbcopy` |
-| `APPLE_CERTIFICATE_PASSWORD` | the password you set when exporting the `.p12` |
-| `APPLE_SIGNING_IDENTITY` | exact identity string, e.g. `Developer ID Application: Your Name (AB12CD34EF)` — list with `security find-identity -v -p codesigning` |
-| `APPLE_TEAM_ID` | your 10-char Team ID (developer.apple.com ▸ Membership) |
-| `APPLE_ID` | your Apple ID email |
-| `APPLE_PASSWORD` | an **app-specific password** — appleid.apple.com ▸ Sign-In & Security ▸ App-Specific Passwords (NOT your real password) |
+| Secret                       | Value / how to get it                                                                                                                 |
+| ---------------------------- | ------------------------------------------------------------------------------------------------------------------------------------- |
+| `APPLE_CERTIFICATE`          | the `.p12` base64-encoded: `base64 -i cert.p12 \| pbcopy`                                                                             |
+| `APPLE_CERTIFICATE_PASSWORD` | the password you set when exporting the `.p12`                                                                                        |
+| `APPLE_SIGNING_IDENTITY`     | exact identity string, e.g. `Developer ID Application: Your Name (AB12CD34EF)` — list with `security find-identity -v -p codesigning` |
+| `APPLE_TEAM_ID`              | your 10-char Team ID (developer.apple.com ▸ Membership)                                                                               |
+| `APPLE_ID`                   | your Apple ID email                                                                                                                   |
+| `APPLE_PASSWORD`             | an **app-specific password** — appleid.apple.com ▸ Sign-In & Security ▸ App-Specific Passwords (NOT your real password)               |
 
 ## Ship it
 
 Tag a release as usual (`git tag vX.Y.Z && git push origin vX.Y.Z`). CI now:
+
 1. imports the certificate, signs the `.app` with the **hardened runtime** +
    [`entitlements.plist`](../src-tauri/entitlements.plist),
 2. submits to Apple **notarisation** and **staples** the ticket to the `.dmg`.

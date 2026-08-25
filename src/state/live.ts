@@ -18,8 +18,15 @@ export const live = {
   layout: new Map<number, { ox: number; oy: number; scale: number }>(),
   /** bumped whenever geometry topology changes (new shells) */
   topoVersion: 0,
-  /** bumped whenever uv frames change (drives 2D redraw) */
-  dirty: true,
+  /**
+   * Monotonic UV epoch. Every writer that mutates `live.uv` bumps this; the
+   * viewports remember the epoch they last uploaded and skip the (expensive)
+   * full buffer rewrite while it is unchanged. Was a write-only `dirty`
+   * boolean — a counter works with MULTIPLE independent consumers, where a
+   * read-and-clear flag would let whichever canvas rendered first starve the
+   * others.
+   */
+  uvEpoch: 1,
 
   // --- Screen Map mode ---
   /** the loaded map/atlas image as a GPU texture */
@@ -68,15 +75,25 @@ export function resetLive() {
   live.packed = null
   live.distortion.clear()
   live.layout.clear()
+  // Textures hold GPU memory that the GC cannot reclaim — every one of these
+  // maps must be DISPOSED, not just cleared, or each project load orphans one
+  // texture per screen (a 4K-per-screen show leaks hundreds of MB a reload).
+  for (const t of live.objTextures.values()) t.dispose()
   live.objTextures.clear()
   live.objAspect.clear()
   live.objContentRect.clear()
   for (const s of live.objSource.values()) s.tex.dispose()
   live.objSource.clear()
+  // The atlas is part of the document too: leaving a stale one here made a
+  // fresh untextured import render — and EXPORT — the previous project's
+  // artwork, because the non-layered paths read live.atlasTexture directly.
+  live.atlasTexture?.dispose()
+  live.atlasTexture = null
+  live.atlasAspect = 1
   live.layerPool = []
   live.refDensity.clear()
   live.layeredMode = false
   live.cam3d = null
   live.topoVersion++
-  live.dirty = true
+  live.uvEpoch++
 }

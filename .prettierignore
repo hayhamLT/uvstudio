@@ -1,0 +1,20 @@
+dist
+node_modules
+src-tauri/target
+package-lock.json
+public/help
+docs/img
+test-results
+playwright-report
+
+# Hand-authored static marketing page: one big inline <style> and an inline
+# <script>, both carefully laid out. Prettier's HTML formatter reflows them
+# aggressively for no benefit — this page ships as-is.
+index.html
+
+# session-local tooling, not project source
+.claude
+
+# Captured verbatim from the real C4D / Blender plugins — reformatting them
+# would defeat the point of recording exactly what the plugins emit.
+src/bridge/fixtures

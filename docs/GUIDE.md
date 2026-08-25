@@ -3,7 +3,7 @@
 UV Studio maps your artwork onto the **screens** in a venue or event model — LED
 walls, floors, pillars, ribbon boards — and sends the result straight back to
 Cinema 4D or Blender (or out as a GLB). It does the fiddly UV work for you, so
-you spend your time deciding *what goes where*, not wrestling with unwrapping.
+you spend your time deciding _what goes where_, not wrestling with unwrapping.
 
 This guide walks through the whole app, start to finish. If you just want the
 30-second version: **bring a model in → link each screen to its artwork →
@@ -83,10 +83,10 @@ Every screen gets a row: its **name on the left**, an **arrow**, and the
 linked for you automatically (that's why it often opens already `6/6 linked`).
 
 **To change what's on a screen, click its row** — it expands into a list of every
-imported image and PSD layer, each with a thumbnail so you can pick by *look*,
+imported image and PSD layer, each with a thumbnail so you can pick by _look_,
 not by guessing at file names:
 
-- The **"keep imported"** option (dashed *UVs* tile) leaves that screen on
+- The **"keep imported"** option (dashed _UVs_ tile) leaves that screen on
   whatever texture/UVs it came in with — nothing changes.
 - Selecting any tile links it. Links are **one-to-one**: if a layer is already on
   another screen, picking it moves it.
@@ -97,7 +97,7 @@ not by guessing at file names:
   a stable color derived from its name. The same color marks the screen
   everywhere (list, wizard, outlines), so you can always tell which is which.
 - A **dot at the end of a media option** means that media is **already linked to
-  a different screen** — and the dot's color tells you *which* one (hover it for
+  a different screen** — and the dot's color tells you _which_ one (hover it for
   the name). It's just a heads-up before you steal it.
 
 Use **+ Add PSD / images** to bring in more artwork mid-flow. When it looks
@@ -221,11 +221,13 @@ The bridge is **zero-config** — both ends share a folder automatically, no set
 Install the plugin / add-on once from the app's **Preferences**.
 
 **Cinema 4D**
+
 1. Preferences ▸ **Plugin** → Install, then restart Cinema 4D.
 2. Extensions ▸ **UV Studio Bridge** ▸ **Send** (with your objects selected).
 3. Map in UV Studio, then **Send back** → UVs land on the original UVW tags.
 
 **Blender**
+
 1. Preferences ▸ **Blender** → Install, then enable the add-on once in
    Blender ▸ Preferences ▸ Add-ons.
 2. View3D ▸ Sidebar (**N**) ▸ **UV Studio** ▸ **Send** (selected meshes).
@@ -238,23 +240,23 @@ nothing to break on the way home.
 
 ## 10. Keyboard shortcuts
 
-| Key | Action |
-|---|---|
-| **Tab** | Swap the 2D / 3D views |
-| **1 / 2 / 3** | Over 3D: Shaded / Distortion / Checker |
-| **B** | Toggle backface culling (3D) |
-| **1 / 2 / 3 / 4** | In 2D: Vertex / Edge / Face / Object edit mode |
-| **` / 0** | Leave edit mode |
-| **M** | Auto-map the active screen |
-| **T** | Free transform (⇧ non-uniform · ⌥ from corner) |
-| **R / ⇧R** | Rotate CW / CCW |
-| **F / ⇧F** | Flip horizontal / vertical |
-| **S** | Interactive scale — move the mouse, click to set |
-| **+ / −** | Scale up / down |
-| **X** | Reset orientation |
-| **⌘/Ctrl Z** | Undo ( ⇧ to redo ) |
-| **Right-drag** | Pan the view · **Esc** clears selection |
-| **H** | Toggle Help |
+| Key               | Action                                           |
+| ----------------- | ------------------------------------------------ |
+| **Tab**           | Swap the 2D / 3D views                           |
+| **1 / 2 / 3**     | Over 3D: Shaded / Distortion / Checker           |
+| **B**             | Toggle backface culling (3D)                     |
+| **1 / 2 / 3 / 4** | In 2D: Vertex / Edge / Face / Object edit mode   |
+| **` / 0**         | Leave edit mode                                  |
+| **M**             | Auto-map the active screen                       |
+| **T**             | Free transform (⇧ non-uniform · ⌥ from corner)   |
+| **R / ⇧R**        | Rotate CW / CCW                                  |
+| **F / ⇧F**        | Flip horizontal / vertical                       |
+| **S**             | Interactive scale — move the mouse, click to set |
+| **+ / −**         | Scale up / down                                  |
+| **X**             | Reset orientation                                |
+| **⌘/Ctrl Z**      | Undo ( ⇧ to redo )                               |
+| **Right-drag**    | Pan the view · **Esc** clears selection          |
+| **H**             | Toggle Help                                      |
 
 You can always open the in-app **Help** (the **?** icon, or **H**) for the
 Workflow, Shortcuts, and Bridges tabs.
@@ -288,5 +290,5 @@ panel's Reference section.
 
 ---
 
-*UV Studio — a focused, modern reimagining of headus UVLayout for screen content.
-Created by [hamLT](https://motion.hamlt.com) · Powered by [Toy Robot Media](https://toyrobotmedia.com).*
+_UV Studio — a focused, modern reimagining of headus UVLayout for screen content.
+Created by [hamLT](https://motion.hamlt.com) · Powered by [Toy Robot Media](https://toyrobotmedia.com)._
