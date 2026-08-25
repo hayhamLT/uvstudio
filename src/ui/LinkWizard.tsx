@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState, type ChangeEvent } from 'react'
 import clsx from 'clsx'
 import { useStore, type MediaItem } from '../state/store'
+import { useModalA11y } from './useModalA11y'
 
 const hash = (name: string) => {
   let h = 0
@@ -50,6 +51,9 @@ export default function LinkWizard() {
     }
   }, [pending])
 
+  // NB: above the early return — hooks must run in the same order every render
+  const { panelRef, dialogProps } = useModalA11y(!!pending, cancelLink, 'link-title')
+
   if (!pending) return null
   const { objects, items } = pending
   const byId = new Map(items.map((i) => [i.id, i]))
@@ -80,9 +84,15 @@ export default function LinkWizard() {
 
   return (
     <div className="fixed inset-0 z-[100] flex items-center justify-center bg-ink-950/70 backdrop-blur-sm">
-      <div className="glass animate-modal-in flex max-h-[86vh] w-[620px] max-w-[94vw] flex-col rounded-2xl p-5 shadow-2xl">
+      <div
+        {...dialogProps}
+        ref={panelRef}
+        className="glass animate-modal-in flex max-h-[86vh] w-[620px] max-w-[94vw] flex-col rounded-2xl p-5 shadow-2xl outline-none"
+      >
         <div className="mb-1 flex items-center justify-between">
-          <h2 className="text-base font-semibold text-fog-100">Link media to screens</h2>
+          <h2 id="link-title" className="text-base font-semibold text-fog-100">
+            Link media to screens
+          </h2>
           <span className="text-xs tabular-nums text-fog-400">
             {linkedCount}/{objects.length} linked
           </span>

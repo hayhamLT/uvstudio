@@ -2,6 +2,7 @@ import { useState } from 'react'
 import * as link from '../bridge/link'
 import type { UpdateInfo } from '../app/updater'
 import { currentVersion } from '../app/updater'
+import { useModalA11y } from './useModalA11y'
 
 /** A small modal shown on launch when a newer desktop build is available.
  *  Preferred path: the SIGNED auto-updater — verify, install in place, relaunch
@@ -9,6 +10,7 @@ import { currentVersion } from '../app/updater'
  *  page in the browser. */
 export default function UpdateBanner({ info, onClose }: { info: UpdateInfo; onClose: () => void }) {
   const [busy, setBusy] = useState('')
+  const { panelRef, dialogProps } = useModalA11y(true, onClose, 'update-title')
   const update = async () => {
     setBusy('Updating…')
     try {
@@ -31,8 +33,14 @@ export default function UpdateBanner({ info, onClose }: { info: UpdateInfo; onCl
   }
   return (
     <div className="fixed inset-0 z-[120] flex items-center justify-center bg-ink-950/70 backdrop-blur-sm">
-      <div className="glass w-[420px] max-w-[92vw] animate-float-up rounded-2xl p-6 shadow-2xl">
-        <h2 className="text-lg font-semibold text-fog-100">Update available</h2>
+      <div
+        {...dialogProps}
+        ref={panelRef}
+        className="glass w-[420px] max-w-[92vw] animate-float-up rounded-2xl p-6 shadow-2xl outline-none"
+      >
+        <h2 id="update-title" className="text-lg font-semibold text-fog-100">
+          Update available
+        </h2>
         <p className="mt-2 text-[13px] leading-relaxed text-fog-300">
           UV Studio <span className="text-fog-100">{info.version}</span> is out — you have{' '}
           <span className="text-fog-100">{currentVersion}</span>. One click installs it and relaunches

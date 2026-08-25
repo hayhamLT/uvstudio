@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react'
 import clsx from 'clsx'
 import { useStore } from '../state/store'
 import { classifyScreens, commonWords, isNamedScreen, BUILTIN_SCREEN_KEYWORDS } from '../map/classify'
+import { useModalA11y } from './useModalA11y'
 
 /** Lets the user pick which imported objects become screens. Screens are
  *  auto-detected by name on open; the detection keywords, a search filter, and
@@ -35,17 +36,8 @@ export default function ImportDialog() {
   }, [pending])
 
   // Esc closes the dialog (matches every other modal).
-  useEffect(() => {
-    if (!pending) return
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') {
-        e.stopPropagation()
-        cancelImport()
-      }
-    }
-    window.addEventListener('keydown', onKey, true)
-    return () => window.removeEventListener('keydown', onKey, true)
-  }, [pending, cancelImport])
+  // Esc / focus trap / focus restore (see useModalA11y)
+  const { panelRef, dialogProps } = useModalA11y(!!pending, cancelImport, 'import-title')
 
   const objs = pending?.objects ?? []
   const auto = useMemo(
@@ -105,12 +97,16 @@ export default function ImportDialog() {
       onClick={cancelImport}
     >
       <div
-        className="glass animate-modal-in flex max-h-[86vh] w-[500px] max-w-full flex-col rounded-2xl p-5 shadow-2xl"
+        {...dialogProps}
+        ref={panelRef}
+        className="glass animate-modal-in flex max-h-[86vh] w-[500px] max-w-full flex-col rounded-2xl p-5 shadow-2xl outline-none"
         onClick={(e) => e.stopPropagation()}
       >
         {/* header */}
         <div className="mb-1 flex items-baseline justify-between gap-3">
-          <h2 className="text-base font-semibold text-fog-100">Choose screens</h2>
+          <h2 id="import-title" className="text-base font-semibold text-fog-100">
+            Choose screens
+          </h2>
           <span className="truncate font-mono text-[11px] text-fog-400/70">{pending.fileName}</span>
         </div>
         <p className="mb-4 text-xs leading-relaxed text-fog-400">

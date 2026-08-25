@@ -133,6 +133,7 @@ export default function TopBar({ onHelp, onPrefs }: { onHelp: () => void; onPref
       <button
         onClick={undo}
         disabled={!undoCount}
+        aria-label="Undo (⌘/Ctrl+Z)"
         title="Undo (⌘/Ctrl+Z)"
         className="flex h-8 w-8 items-center justify-center rounded-md text-fog-300 enabled:hover:bg-ink-700/70 enabled:hover:text-fog-100 disabled:opacity-30 ring-focus"
       >
@@ -144,6 +145,7 @@ export default function TopBar({ onHelp, onPrefs }: { onHelp: () => void; onPref
       <button
         onClick={redo}
         disabled={!redoCount}
+        aria-label="Redo (⌘/Ctrl+Shift+Z)"
         title="Redo (⌘/Ctrl+Shift+Z)"
         className="flex h-8 w-8 items-center justify-center rounded-md text-fog-300 enabled:hover:bg-ink-700/70 enabled:hover:text-fog-100 disabled:opacity-30 ring-focus"
       >
@@ -161,6 +163,7 @@ export default function TopBar({ onHelp, onPrefs }: { onHelp: () => void; onPref
       <button
         onClick={onPrefs}
         className="flex h-8 w-8 items-center justify-center rounded-md text-fog-300 hover:bg-ink-700/70 hover:text-fog-100 ring-focus"
+        aria-label="Preferences — Cinema 4D setup & defaults"
         title="Preferences — Cinema 4D setup & defaults"
       >
         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round">
@@ -172,6 +175,7 @@ export default function TopBar({ onHelp, onPrefs }: { onHelp: () => void; onPref
       <button
         onClick={onHelp}
         className="flex h-8 w-8 items-center justify-center rounded-md text-fog-300 hover:bg-ink-700/70 hover:text-fog-100 ring-focus"
+        aria-label="Shortcuts (H)"
         title="Shortcuts (H)"
       >
         <IconHelp width={18} height={18} />

@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { openExternal } from '../bridge/link'
+import { useModalA11y } from './useModalA11y'
 
 type Tab = 'workflow' | 'shortcuts' | 'bridges'
 
@@ -153,17 +154,22 @@ function Bridges() {
 export default function HelpOverlay({ onClose }: { onClose: () => void }) {
   const [tab, setTab] = useState<Tab>('workflow')
   const tabs: Tab[] = ['workflow', 'shortcuts', 'bridges']
+  const { panelRef, dialogProps } = useModalA11y(true, onClose, 'help-title')
   return (
     <div
       className="fixed inset-0 z-[100] flex items-center justify-center bg-ink-950/70 backdrop-blur-sm"
       onClick={onClose}
     >
       <div
-        className="glass flex max-h-[88vh] w-[660px] max-w-[92vw] animate-float-up flex-col rounded-2xl p-6 shadow-2xl"
+        {...dialogProps}
+        ref={panelRef}
+        className="glass flex max-h-[88vh] w-[660px] max-w-[92vw] animate-float-up flex-col rounded-2xl p-6 shadow-2xl outline-none"
         onClick={(e) => e.stopPropagation()}
       >
         <div className="mb-4 flex items-center justify-between">
-          <h2 className="text-lg font-semibold text-fog-100">Help</h2>
+          <h2 id="help-title" className="text-lg font-semibold text-fog-100">
+            Help &amp; shortcuts
+          </h2>
           <div className="flex items-center gap-3">
             <a
               href="https://uv.preshow.link/help/"

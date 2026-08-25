@@ -119,6 +119,8 @@ export default function FloatingWindow({
           {actions}
           <button
             onClick={toggleCollapse}
+            aria-label={collapsed ? 'Expand' : 'Collapse'}
+            aria-expanded={!collapsed}
             title={collapsed ? 'Expand' : 'Collapse'}
             className="flex h-5 w-5 items-center justify-center rounded text-fog-400 hover:bg-ink-600 hover:text-fog-100"
           >

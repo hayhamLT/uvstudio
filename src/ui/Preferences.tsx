@@ -2,6 +2,7 @@ import { useEffect, useState, type ReactNode } from 'react'
 import { useStore } from '../state/store'
 import * as link from '../bridge/link'
 import { currentVersion, checkForUpdate } from '../app/updater'
+import { useModalA11y } from './useModalA11y'
 
 /** Set-once / rarely-touched settings — Cinema 4D setup and import defaults. */
 export default function Preferences({ open, onClose }: { open: boolean; onClose: () => void }) {
@@ -25,6 +26,9 @@ export default function Preferences({ open, onClose }: { open: boolean; onClose:
       void link.isCustomLinkFolder().then(setLinkCustom)
     }
   }, [open])
+  // Esc closes, Tab stays inside, focus returns to the opener (the header
+  // already promised Esc worked — it didn't until this landed).
+  const { panelRef, dialogProps } = useModalA11y(open, onClose, 'prefs-title')
   if (!open) return null
 
   const connect = async () => {
@@ -101,11 +105,15 @@ export default function Preferences({ open, onClose }: { open: boolean; onClose:
       onClick={onClose}
     >
       <div
-        className="glass max-h-[92vh] w-[540px] max-w-[92vw] animate-float-up overflow-y-auto rounded-2xl p-6 shadow-2xl"
+        {...dialogProps}
+        ref={panelRef}
+        className="glass max-h-[92vh] w-[540px] max-w-[92vw] animate-float-up overflow-y-auto rounded-2xl p-6 shadow-2xl outline-none"
         onClick={(e) => e.stopPropagation()}
       >
         <div className="mb-5 flex items-center justify-between">
-          <h2 className="text-lg font-semibold text-fog-100">Preferences</h2>
+          <h2 id="prefs-title" className="text-lg font-semibold text-fog-100">
+            Preferences
+          </h2>
           <button
             onClick={onClose}
             className="rounded-md px-2 py-1 text-sm text-fog-400 hover:bg-ink-700 hover:text-fog-100"

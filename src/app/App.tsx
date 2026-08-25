@@ -236,7 +236,8 @@ export default function App() {
   const iconBtnCls =
     'flex h-5 w-5 items-center justify-center rounded text-fog-400 hover:bg-ink-600 hover:text-fog-100'
   const swapBtn = (
-    <button onClick={swap} title="Swap the two views (Tab)" className={iconBtnCls}>
+    <button onClick={swap} aria-label="Swap the two views (Tab)"
+        title="Swap the two views (Tab)" className={iconBtnCls}>
       <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
         <path d="M16 3l4 4-4 4" />
         <path d="M20 7H7a4 4 0 0 0-4 4" />
@@ -246,7 +247,8 @@ export default function App() {
     </button>
   )
   const dockBtn = (
-    <button onClick={() => setDock(true)} title="Dock — snap into a split view" className={iconBtnCls}>
+    <button onClick={() => setDock(true)} aria-label="Dock — snap into a split view"
+        title="Dock — snap into a split view" className={iconBtnCls}>
       <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
         <rect x="3" y="4" width="18" height="16" rx="2" />
         <path d="M14 4v16" />
@@ -254,7 +256,8 @@ export default function App() {
     </button>
   )
   const undockBtn = (
-    <button onClick={() => setDock(false)} title="Float — pop out as a movable window" className={iconBtnCls}>
+    <button onClick={() => setDock(false)} aria-label="Float — pop out as a movable window"
+        title="Float — pop out as a movable window" className={iconBtnCls}>
       <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
         <path d="M10 4H6a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-4" />
         <path d="M14 4h6v6M20 4l-9 9" />
@@ -380,6 +383,9 @@ function DockedSplit({
           document.body.style.cursor = 'col-resize'
           e.preventDefault()
         }}
+        role="separator"
+        aria-orientation="vertical"
+        aria-label="Resize the two panes"
         title="Drag to resize"
         className="relative z-20 w-1 shrink-0 cursor-col-resize bg-line transition-colors hover:bg-brand-500"
       />

@@ -99,6 +99,7 @@ function ToastCard({ toast }: { toast: Toast }) {
       <div className="min-w-0 flex-1 text-[12.5px] leading-snug text-fog-100">{toast.msg}</div>
       <button
         onClick={startExit}
+        aria-label="Dismiss"
         title="Dismiss"
         className="btn-press flex h-5 w-5 shrink-0 items-center justify-center rounded text-fog-500 hover:bg-ink-700 hover:text-fog-100"
       >
@@ -115,7 +116,16 @@ export default function Toasts() {
   const toasts = useStore((s) => s.toasts)
   if (!toasts.length) return null
   return (
-    <div className="pointer-events-none fixed bottom-3 right-3 z-[130] flex w-[330px] max-w-[calc(100vw-24px)] flex-col gap-2">
+    // Toasts carry the app's real feedback ("Mapped 6/6 screens", "Send failed")
+    // and vanish on a timer, so they are the one thing that must be announced
+    // rather than merely drawn. `polite` waits for a pause instead of cutting
+    // across whatever the user is already hearing.
+    <div
+      role="status"
+      aria-live="polite"
+      aria-atomic="false"
+      className="pointer-events-none fixed bottom-3 right-3 z-[130] flex w-[330px] max-w-[calc(100vw-24px)] flex-col gap-2"
+    >
       {toasts.map((t) => (
         <ToastCard key={t.id} toast={t} />
       ))}
