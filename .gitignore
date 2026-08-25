@@ -21,3 +21,5 @@ public/FLOOR_SCREEN.psd
 public/PILLAR_SCREEN.psd
 public/WALL_SCREEN.psd
 __pycache__/
+test-results/
+playwright-report/
