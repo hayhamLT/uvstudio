@@ -69,7 +69,8 @@ ws.onmessage = (e) => {
   if (m.id && pending.has(m.id)) {
     const { res, rej } = pending.get(m.id)
     pending.delete(m.id)
-    m.error ? rej(new Error(m.error.message)) : res(m.result)
+    if (m.error) rej(new Error(m.error.message))
+    else res(m.result)
   }
 }
 const cdp = (method, params = {}) =>

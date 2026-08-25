@@ -1,0 +1,8 @@
+dist
+node_modules
+src-tauri/target
+package-lock.json
+public/help
+docs/img
+test-results
+playwright-report

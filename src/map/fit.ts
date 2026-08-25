@@ -201,7 +201,7 @@ function projectCylindrical(pos: Float32Array, c: [number, number, number]): Flo
   }
   const out = new Float32Array(n * 2)
   for (let j = 0; j < n; j++) {
-    let a = (((ang[j] - cut) % TAU) + TAU) % TAU
+    const a = (((ang[j] - cut) % TAU) + TAU) % TAU
     out[j * 2] = a * radius // arc length → matches v's world units
     out[j * 2 + 1] = hgt[j]
   }
