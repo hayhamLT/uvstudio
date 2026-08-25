@@ -1,4 +1,4 @@
-import { useEffect, useMemo } from 'react'
+import { useCallback, useEffect, useMemo } from 'react'
 import { useFrame } from '@react-three/fiber'
 import * as THREE from 'three'
 import { useStore } from '../state/store'
@@ -6,6 +6,7 @@ import { live } from '../state/live'
 import { checkerForAspect } from '../three/checker'
 import { computeDistortion } from '../unwrap/distortion'
 import { stretchColor } from '../three/colors'
+import { useUvEpochGate } from '../three/useUvEpochGate'
 
 function objColor(name: string): THREE.Color {
   let h = 0
@@ -59,8 +60,12 @@ export default function MapSurfaces() {
 
   // aspect (w/h) of the texture a screen samples — checker cells & distortion
   // are judged in that pixel space so non-square maps read honestly.
-  const aspectFor = (objName: string) =>
-    layeredMode ? live.objAspect.get(objName) ?? 1 : live.atlasAspect || 1
+  // reads only `live` (mutable, non-reactive), so a stable identity is honest
+  // here and lets the distortion effect list it as a dependency
+  const aspectFor = useCallback(
+    (objName: string) => (layeredMode ? live.objAspect.get(objName) ?? 1 : live.atlasAspect || 1),
+    [layeredMode],
+  )
 
   // C4D-sourced objects had Z negated on import (left- → right-handed), which
   // reverses triangle winding. Flip the winding for RENDERING only (so normals
@@ -94,7 +99,7 @@ export default function MapSurfaces() {
       const edges = new THREE.EdgesGeometry(geo, 25) // silhouette for selection outline
       return { geo, wire, edges }
     })
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+     
   }, [mapShells, flippedObjs])
 
   useEffect(
@@ -184,11 +189,15 @@ export default function MapSurfaces() {
       }
       attr.needsUpdate = true
     })
-  }, [geoms, mapShells, view3d, uvVersion])
+  }, [geoms, mapShells, view3d, uvVersion, aspectFor])
 
-  // Stream the REAL content UVs onto the surface each frame — the checker
-  // samples these too, so it honestly shows any stretch/skew in the UVs.
+  // Stream the REAL content UVs onto the surface — the checker samples these
+  // too, so it honestly shows any stretch/skew in the UVs. Gated on the UV
+  // epoch: re-uploading identical buffers every frame cost more than the
+  // render itself on scenes with many screens.
+  const needsUpload = useUvEpochGate([geoms, mapShells])
   useFrame(() => {
+    if (!needsUpload()) return
     mapShells.forEach((ms, i) => {
       const uv = live.uv.get(ms.id)
       if (!uv) return

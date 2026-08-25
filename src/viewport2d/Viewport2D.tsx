@@ -8,6 +8,7 @@ import MapView2D from './MapView2D'
 import { makeCheckerTexture } from '../three/checker'
 import { distortionColor, THEME } from '../three/colors'
 import ActiveFrameloop from '../three/ActiveFrameloop'
+import { useUvEpochGate } from '../three/useUvEpochGate'
 
 interface ShellGeo {
   id: number
@@ -73,7 +74,7 @@ function UVScene() {
       bnd.setIndex(boundary)
       return { id: s.id, position, color, fill, edges, boundary: bnd, vertCount: s.vertCount }
     })
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+     
   }, [shells])
 
   useEffect(
@@ -106,7 +107,9 @@ function UVScene() {
     })
   }, [geos, shells, display.distortion, selectedShells, uvVersion])
 
+  const needsUpload = useUvEpochGate([geos, shells, isPacked])
   useFrame(() => {
+    if (!needsUpload()) return
     shells.forEach((s, i) => {
       const g = geos[i]
       const packed = live.packed?.get(s.id)

@@ -83,6 +83,8 @@ Preshow.link repo for the draft handoff spec).
 npm install
 npm run dev          # local dev server (Vite) — the tool is at http://localhost:5173/app/
 npm test             # unit tests
+npm run test:e2e     # Playwright smoke tests (needs: npx playwright install chromium)
+npm run lint         # eslint
 npm run typecheck    # tsc
 
 npm run tauri:dev    # desktop app (needs Rust — https://rustup.rs)
@@ -119,7 +121,14 @@ the same layout: the **C4D plugin** & **Blender add-on** (Python), the **web app
 
 ```
 src/                   React/Vite app (UI, unwrap engine, PSD handling)
+  state/               the zustand store, split by concern
+    store.ts           AppState + slice composition
+    slices/            one file per area (scene · media · map · bridge · …)
+    mapping.ts         how a screen's UVs are derived from its content
+    history.ts         undo/redo snapshots · glb.ts export · media.ts imports
+    live.ts            mutable, non-React buffers for the 60fps UV stream
   bridge/link.ts       link-folder bridge (web + desktop backends)
+tests/e2e/             Playwright smoke tests (boot · map · undo/redo)
 src-tauri/             Tauri v2 desktop shell (Rust bridge + plugin install)
 c4d-plugin/            Cinema 4D plugin (.pyp) + README + IDS
 blender-plugin/        Blender add-on (uvstudio_bridge.py) + README
@@ -130,6 +139,6 @@ DESKTOP.md             web vs desktop builds, bridge, CI details
 
 ### Tech
 
-Vite · React 18 · TypeScript · Three.js / react-three-fiber · Zustand ·
+Vite · React 19 · TypeScript · Three.js / react-three-fiber · Zustand ·
 Tailwind v4 · ag-psd · Tauri v2. Unwrapping: half-edge mesh, LSCM + ARAP relax,
 planar / cylindrical / spherical projections.

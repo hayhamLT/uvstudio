@@ -448,7 +448,7 @@ export default function UVEditLayer({ aspect }: { aspect: number }) {
         uv[vi * 2] += du
         uv[vi * 2 + 1] += dv
       }
-      live.dirty = true
+      live.uvEpoch++
       // the 2D coverage marker (and RES readout) are memoised on uvVersion — bump
       // it so the yellow box physically follows the drag in the 2D view.
       useStore.setState({ uvVersion: useStore.getState().uvVersion + 1 })
@@ -556,7 +556,7 @@ export default function UVEditLayer({ aspect }: { aspect: number }) {
           uv[i + 1] = cv + (o[i + 1] - cv) * factor
         }
       }
-      live.dirty = true
+      live.uvEpoch++
       useStore.setState({ uvVersion: useStore.getState().uvVersion + 1 })
     }
     const onMoveWin = (ev: PointerEvent) => {
@@ -581,7 +581,7 @@ export default function UVEditLayer({ aspect }: { aspect: number }) {
     }
     const cancel = () => {
       for (const [id, o] of orig) live.uv.get(id)?.set(o)
-      live.dirty = true
+      live.uvEpoch++
       useStore.setState({ uvVersion: useStore.getState().uvVersion + 1 })
       cleanup()
       useStore.getState().setScaleMode(false)
@@ -607,11 +607,10 @@ export default function UVEditLayer({ aspect }: { aspect: number }) {
     window.addEventListener('keydown', onKey, true)
     useStore.setState({ status: `Scaling ${objName} — move mouse, click to set, Esc to cancel` })
     return cleanup
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+     
   }, [scaleMode, aspect, allShells, camera, gl])
 
   // ---- per-frame overlay rendering ----
-  const cVert = new THREE.Color('#5cc8ff')
   const cEdge = new THREE.Color('#9fe0ff')
   const cSeam = new THREE.Color('#ff7a3c')
   const cSel = new THREE.Color('#ffffff') // selected vertices / edges — high contrast

@@ -191,7 +191,7 @@ export default function FreeTransform({ aspect }: { aspect: number }) {
         it.uv[v * 2 + 1] = wy
       })
     }
-    live.dirty = true
+    live.uvEpoch++
     const nv = useStore.getState().uvVersion + 1
     useStore.setState({ uvVersion: nv })
     lastVersionRef.current = nv

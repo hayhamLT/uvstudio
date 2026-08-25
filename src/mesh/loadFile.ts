@@ -1,6 +1,17 @@
 import * as THREE from 'three'
-import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js'
+import type { GLTFLoader as GLTFLoaderType } from 'three/examples/jsm/loaders/GLTFLoader.js'
 import type { PolyMesh, SceneObject } from './types'
+
+/** The glTF loader is only needed once the user actually imports a model, so it
+ *  is fetched on demand rather than shipped in the bundle behind the landing
+ *  page. Cached after the first call. */
+let loaderPromise: Promise<GLTFLoaderType> | null = null
+function gltfLoader(): Promise<GLTFLoaderType> {
+  loaderPromise ??= import('three/examples/jsm/loaders/GLTFLoader.js').then(
+    (m) => new m.GLTFLoader(),
+  )
+  return loaderPromise
+}
 
 /** Load a glTF / GLB file into a PolyMesh. */
 export async function loadMeshFile(file: File): Promise<PolyMesh> {
@@ -43,8 +54,8 @@ function textureToCanvas(tex: THREE.Texture | null | undefined): HTMLCanvasEleme
   }
 }
 
-function gltfToScene(buffer: ArrayBuffer): Promise<SceneObject[]> {
-  const loader = new GLTFLoader()
+async function gltfToScene(buffer: ArrayBuffer): Promise<SceneObject[]> {
+  const loader = await gltfLoader()
   return new Promise((resolve, reject) => {
     loader.parse(
       buffer,
@@ -118,8 +129,8 @@ function gltfToScene(buffer: ArrayBuffer): Promise<SceneObject[]> {
   })
 }
 
-function gltfToPolyMesh(buffer: ArrayBuffer, name: string): Promise<PolyMesh> {
-  const loader = new GLTFLoader()
+async function gltfToPolyMesh(buffer: ArrayBuffer, name: string): Promise<PolyMesh> {
+  const loader = await gltfLoader()
   return new Promise((resolve, reject) => {
     loader.parse(
       buffer,

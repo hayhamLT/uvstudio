@@ -1,4 +1,4 @@
-import { useEffect, useMemo, type ReactNode } from 'react'
+import { useEffect, useMemo, type ReactNode, type ReactElement } from 'react'
 import { Canvas, useFrame, useThree } from '@react-three/fiber'
 import ActiveFrameloop from '../three/ActiveFrameloop'
 import { OrbitControls } from '@react-three/drei'
@@ -11,6 +11,7 @@ import { isEmbeddedHost } from '../ui/env'
 import { handleViewportDrop } from '../ui/importMap'
 import UVEditLayer from './UVEditLayer'
 import FreeTransform from './FreeTransform'
+import { useUvEpochGate } from '../three/useUvEpochGate'
 
 // DEV-ONLY docs tooling: during a ?shot capture run, render continuously and keep
 // the drawing buffer so `canvas.toDataURL()` returns real pixels (see App.tsx).
@@ -89,7 +90,9 @@ function Scene({
     [geos],
   )
 
+  const needsUpload = useUvEpochGate([geos, aspect, srcRect])
   useFrame(() => {
+    if (!needsUpload()) return
     const r = srcRect
     geos.forEach((g) => {
       const uv = live.uv.get(g.id)
@@ -153,6 +156,9 @@ function Scene({
     }
     if (!isFinite(u0)) return null
     return { x0: u0, y0: 1 - v1, x1: u1, y1: 1 - v0 }
+    // uvVersion is not read here — it is the invalidation SIGNAL for live.uv,
+    // which the body reads imperatively and the linter cannot see.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [layeredMode, selectedObject, geos, uvVersion])
 
   const markerBox = useMemo(() => {
@@ -292,7 +298,7 @@ function EditToolbar() {
     id: 'object' | 'vertex' | 'edge' | 'face'
     label: string
     hot: string
-    icon: JSX.Element
+    icon: ReactElement
   }[] = [
     { id: 'vertex', label: 'Vertex', hot: '1', icon: VPath },
     { id: 'edge', label: 'Edge', hot: '2', icon: EPath },
@@ -335,6 +341,7 @@ function TBtn({
 }) {
   return (
     <button
+      aria-label={title}
       title={title}
       onClick={onClick}
       className={
@@ -531,12 +538,12 @@ export default function MapView2D() {
         </div>
       )}
       {!layeredMode && atlas && mappedCount === 0 && (
-        <div className="pointer-events-none absolute inset-x-0 bottom-6 text-center text-xs text-fog-400/70">
+        <div className="pointer-events-none absolute inset-x-0 bottom-14 text-center text-xs text-fog-400/70">
           Assign objects to regions, then “Map UVs”
         </div>
       )}
       {layeredMode && !selectedObject && mappedCount === 0 && (
-        <div className="pointer-events-none absolute inset-x-0 bottom-6 text-center text-xs text-fog-400/70">
+        <div className="pointer-events-none absolute inset-x-0 bottom-14 text-center text-xs text-fog-400/70">
           {embedded
             ? 'Select a screen, then click its image ＋ button to map it'
             : 'Select a screen, then drop an image here to map it'}

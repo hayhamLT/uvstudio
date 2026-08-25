@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef } from 'react'
+import { useEffect, useMemo, useRef, type ReactElement } from 'react'
 import { Canvas, useFrame, useThree } from '@react-three/fiber'
 import { OrbitControls } from '@react-three/drei'
 import * as THREE from 'three'
@@ -11,10 +11,8 @@ import MapSurfaces from './MapSurfaces'
 import ContextSurfaces from './ContextSurfaces'
 import { makeCheckerTexture } from '../three/checker'
 import { distortionColor, THEME } from '../three/colors'
-import {
-  buildSurfaceGeometry,
-  allEdgeSegments,
-} from './geometry'
+import { buildSurfaceGeometry, allEdgeSegments } from './geometry'
+import { useUvEpochGate } from '../three/useUvEpochGate'
 
 // DEV-ONLY docs tooling: during a ?shot capture run, render continuously and keep
 // the drawing buffer so `canvas.toDataURL()` returns real pixels (see App.tsx).
@@ -82,7 +80,7 @@ function CheckerOverlay() {
       g.computeVertexNormals()
       return g
     })
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+     
   }, [shells])
 
   useEffect(() => () => geoms.forEach((g) => g.dispose()), [geoms])
@@ -103,8 +101,10 @@ function CheckerOverlay() {
     })
   }, [geoms, shells, uvVersion])
 
-  // Stream UVs onto the surface during relax.
+  // Stream UVs onto the surface during relax (only when they actually moved).
+  const needsUpload = useUvEpochGate([geoms, shells])
   useFrame(() => {
+    if (!needsUpload()) return
     shells.forEach((s, i) => {
       const uv = live.packed?.get(s.id) ?? live.uv.get(s.id)
       if (!uv) return
@@ -290,7 +290,7 @@ function CameraRig() {
 function View3dToolbar() {
   const view3d = useStore((s) => s.view3d)
   const setView3d = useStore((s) => s.setView3d)
-  const modes: { id: 'shaded' | 'distortion' | 'checker'; label: string; hot: string; icon: JSX.Element }[] = [
+  const modes: { id: 'shaded' | 'distortion' | 'checker'; label: string; hot: string; icon: ReactElement }[] = [
     { id: 'shaded', label: 'Shaded (content)', hot: '1', icon: <circle cx="12" cy="12" r="7.5" fill="currentColor" stroke="none" /> },
     {
       id: 'distortion',
